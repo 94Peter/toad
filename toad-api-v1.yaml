@@ -1,0 +1,230 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: 業績薪資管理平台
+
+servers:
+# Added by API Auto Mocking Plugin
+  - url: https://toad957.appspot.com
+    description: 測試站
+
+tags:
+  - name: admin
+    description: 後台管理相關API
+  - name: receivable
+    description: 應收款項
+  - name: receipt
+    description: 收款資料
+  - name: invoice
+    description: 發票相關API
+  - name: commission
+    description: 佣金相關API
+  - name: salary
+    description: 薪資相關API
+  
+paths:
+  /v1/receivable:
+    post:
+      tags: [receivable]
+      summary: 建立應收款項
+      operationId: create-receivable
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReceivable'
+      responses:
+        '200':
+          description: ok
+        '400':
+          description: bad request
+        '500':
+          description: internal server error
+    get:
+      tags: [receivable]
+      summary: 取得應收款項
+      operationId: get-receivable
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: export
+          required: false
+          schema:
+            type: string
+          description: 匯出檔案
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetReceivable'
+        '204':
+          description: no content
+        '500':
+          description: internal server error
+  /v1/receipt:
+    post:
+      tags: [receipt]
+      summary: 建立收款資料
+      operationId: create-receipt
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReceipt'
+      responses:
+        '200':
+          description: ok
+        '400':
+          description: bad request
+        '500':
+          description: internal server error
+    get:
+      tags: [receipt]
+      summary: 取得收款資料
+      operationId: get-receipt
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetReceipt'
+        '400':
+          description: bad request
+        '500':
+          description: internal server error
+components:
+  schemas:
+    GetReceipt:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 收款紀錄id
+        date:
+          type: string
+          description: 收款日期
+        contractNo:
+          type: string
+          description: 合約編號
+        caseName:
+          type: string
+          description: 案名
+        customertType:
+          type: string
+          description: 買 / 賣
+          enum: [buy, sell]
+        customerName:
+          type: string
+        amount:
+          type: integer
+          description: 收款金額
+        invoiceNo:
+          type: string
+          description: 發票號碼
+    CreateReceipt:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 應收款id
+        date:
+          type: string
+          description: 日期
+        amount:
+          type: integer
+          description: 款項金額
+    GetReceivable:
+      type: object
+      properties:
+        id:
+          type: string
+        completionDate:
+          type: string
+          description: 成交日期
+        contractNo:
+          type: string
+          description: 合約編號
+        caseName:
+          type: string
+          description: 案名
+        customer:
+          type: object
+          properties:
+            type:
+              type: string
+              description: 買 / 賣
+              enum: [buy, sell]
+            name:
+              type: string
+        amount:
+          type: integer
+          description: 應收金額
+        fee:
+          type: integer
+          description: 應扣費用
+        receivedAmount:
+          type: integer
+          description: 已收金額
+        balance:
+          type: integer
+          description: 剩餘金額
+        sales:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              proportion:
+                type: number
+    CreateReceivable:
+      type: object
+      properties:
+        completionDate:
+          type: string
+          description: 成交日期
+        contractNo:
+          type: string
+          description: 合約編號
+        caseName:
+          type: string
+          description: 案名
+        customer:
+          type: object
+          properties:
+            type:
+              type: string
+              description: 買 / 賣
+              enum: [buy, sell]
+            name:
+              type: string
+        amount:
+          type: integer
+          description: 應收金額
+        fee:
+          type: integer
+          description: 應扣費用
+        sales:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              proportion:
+                type: number
+  securitySchemes:
+    ApiKeyAuth:        # arbitrary name for the security scheme
+      type: apiKey
+      in: header       # can be "header", "query" or "cookie"
+      name: Auth-Token  # name of the header, query parameter or cookie

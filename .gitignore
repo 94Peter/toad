@@ -1,0 +1,8 @@
+*.txt
+*.pem
+.gcloudignore
+bin/*
+conf/*
+*.json
+app.yaml
+admin.js

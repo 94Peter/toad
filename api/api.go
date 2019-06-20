@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/94peter/pica/util"
+	"github.com/94peter/toad/util"
 
-	"github.com/94peter/pica/resource/sms"
+	"github.com/94peter/toad/resource/sms"
 
-	"github.com/94peter/pica/resource/db"
+	"github.com/94peter/toad/resource/db"
 	"github.com/gorilla/mux"
 
 	"dforcepro.com/resource/logger"
-	"github.com/94peter/pica/middle"
+	"github.com/94peter/toad/middle"
 )
 
 type APIconf struct {
@@ -63,7 +63,6 @@ type AppRes interface {
 	GetSMS() sms.InterSMS
 	GetJWTConf() *util.JwtConf
 	GetTSDB() db.InterTSDB
-	GetTrendItems() []string
 	GetLocation() *time.Location
 }
 

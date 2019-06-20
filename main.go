@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/94peter/toad/model"
 	"github.com/94peter/toad/util"
 
 	"github.com/94peter/toad/resource/sms"
@@ -49,7 +48,6 @@ func main() {
 
 	myDI := GetConf(env, timezone)
 	router := mux.NewRouter()
-	initAcc(myDI)
 	//middleConf := di.APIConf.Middle
 	middle.SetDI(myDI)
 	middlewares := middle.GetMiddlewares(
@@ -75,12 +73,11 @@ type di struct {
 	Log     logger.Logger    `yaml:"log,omitempty"`
 	APIConf resource.APIConf `yaml:"api,omitempty"`
 	// SysMap   map[string]string `yaml:"sysMap,omitempty"`
-	Location  *time.Location   `yaml:"-"`
-	SMSConf   *sms.SMSConf     `yaml:"smsConf"`
-	JWTConf   *util.JwtConf    `yaml:"jwtConf"`
-	TrendConf *model.TrendConf `yaml:"trend"`
-	LoginURL  string           `yaml:"loginURL"`
-	Init      struct {
+	Location *time.Location `yaml:"-"`
+	SMSConf  *sms.SMSConf   `yaml:"smsConf"`
+	JWTConf  *util.JwtConf  `yaml:"jwtConf"`
+	LoginURL string         `yaml:"loginURL"`
+	Init     struct {
 		Email string `yaml:"email"`
 		Name  string `yaml:"name"`
 		Phone string `yaml:"phone"`
@@ -117,10 +114,6 @@ func (d *di) GetSMS() sms.InterSMS {
 
 func (d *di) GetJWTConf() *util.JwtConf {
 	return d.JWTConf
-}
-
-func (d *di) GetTrendItems() []string {
-	return d.TrendConf.DailyItem
 }
 
 func (d *di) GetLocation() *time.Location {

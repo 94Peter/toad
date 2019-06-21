@@ -88,24 +88,12 @@ func (d *di) GetLoginURL() string {
 	return d.LoginURL
 }
 
-func (d *di) GetAuth() mdb.InterAuth {
-	return d.DBconf.GetAuth()
-}
-
 func (d *di) GetLog() logger.Logger {
 	return d.Log
 }
 
 func (d *di) GetAPIConf() resource.APIConf {
 	return d.APIConf
-}
-
-func (d *di) GetDB() mdb.InterDB {
-	return d.DBconf.GetDB()
-}
-
-func (d *di) GetTSDB() mdb.InterTSDB {
-	return d.DBconf.GetTSDB()
 }
 
 func (d *di) GetSMS() sms.InterSMS {

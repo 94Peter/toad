@@ -9,7 +9,6 @@ import (
 
 	"github.com/94peter/toad/resource/sms"
 
-	"github.com/94peter/toad/resource/db"
 	"github.com/gorilla/mux"
 
 	"dforcepro.com/resource/logger"
@@ -57,12 +56,9 @@ func addHandler(conf *APIconf, apiHandlers *[]*APIHandler) {
 
 type AppRes interface {
 	GetLog() logger.Logger
-	GetDB() db.InterDB
-	GetAuth() db.InterAuth
 	GetLoginURL() string
 	GetSMS() sms.InterSMS
 	GetJWTConf() *util.JwtConf
-	GetTSDB() db.InterTSDB
 	GetLocation() *time.Location
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/94peter/toad/util"
 
+	"github.com/94peter/toad/resource/db"
 	"github.com/94peter/toad/resource/sms"
 
 	"github.com/gorilla/mux"
@@ -60,6 +61,8 @@ type AppRes interface {
 	GetSMS() sms.InterSMS
 	GetJWTConf() *util.JwtConf
 	GetLocation() *time.Location
+	GetDB() db.InterDB
+	GetSQLDB() db.InterSQLDB
 }
 
 var (

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/94peter/pica/permission"
@@ -19,5 +20,9 @@ func (api AdminAPI) GetAPIs() *[]*APIHandler {
 }
 
 func (api *AdminAPI) getCategoryEndpoint(w http.ResponseWriter, req *http.Request) {
-	w.Write([]byte("hi"))
+	db := di.GetSQLDB()
+	//db.Query("select * from public.ab")
+	isDB := db.IsDBExist()
+
+	w.Write([]byte(fmt.Sprintf("hi..%t", isDB)))
 }

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 type interDoc interface {
@@ -14,10 +15,21 @@ type InterDB interface {
 	GetByID(id string, doc interface{}) error
 }
 
+type InterSQLDB interface {
+	C(c string) InterSQLDB
+	Close() error
+	Query(cmd string) (res *sql.Rows, err error)
+
+	IsDBExist() bool
+	CreateDB() error
+}
+
 type DBConf struct {
 	FirebaseConf *firebaseConf `yaml:"firebase"`
+	SqlDBConf    *sqldbConf    `yaml:"sqldatabase"`
 
-	db InterDB
+	db    InterDB
+	sqldb InterSQLDB
 }
 
 func (dbc *DBConf) SetFirebase(file, url string) {
@@ -27,9 +39,26 @@ func (dbc *DBConf) SetFirebase(file, url string) {
 	}
 }
 
+func (dbc *DBConf) SetSqldatabase(host, user, password, db string) {
+	dbc.SqlDBConf = &sqldbConf{
+		DatabaseURL: host,
+		User:        user,
+		Password:    password,
+		DB:          db,
+	}
+}
+
 type firebaseConf struct {
 	CredentialsFile string `yaml:"credentialsFile"`
 	DatabaseURL     string `yaml:"databaseURL"`
+}
+
+type sqldbConf struct {
+	DatabaseURL string `yaml:"databaseURL"`
+	Port        int    `yaml:"port"`
+	User        string `yaml:"user"`
+	Password    string `yaml:"password"`
+	DB          string `yaml:"db"`
 }
 
 func (dbc *DBConf) GetDB() InterDB {
@@ -41,5 +70,26 @@ func (dbc *DBConf) GetDB() InterDB {
 		ctx:             context.Background(),
 		dburl:           dbc.FirebaseConf.DatabaseURL,
 	}
+
 	return dbc.db
+}
+
+func (dbc *DBConf) GetSQLDB() InterSQLDB {
+	if dbc.sqldb != nil {
+		return dbc.sqldb
+	}
+	dbc.sqldb = &sqlDB{
+		ctx:      context.Background(),
+		dburl:    dbc.SqlDBConf.DatabaseURL,
+		user:     dbc.SqlDBConf.User,
+		password: dbc.SqlDBConf.Password,
+		db:       dbc.SqlDBConf.DB,
+		port:     dbc.SqlDBConf.Port,
+	}
+
+	if !dbc.sqldb.IsDBExist() {
+		dbc.sqldb.CreateDB()
+	}
+
+	return dbc.sqldb
 }

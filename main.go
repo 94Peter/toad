@@ -108,6 +108,14 @@ func (d *di) GetLocation() *time.Location {
 	return d.Location
 }
 
+func (d *di) GetSQLDB() mdb.InterSQLDB {
+	return d.DBconf.GetSQLDB()
+}
+
+func (d *di) GetDB() mdb.InterDB {
+	return d.DBconf.GetDB()
+}
+
 // 初始化設定檔，讀YAML檔
 func GetConf(env string, timezone string) *di {
 	const confFileTpl = "conf/%s/config.yml"

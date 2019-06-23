@@ -6,3 +6,4 @@ conf/*
 *.json
 app.yaml
 admin.js
+/conf

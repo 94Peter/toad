@@ -135,6 +135,7 @@ func GetConf(env string, timezone string) *di {
 
 	myDI.Location = loc
 	myDI.Log.StartLog()
+	myDI.GetSQLDB()
 	return &myDI
 }
 

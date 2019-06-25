@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 type interDoc interface {
@@ -22,6 +23,7 @@ type InterSQLDB interface {
 
 	IsDBExist() bool
 	CreateDB() error
+	CreateTable() error
 }
 
 type DBConf struct {
@@ -78,6 +80,8 @@ func (dbc *DBConf) GetSQLDB() InterSQLDB {
 	if dbc.sqldb != nil {
 		return dbc.sqldb
 	}
+	fmt.Println("GetSQLDB")
+
 	dbc.sqldb = &sqlDB{
 		ctx:      context.Background(),
 		dburl:    dbc.SqlDBConf.DatabaseURL,
@@ -89,7 +93,7 @@ func (dbc *DBConf) GetSQLDB() InterSQLDB {
 
 	if !dbc.sqldb.IsDBExist() {
 		dbc.sqldb.CreateDB()
+		dbc.sqldb.CreateTable()
 	}
-
 	return dbc.sqldb
 }

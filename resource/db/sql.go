@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "github.com/lib/pq"
 )
@@ -28,8 +29,8 @@ type sqlDB struct {
 
 func (sdb *sqlDB) connectSQLDB() (*sql.DB, error) {
 	//完整的資料格式連線如下
-	//var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password, sdb.db)
-	var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password)
+	var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password, sdb.db)
+	//var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=ak47 sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password)
 	db, err := sql.Open("postgres", connectionString)
 
 	if err != nil {
@@ -40,6 +41,22 @@ func (sdb *sqlDB) connectSQLDB() (*sql.DB, error) {
 	err = db.Ping()
 	if err != nil {
 		fmt.Println("[Failed] ping:" + err.Error())
+
+		//switch database method not found
+		//error message :[pq: database "dbname" does not exist]
+		foo := (strings.Index(err.Error(), "does not exist"))
+		if foo > 0 {
+			fmt.Println("database " + sdb.db + " does not exist")
+			var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password)
+			db, err := sql.Open("postgres", connectionString)
+			err = db.Ping()
+			if err != nil {
+				fmt.Println("[Failed] ping:" + err.Error())
+			} else {
+				sdb.clinet = db
+				return sdb.clinet, err
+			}
+		}
 		return nil, err
 	}
 	fmt.Println("連線成功")
@@ -96,6 +113,36 @@ func (sdb *sqlDB) CreateDB() error {
 		fmt.Println("CreateDB:" + err.Error())
 		return err
 	}
+	return nil
+}
+
+func (sdb *sqlDB) CreateTable() error {
+
+	_, err := sdb.Query(fmt.Sprintf(
+		"CREATE TABLE public.AR "+
+			"( "+
+			"ARid character, "+
+			"date date, "+
+			"cNo character, "+
+			"caseName character, "+
+			"type character, "+
+			"name character, "+
+			"amount integer, "+
+			"fee character, "+
+			"RA integer, "+
+			"balance integer, "+
+			"sales json[], "+
+			"PRIMARY KEY (ARid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			" ALTER TABLE public.AR "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateTable Done")
 	return nil
 }
 

@@ -121,14 +121,14 @@ func (sdb *sqlDB) CreateTable() error {
 	_, err := sdb.Query(fmt.Sprintf(
 		"CREATE TABLE public.AR "+
 			"( "+
-			"ARid character, "+
-			"date date, "+
-			"cNo character, "+
-			"caseName character, "+
-			"type character, "+
-			"name character, "+
+			"ARid character varying(50), "+
+			"date timestamp(0) without time zone, "+
+			"cNo character varying(50), "+
+			"caseName character varying(50), "+
+			"type character varying(50), "+
+			"name character varying(50), "+
 			"amount integer, "+
-			"fee character, "+
+			"fee integer, "+
 			"RA integer, "+
 			"balance integer, "+
 			"sales json[], "+

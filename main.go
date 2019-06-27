@@ -59,7 +59,7 @@ func main() {
 
 	apiConf := &mapi.APIconf{Router: router, MiddleWares: middlewares}
 	mapi.SetDI(myDI)
-	mapi.InitAPI(apiConf, mapi.AdminAPI(true))
+	mapi.InitAPI(apiConf, mapi.AdminAPI(true), mapi.ARAPI(true))
 	log.Printf("Listening on port %s", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), router))
 	// [END setting_port]
@@ -119,6 +119,7 @@ func (d *di) GetDB() mdb.InterDB {
 // 初始化設定檔，讀YAML檔
 func GetConf(env string, timezone string) *di {
 	const confFileTpl = "conf/%s/config.yml"
+
 	yamlFile, err := ioutil.ReadFile(fmt.Sprintf(confFileTpl, env))
 	if err != nil {
 		panic(err)
@@ -135,7 +136,13 @@ func GetConf(env string, timezone string) *di {
 
 	myDI.Location = loc
 	myDI.Log.StartLog()
-	myDI.GetSQLDB()
+	myDI.GetSQLDB() //for quickly test
+	// var queryDate time.Time
+	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
+	// end := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
+	// var result *[]_model.AR
+	// mm := _model.GetARModel.Get
+
 	return &myDI
 }
 

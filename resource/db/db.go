@@ -41,9 +41,10 @@ func (dbc *DBConf) SetFirebase(file, url string) {
 	}
 }
 
-func (dbc *DBConf) SetSqldatabase(host, user, password, db string) {
+func (dbc *DBConf) SetSqldatabase(host, user, password, db string, port int) {
 	dbc.SqlDBConf = &sqldbConf{
 		DatabaseURL: host,
+		Port:        port,
 		User:        user,
 		Password:    password,
 		DB:          db,

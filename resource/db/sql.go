@@ -27,7 +27,7 @@ type sqlDB struct {
 	db       string
 }
 
-func (sdb *sqlDB) connectSQLDB() (*sql.DB, error) {
+func (sdb *sqlDB) ConnectSQLDB() (*sql.DB, error) {
 	//完整的資料格式連線如下
 	var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password, sdb.db)
 	//var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=ak47 sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password)
@@ -78,9 +78,9 @@ func (sdb *sqlDB) Close() error {
 	return sdb.Close()
 }
 
-func (sdb *sqlDB) Query(cmd string) (*sql.Rows, error) {
+func (sdb *sqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 
-	c, err := sdb.connectSQLDB()
+	c, err := sdb.ConnectSQLDB()
 
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (sdb *sqlDB) Query(cmd string) (*sql.Rows, error) {
 
 func (sdb *sqlDB) CreateDB() error {
 
-	_, err := sdb.Query(fmt.Sprintf(
+	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE DATABASE %s "+
 			"WITH "+
 			"OWNER = %s "+
@@ -118,25 +118,37 @@ func (sdb *sqlDB) CreateDB() error {
 
 func (sdb *sqlDB) CreateTable() error {
 
-	_, err := sdb.Query(fmt.Sprintf(
+	// CREATE SEQUENCE public."generateID"
+	// INCREMENT 1
+	// START 1
+	// MINVALUE 1
+	// MAXVALUE 99999999
+	// CACHE 1;
+
+	// ALTER SEQUENCE public."generateID"
+	// 	OWNER TO postgres;
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.AR "+
 			"( "+
-			"ARid character varying(50), "+
-			"date timestamp(0) without time zone, "+
-			"cNo character varying(50), "+
-			"caseName character varying(50), "+
-			"type character varying(50), "+
-			"name character varying(50), "+
-			"amount integer, "+
-			"fee integer, "+
-			"RA integer, "+
-			"balance integer, "+
-			"sales json[], "+
+			"ARid character varying(50) ,"+
+			"date timestamp(0) without time zone not NULL, "+
+			"cNo character varying(50) not NULL, "+
+			"caseName character varying(50) not NULL, "+
+			"type character varying(50) not NULL, "+
+			"name character varying(50) not NULL, "+
+			"amount integer not NULL, "+
+			"fee integer DEFAULT 0, "+
+			"RA integer DEFAULT 0, "+
+			"balance integer DEFAULT 0, "+
+			"sales character varying(200), "+ //json[]
 			"PRIMARY KEY (ARid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			" ALTER TABLE public.AR "+
 			"OWNER to %s; ", sdb.user))
+	//"alter table public.ar alter column ra set default 0;"+
+	//"alter table public.ar alter column balance set default 0;"+
 
 	if err != nil {
 		fmt.Println("CreateTable:" + err.Error())
@@ -148,7 +160,7 @@ func (sdb *sqlDB) CreateTable() error {
 
 func (sdb *sqlDB) IsDBExist() bool {
 
-	rows, err := sdb.Query(fmt.Sprintf("SELECT datname FROM pg_database WHERE datname = '%s';", sdb.db))
+	rows, err := sdb.SQLCommand(fmt.Sprintf("SELECT datname FROM pg_database WHERE datname = '%s';", sdb.db))
 
 	if err != nil {
 		return false

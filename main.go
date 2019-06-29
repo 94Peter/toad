@@ -118,6 +118,7 @@ func (d *di) GetDB() mdb.InterDB {
 
 // 初始化設定檔，讀YAML檔
 func GetConf(env string, timezone string) *di {
+
 	const confFileTpl = "conf/%s/config.yml"
 
 	yamlFile, err := ioutil.ReadFile(fmt.Sprintf(confFileTpl, env))

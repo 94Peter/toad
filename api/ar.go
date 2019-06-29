@@ -17,7 +17,8 @@ func (api ARAPI) Enable() bool {
 
 func (api ARAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/AccountReceivable/Data", Next: api.getAccountReceivableEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable", Next: api.getAccountReceivableEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable", Next: api.createAccountReceivableEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		// &APIHandler{Path: "/v1/category", Next: api.createCategoryEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/category/{NAME}", Next: api.deleteCategoryEndpoint, Method: "DELETE", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/user", Next: api.createUserEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
@@ -43,4 +44,24 @@ func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+}
+
+func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+	ar := model.AR{}
+	err := json.NewDecoder(req.Body).Decode(&ar)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	am := model.GetARModel(di)
+	_err := am.CreateAccountReceivable(&ar)
+	if _err != nil {
+		w.Write([]byte("Error"))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
 }

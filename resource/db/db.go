@@ -19,8 +19,9 @@ type InterDB interface {
 type InterSQLDB interface {
 	C(c string) InterSQLDB
 	Close() error
-	Query(cmd string) (res *sql.Rows, err error)
 
+	SQLCommand(cmd string) (res *sql.Rows, err error)
+	ConnectSQLDB() (*sql.DB, error)
 	IsDBExist() bool
 	CreateDB() error
 	CreateTable() error

@@ -24,7 +24,9 @@ type InterSQLDB interface {
 	ConnectSQLDB() (*sql.DB, error)
 	IsDBExist() bool
 	CreateDB() error
-	CreateTable() error
+	CreateARTable() error
+	CreateReceiptTable() error
+	InitTable() bool
 }
 
 type DBConf struct {
@@ -95,7 +97,9 @@ func (dbc *DBConf) GetSQLDB() InterSQLDB {
 
 	if !dbc.sqldb.IsDBExist() {
 		dbc.sqldb.CreateDB()
-		dbc.sqldb.CreateTable()
+	}
+	if !dbc.sqldb.InitTable() {
+		fmt.Println("Init DataTable error")
 	}
 	return dbc.sqldb
 }

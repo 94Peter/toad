@@ -14,14 +14,24 @@ type AR struct {
 	Date     time.Time `json:"completionDate"`
 	CNo      string    `json:"contractNo"`
 	Customer customer  `json:"customer"`
-	//CustomerType string    `json:"id"`
-	CaseName string   `json:"caseName"`
-	Amount   int      `json:"amount"`
-	Fee      int      `json:"fee"`
-	Balance  int      `json:"balance"`
-	RA       int      `json:"receivedAmount"`
-	Sales    []*Saler `json:"sales"`
+	CaseName string    `json:"caseName"`
+	Amount   int       `json:"amount"`
+	Fee      int       `json:"fee"`
+	Balance  int       `json:"balance"`
+	RA       int       `json:"receivedAmount"`
+	Sales    []*Saler  `json:"sales"`
 }
+
+// type Receipt struct {
+// 	Rid       string
+// 	Date      time.Time `json:"date"`
+// 	CNo       string
+// 	Customer  customer
+// 	CaseName  string
+// 	ARid      string `json:"id"`
+// 	Amount    int    `json:"amount"` //收款
+// 	InvoiceNo string //發票號碼
+// }
 
 type customer struct {
 	Action string `json:"type"`
@@ -61,7 +71,7 @@ type ARModel struct {
 	arList []*AR
 }
 
-func (am *ARModel) GetData(today, end time.Time) []*AR {
+func (am *ARModel) GetARData(today, end time.Time) []*AR {
 
 	//ri := GetARModel(ar.imr)
 	//const qtpl = `SELECT arid, date, cno, "caseName", type, name, amount, fee, ra, balance, sales	FROM public.ar;`
@@ -73,7 +83,7 @@ func (am *ARModel) GetData(today, end time.Time) []*AR {
 	if err != nil {
 		return nil
 	}
-	var arList []*AR
+	var arDataList []*AR
 
 	for rows.Next() {
 		var r AR
@@ -93,7 +103,7 @@ func (am *ARModel) GetData(today, end time.Time) []*AR {
 			fmt.Println(err)
 		}
 
-		arList = append(arList, &r)
+		arDataList = append(arDataList, &r)
 	}
 
 	// out, err := json.Marshal(arList)
@@ -101,8 +111,8 @@ func (am *ARModel) GetData(today, end time.Time) []*AR {
 	// 	panic(err)
 	// }
 	// fmt.Println(string(out))
-
-	return arList
+	am.arList = arDataList
+	return am.arList
 	// influxR := result[0]
 	// if len(influxR.Series) == 0 {
 	// 	return nil
@@ -182,6 +192,83 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 
 	fmt.Println(id)
 
+	return nil
+}
+func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
+	fmt.Println("CreateReceipt")
+
+	const sql = `INSERT INTO public.receipt
+	(Rid, date, cno, casename, type, name, amount, ARid)
+	select $1, $2, cno, casename, type, name, $3, arid
+	from public.ar where arid = $4;`
+
+	interdb := am.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	fmt.Println("sqldb Exec")
+
+	out, err := json.Marshal(rt)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(out))
+
+	t := time.Now().Unix()
+	res, err := sqldb.Exec(sql, t, rt.Date, rt.Amount, rt.ARid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	err = am.updateARInfo(rt.ARid)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//建立 修改 刪除 收款單時，需要更改應收款項計算項目
+func (am *ARModel) updateARInfo(arid string) (err error) {
+	//https://stackoverflow.com/questions/2334712/how-do-i-update-from-a-select-in-sql-server
+	const sql = `Update public.ar
+				 set
+					ra = t2.sum , balance = amount - fee -t2.sum
+				FROM (
+					 select sum(amount) from public.receipt where arid = $1 group by arid  
+				)as t2 where
+				ar.arid = $1`
+
+	interdb := am.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	fmt.Println("sqldb Exec")
+	res, err := sqldb.Exec(sql, arid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+
+	fmt.Println(id)
 	return nil
 }
 

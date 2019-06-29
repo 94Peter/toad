@@ -80,18 +80,20 @@ func (sdb *sqlDB) Close() error {
 
 func (sdb *sqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 
-	c, err := sdb.ConnectSQLDB()
+	db, err := sdb.ConnectSQLDB()
 
 	if err != nil {
 		return nil, err
 	}
 
-	rows, err := c.Query(cmd)
-	fmt.Println("Query " + cmd)
+	rows, err := db.Query(cmd)
+
+	//fmt.Println("Query " + cmd)
+
 	if err != nil {
 		return nil, err
 	}
-	defer c.Close()
+	defer db.Close()
 
 	if rows.Err() != nil {
 		return nil, rows.Err()
@@ -116,7 +118,7 @@ func (sdb *sqlDB) CreateDB() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateTable() error {
+func (sdb *sqlDB) CreateARTable() error {
 
 	// CREATE SEQUENCE public."generateID"
 	// INCREMENT 1
@@ -154,8 +156,97 @@ func (sdb *sqlDB) CreateTable() error {
 		fmt.Println("CreateTable:" + err.Error())
 		return err
 	}
+	fmt.Println("CreateARTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateReceiptTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.receipt "+
+			"( "+
+			"Rid character varying(50) ,"+
+			"date timestamp(0) without time zone not NULL, "+
+			"cNo character varying(50) not NULL, "+
+			"caseName character varying(50) not NULL, "+
+			"type character varying(50) not NULL, "+
+			"name character varying(50) not NULL, "+
+			"amount integer not NULL, "+
+			"invoiceNo character varying(50) , "+
+			"ARid character varying(50) not NULL, "+
+			"PRIMARY KEY (Rid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.receipt "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateReceiptTable:" + err.Error())
+		return err
+	}
 	fmt.Println("CreateTable Done")
 	return nil
+}
+
+func (sdb *sqlDB) InitTable() bool {
+
+	rows, err := sdb.SQLCommand(`SELECT tablename FROM	pg_catalog.pg_tables 
+								WHERE 
+								schemaname != 'pg_catalog' AND schemaname != 'information_schema';`)
+
+	if err != nil {
+		return false
+	}
+
+	var mT = map[string]bool{
+		"ar":      false,
+		"receipt": false,
+	}
+
+	for rows.Next() {
+		var tName string
+		if err := rows.Scan(&tName); err != nil {
+			fmt.Println("err Scan %s\n", err)
+		}
+
+		switch tName {
+		case "ar":
+			mT["ar"] = true
+		case "receipt":
+			mT["receipt"] = true
+		default:
+			fmt.Printf("unknown table %s.\n", tName)
+		}
+	}
+
+	for t, s := range mT {
+		//fmt.Println("i=", t, " s=", s)
+		if !s {
+			err = nil
+			switch t {
+			case "ar":
+				err = sdb.CreateARTable()
+			case "receipt":
+				err = sdb.CreateReceiptTable()
+			default:
+				fmt.Printf("unknown table %s.\n", t)
+			}
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
+
+	/*
+			SELECT
+		   *
+		FROM
+		   pg_catalog.pg_tables
+		WHERE
+		   schemaname != 'pg_catalog'
+		AND schemaname != 'information_schema';
+	*/
+	return true
 }
 
 func (sdb *sqlDB) IsDBExist() bool {

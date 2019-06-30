@@ -22,7 +22,7 @@ func (api AdminAPI) GetAPIs() *[]*APIHandler {
 func (api *AdminAPI) getCategoryEndpoint(w http.ResponseWriter, req *http.Request) {
 	db := di.GetSQLDB()
 	//db.Query("select * from public.ab")
-	isDB := db.IsDBExist()
+	isDB := db.InitDB()
 
 	w.Write([]byte(fmt.Sprintf("hi..%t", isDB)))
 }

@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,8 +18,8 @@ type AR struct {
 	CaseName string    `json:"caseName"`
 	Amount   int       `json:"amount"`
 	Fee      int       `json:"fee"`
-	Balance  int       `json:"balance"`
-	RA       int       `json:"receivedAmount"`
+	Balance  int       `json:"balance"`        //未收金額
+	RA       int       `json:"receivedAmount"` //已收金額
 	Sales    []*Saler  `json:"sales"`
 }
 
@@ -39,8 +40,8 @@ type customer struct {
 }
 
 type Saler struct {
-	BName   string `json:"name"`
-	Percent int    `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
+	BName   string  `json:"name"`
+	Percent float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
 	//Bid     string  `json:"Bid"`
 }
 
@@ -197,10 +198,11 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 	fmt.Println("CreateReceipt")
 
+	//balance <= Amount 未收金額<=繳款金額
 	const sql = `INSERT INTO public.receipt
 	(Rid, date, cno, casename, type, name, amount, ARid)
 	select $1, $2, cno, casename, type, name, $3, arid
-	from public.ar where arid = $4;`
+	from public.ar where arid = $4 and balance >= $3;`
 
 	interdb := am.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -229,6 +231,10 @@ func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 		return err
 	}
 	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation, may be the ID does not exist or amount is not vaild")
+	}
 
 	err = am.updateARInfo(rt.ARid)
 	if err != nil {

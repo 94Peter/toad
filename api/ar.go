@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -13,6 +15,31 @@ type ARAPI bool
 
 func (api ARAPI) Enable() bool {
 	return bool(api)
+}
+
+type inputAR struct {
+	//ARid     string    `json:"id"`
+	Date     time.Time `json:"completionDate"`
+	CNo      string    `json:"contractNo"`
+	Customer struct {
+		Action string `json:"type"`
+		Name   string `json:"name"`
+	} `json:"customer"`
+	CaseName string         `json:"caseName"`
+	Amount   int            `json:"amount"`
+	Fee      int            `json:"fee"`
+	Sales    []*model.Saler `json:"sales"`
+}
+type inputReceipt struct {
+	//Rid           string    `json:"-"` //no return this key
+	ARid string    `json:"id"`
+	Date time.Time `json:"date"`
+	// CNo           string    `json:"contractNo"`
+	// CaseName      string    `json:"caseName"`
+	// CustomertType string    `json:"customertType"`
+	// Name          string    `json:"customerName"`
+	Amount int `json:"amount"` //收款
+	//InvoiceNo     string    `json:"invoiceNo"` //發票號碼
 }
 
 func (api ARAPI) GetAPIs() *[]*APIHandler {
@@ -51,16 +78,24 @@ func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.
 
 func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-	ar := model.AR{}
-	err := json.NewDecoder(req.Body).Decode(&ar)
+
+	iAR := inputAR{}
+	err := json.NewDecoder(req.Body).Decode(&iAR)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Invalid JSON format"))
 		return
 	}
 
+	if ok, err := iAR.isARValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
 	am := model.GetARModel(di)
-	_err := am.CreateAccountReceivable(&ar)
+
+	_err := am.CreateAccountReceivable(iAR.GetAR())
 	if _err != nil {
 		w.Write([]byte("Error"))
 	} else {
@@ -71,20 +106,100 @@ func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 
 func (api *ARAPI) createReceiptEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-	rt := model.Receipt{}
-	err := json.NewDecoder(req.Body).Decode(&rt)
+	irt := inputReceipt{}
+
+	err := json.NewDecoder(req.Body).Decode(&irt)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Invalid JSON format"))
 		return
 	}
 
+	if ok, err := irt.isReceiptValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
 	am := model.GetARModel(di)
-	_err := am.CreateReceipt(&rt)
+	_err := am.CreateReceipt(irt.GetReceipt())
 	if _err != nil {
-		w.Write([]byte("Error"))
+		w.Write([]byte(_err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
 
+}
+
+func (iAR *inputAR) isARValid() (bool, error) {
+	// if !util.IsStrInList(iAR.Permission, permission.All...) {
+	// 	return false, errors.New("permission error")
+	// }
+	fmt.Println("iAR.Date:", iAR.Date)
+
+	if t := time.Now().Unix(); t <= iAR.Date.Unix() {
+		//未來的成交案 => 不成立
+		return false, errors.New("CompletionDate is not valid")
+	}
+	if iAR.CNo == "" {
+		return false, errors.New("ContractNo is empty")
+	}
+	if iAR.Customer.Action == "" {
+		return false, errors.New("Customer type is empty")
+	}
+	if iAR.Customer.Name == "" {
+		return false, errors.New("Customer name is empty")
+	}
+	if iAR.CaseName == "" {
+		return false, errors.New("Case name is empty")
+	}
+	//有0元的成交案例嗎?
+	if iAR.Amount < 0 {
+		return false, errors.New("Amount is not valid")
+	}
+	if iAR.Fee < 0 || iAR.Fee > iAR.Amount {
+		return false, errors.New("Fee is not valid")
+	}
+	if len(iAR.Sales) == 0 {
+		return false, errors.New("Sales is empty")
+	}
+
+	return true, nil
+}
+
+func (irt *inputReceipt) isReceiptValid() (bool, error) {
+	if irt.ARid == "" {
+		return false, errors.New("id is empty")
+	}
+	//收0元成立嗎?
+	if irt.Amount < 1 {
+		return false, errors.New("Amount is not valid")
+	}
+
+	if t := time.Now().Unix(); t <= irt.Date.Unix() {
+		//未來的成交案 => 不成立
+		return false, errors.New("Date is not valid")
+	}
+
+	return true, nil
+}
+
+func (iAR *inputAR) GetAR() *model.AR {
+	return &model.AR{
+		Amount:   iAR.Amount,
+		Date:     iAR.Date,
+		CNo:      iAR.CNo,
+		CaseName: iAR.CaseName,
+		Customer: iAR.Customer,
+		Fee:      iAR.Fee,
+		Sales:    iAR.Sales,
+	}
+}
+
+func (irt *inputReceipt) GetReceipt() *model.Receipt {
+	return &model.Receipt{
+		Amount: irt.Amount,
+		Date:   irt.Date,
+		ARid:   irt.ARid,
+	}
 }

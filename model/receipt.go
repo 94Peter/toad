@@ -43,7 +43,8 @@ func GetRTModel(imr interModelRes) *RTModel {
 
 func (rm *RTModel) GetReceiptData(today, end time.Time) []*Receipt {
 	fmt.Println("GetReceiptData")
-	const qspl = `SELECT arid, date, cno, casename, type, name, amount, invoiceNo	FROM public.receipt;`
+	//if invoiceno is null in Database return ""
+	const qspl = `SELECT arid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
 	db := rm.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {

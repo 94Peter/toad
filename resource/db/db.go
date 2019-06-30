@@ -22,11 +22,11 @@ type InterSQLDB interface {
 
 	SQLCommand(cmd string) (res *sql.Rows, err error)
 	ConnectSQLDB() (*sql.DB, error)
-	IsDBExist() bool
-	CreateDB() error
+	InitDB() bool
+	//CreateDB() error
 	CreateARTable() error
 	CreateReceiptTable() error
-	InitTable() bool
+	//InitTable() error
 }
 
 type DBConf struct {
@@ -95,11 +95,12 @@ func (dbc *DBConf) GetSQLDB() InterSQLDB {
 		port:     dbc.SqlDBConf.Port,
 	}
 
-	if !dbc.sqldb.IsDBExist() {
-		dbc.sqldb.CreateDB()
+	if !dbc.sqldb.InitDB() {
+		fmt.Println("Init DataBase error")
 	}
-	if !dbc.sqldb.InitTable() {
-		fmt.Println("Init DataTable error")
-	}
+	// if !dbc.sqldb.InitTable() {
+	// 	fmt.Println("Init DataTable error")
+	// }
+
 	return dbc.sqldb
 }

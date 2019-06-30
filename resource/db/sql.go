@@ -28,6 +28,7 @@ type sqlDB struct {
 }
 
 func (sdb *sqlDB) ConnectSQLDB() (*sql.DB, error) {
+
 	//完整的資料格式連線如下
 	var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password, sdb.db)
 	//var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=ak47 sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password)
@@ -46,20 +47,21 @@ func (sdb *sqlDB) ConnectSQLDB() (*sql.DB, error) {
 		//error message :[pq: database "dbname" does not exist]
 		foo := (strings.Index(err.Error(), "does not exist"))
 		if foo > 0 {
-			fmt.Println("database " + sdb.db + " does not exist")
+			fmt.Println("database2 " + sdb.db + " does not exist")
 			var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password)
 			db, err := sql.Open("postgres", connectionString)
 			err = db.Ping()
 			if err != nil {
-				fmt.Println("[Failed] ping:" + err.Error())
+				fmt.Println("[Failed] ping2:" + err.Error())
 			} else {
+				fmt.Println("無指定DB 連線成功")
 				sdb.clinet = db
 				return sdb.clinet, err
 			}
 		}
 		return nil, err
 	}
-	fmt.Println("連線成功")
+	fmt.Println("toad 連線成功")
 	sdb.clinet = db
 	return sdb.clinet, err
 }
@@ -85,7 +87,7 @@ func (sdb *sqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println("SQLCommand")
 	rows, err := db.Query(cmd)
 
 	//fmt.Println("Query " + cmd)
@@ -188,14 +190,14 @@ func (sdb *sqlDB) CreateReceiptTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) InitTable() bool {
+func (sdb *sqlDB) InitTable() error {
 
 	rows, err := sdb.SQLCommand(`SELECT tablename FROM	pg_catalog.pg_tables 
 								WHERE 
 								schemaname != 'pg_catalog' AND schemaname != 'information_schema';`)
 
 	if err != nil {
-		return false
+		return err
 	}
 
 	var mT = map[string]bool{
@@ -237,19 +239,10 @@ func (sdb *sqlDB) InitTable() bool {
 		}
 	}
 
-	/*
-			SELECT
-		   *
-		FROM
-		   pg_catalog.pg_tables
-		WHERE
-		   schemaname != 'pg_catalog'
-		AND schemaname != 'information_schema';
-	*/
-	return true
+	return err
 }
 
-func (sdb *sqlDB) IsDBExist() bool {
+func (sdb *sqlDB) InitDB() bool {
 
 	rows, err := sdb.SQLCommand(fmt.Sprintf("SELECT datname FROM pg_database WHERE datname = '%s';", sdb.db))
 
@@ -267,6 +260,16 @@ func (sdb *sqlDB) IsDBExist() bool {
 
 	if err := rows.Err(); err != nil {
 		fmt.Println("err rows.Err() %s\n", err)
+		return false
+	}
+
+	if err := sdb.CreateDB(); err != nil {
+		fmt.Println("CreateDB Err() %s\n", err)
+		return false
+	}
+
+	if err := sdb.InitTable(); err != nil {
+		fmt.Println("InitTable Err() %s\n", err)
 		return false
 	}
 

@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -41,10 +42,125 @@ func GetRTModel(imr interModelRes) *RTModel {
 	return rm
 }
 
+func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid string) error {
+	fmt.Println("UpdateReceiptData")
+	arid := ""
+	selectSQL := fmt.Sprintf("Select arid FROM public.receipt where Rid = '%s'", Rid)
+	const sql = `Update public.receipt set amount = $1 ,date = $2 where Rid = $3;`
+	db := rm.imr.GetSQLDB()
+
+	rows, err := db.SQLCommand(selectSQL)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(&arid); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+	}
+
+	fmt.Println("arid ", arid)
+	if arid == "" {
+		return errors.New("not found receipt")
+	}
+
+	mdb, err := db.ConnectSQLDB()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	res, err := mdb.Exec(sql, amount, Date, Rid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println("RowsAffected: ", id)
+	if id <= 0 {
+		return errors.New("not found receipt")
+	} else if arid != "" {
+		am.UpdateARInfo(arid)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (rm *RTModel) DeleteReceiptData(Rid string) error {
+
+	fmt.Println("DeleteReceiptData")
+
+	arid := ""
+	selectSQL := fmt.Sprintf("Select arid FROM public.receipt where Rid = '%s'", Rid)
+	const sql = `Delete FROM public.receipt where Rid = $1;`
+	db := rm.imr.GetSQLDB()
+
+	fmt.Println(selectSQL)
+	rows, err := db.SQLCommand(selectSQL)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(&arid); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+	}
+
+	fmt.Println("arid ", arid)
+
+	if arid == "" {
+		return errors.New("not found receipt")
+	}
+
+	mdb, err := db.ConnectSQLDB()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	res, err := mdb.Exec(sql, Rid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+
+	fmt.Println("RowsAffected: ", id)
+
+	if id <= 0 {
+		return errors.New("not found receipt")
+	} else if arid != "" {
+		am.UpdateARInfo(arid)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (rm *RTModel) GetReceiptData(today, end time.Time) []*Receipt {
 	fmt.Println("GetReceiptData")
 	//if invoiceno is null in Database return ""
-	const qspl = `SELECT arid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
+	const qspl = `SELECT rid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
 	db := rm.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {

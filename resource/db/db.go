@@ -22,6 +22,7 @@ type InterSQLDB interface {
 
 	SQLCommand(cmd string) (res *sql.Rows, err error)
 	ConnectSQLDB() (*sql.DB, error)
+
 	InitDB() bool
 	//CreateDB() error
 	CreateARTable() error

@@ -198,7 +198,7 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 	fmt.Println("CreateReceipt")
 
-	//balance <= Amount 未收金額<=繳款金額
+	//condition: balance <= Amount 未收金額<=繳款金額
 	const sql = `INSERT INTO public.receipt
 	(Rid, date, cno, casename, type, name, amount, ARid)
 	select $1, $2, cno, casename, type, name, $3, arid
@@ -236,7 +236,7 @@ func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 		return errors.New("Invalid operation, may be the ID does not exist or amount is not vaild")
 	}
 
-	err = am.updateARInfo(rt.ARid)
+	err = am.UpdateARInfo(rt.ARid)
 	if err != nil {
 		return err
 	}
@@ -245,15 +245,14 @@ func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 }
 
 //建立 修改 刪除 收款單時，需要更改應收款項計算項目
-func (am *ARModel) updateARInfo(arid string) (err error) {
+func (am *ARModel) UpdateARInfo(arid string) (err error) {
 	//https://stackoverflow.com/questions/2334712/how-do-i-update-from-a-select-in-sql-server
 	const sql = `Update public.ar
 				 set
 					ra = t2.sum , balance = amount - fee -t2.sum
 				FROM (
 					 select sum(amount) from public.receipt where arid = $1 group by arid  
-				)as t2 where
-				ar.arid = $1`
+				)as t2 where ar.arid = $1`
 
 	interdb := am.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -274,7 +273,24 @@ func (am *ARModel) updateARInfo(arid string) (err error) {
 		return err
 	}
 
-	fmt.Println(id)
+	if id <= 0 {
+		fmt.Println("No any receipt, so reset infomation of account receivable")
+		const reset = `Update public.ar	set ra = 0 , balance = amount - fee where arid = $1`
+		res, err := sqldb.Exec(reset, arid)
+		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+			return err
+		}
+		fmt.Println("reset update:", id)
+		return err
+	}
+
 	return nil
 }
 

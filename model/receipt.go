@@ -87,7 +87,8 @@ func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid string) error {
 	if id <= 0 {
 		return errors.New("not found receipt")
 	} else if arid != "" {
-		am.UpdateARInfo(arid)
+		//am.UpdateARInfo(arid)
+		err := UpdateARInfo(rm.imr, arid)
 		if err != nil {
 			fmt.Println(err)
 			return err
@@ -147,7 +148,8 @@ func (rm *RTModel) DeleteReceiptData(Rid string) error {
 	if id <= 0 {
 		return errors.New("not found receipt")
 	} else if arid != "" {
-		am.UpdateARInfo(arid)
+		//am.UpdateARInfo(arid)
+		err := UpdateARInfo(rm.imr, arid)
 		if err != nil {
 			fmt.Println(err)
 			return err
@@ -156,6 +158,7 @@ func (rm *RTModel) DeleteReceiptData(Rid string) error {
 
 	return nil
 }
+
 
 func (rm *RTModel) GetReceiptData(today, end time.Time) []*Receipt {
 	fmt.Println("GetReceiptData")

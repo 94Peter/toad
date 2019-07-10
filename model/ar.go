@@ -42,7 +42,7 @@ type customer struct {
 type Saler struct {
 	BName   string  `json:"name"`
 	Percent float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
-	//Bid     string  `json:"Bid"`
+	Bid     string  `json:"-"`
 }
 
 type AccountReceivable struct {
@@ -77,7 +77,7 @@ func (am *ARModel) GetARData(today, end time.Time) []*AR {
 	//ri := GetARModel(ar.imr)
 	//const qtpl = `SELECT arid, date, cno, "caseName", type, name, amount, fee, ra, balance, sales	FROM public.ar;`
 	//const qtpl = `SELECT arid	FROM public.ar;`
-	const qspl = `SELECT arid, date, cno, casename, type, name, amount, fee, ra, balance, sales	FROM public.ar;`
+	const qspl = `SELECT ARid, Date, cNo, CaseName, Type, Name, Amount, Fee, RA, Balance, Sales	FROM public.AR;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := am.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
@@ -147,8 +147,8 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 	fmt.Println("CreateAccountReceivable")
 
 	const sql = `INSERT INTO public.ar(
-		arid, date, cno, casename, type, name, amount, fee ,sales)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`
+		ARid, Date, CNo, CaseName, Type, Name, Amount, Fee, Balance, Sales)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
 
 	interdb := am.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -178,7 +178,7 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 	fmt.Println(string(out))
 	fmt.Println(receivable.Fee)
 
-	res, err := sqldb.Exec(sql, t, receivable.Date, receivable.CNo, receivable.CaseName, receivable.Customer.Action, receivable.Customer.Name, receivable.Amount, receivable.Fee, string(salers))
+	res, err := sqldb.Exec(sql, t, receivable.Date, receivable.CNo, receivable.CaseName, receivable.Customer.Action, receivable.Customer.Name, receivable.Amount, receivable.Fee, receivable.Amount-receivable.Fee, string(salers))
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -195,14 +195,19 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 
 	return nil
 }
+
+func (rt *Receipt) setRid(id string) {
+	rt.Rid = id
+}
+
 func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 	fmt.Println("CreateReceipt")
 
 	//condition: balance <= Amount 未收金額<=繳款金額
 	const sql = `INSERT INTO public.receipt
-	(Rid, date, cno, casename, type, name, amount, ARid)
-	select $1, $2, cno, casename, type, name, $3, arid
-	from public.ar where arid = $4 and balance >= $3;`
+	(Rid, Date, CNo, CaseName, Type, Name, Amount, ARid)
+	select $1, $2, CNo, CaseName, Type, Name, $3, ARid
+	from public.AR where ARid = $4 and Balance >= $3;`
 
 	interdb := am.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -235,8 +240,19 @@ func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, may be the ID does not exist or amount is not vaild")
 	}
-
-	err = am.UpdateARInfo(rt.ARid)
+	Rid := fmt.Sprintf("%v", t)
+	rt.setRid(Rid)
+	err = UpdateARInfo(am.imr, rt.ARid)
+	if err != nil {
+		return err
+	}
+	fmt.Println("UpdateARSales [GO]")
+	err = UpdateARSales(am.imr, rt.ARid)
+	if err != nil {
+		return err
+	}
+	fmt.Println("CreateCommission [GO]")
+	err = am.CreateCommission(rt)
 	if err != nil {
 		return err
 	}
@@ -244,6 +260,40 @@ func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 	return nil
 }
 
+func (am *ARModel) CreateCommission(rt *Receipt) (err error) {
+
+	const sql = `INSERT INTO public.commission
+	(Bid, Rid, Item, Amount, Fee, BName, Percent, SR, Bouns, Date)
+	select $1, $2, "cno"||' '||"casename"||' '||"type", Amount, Fee, $3, $4, $5 ,(Amount-Fee)*$4, $6
+	from public.ar where arid = $7 ;`
+
+	interdb := am.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, "I-am-Bid"+rt.ARid, rt.Rid, "I-am-Bname", 87, 200, rt.Date, rt.ARid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation, CreateCommission")
+	}
+
+	return nil
+}
+
+//not used now (move to public model)
 //建立 修改 刪除 收款單時，需要更改應收款項計算項目
 func (am *ARModel) UpdateARInfo(arid string) (err error) {
 	//https://stackoverflow.com/questions/2334712/how-do-i-update-from-a-select-in-sql-server
@@ -275,7 +325,7 @@ func (am *ARModel) UpdateARInfo(arid string) (err error) {
 
 	if id <= 0 {
 		fmt.Println("No any receipt, so reset infomation of account receivable")
-		const reset = `Update public.ar	set ra = 0 , balance = amount - fee where arid = $1`
+		const reset = `Update public.ar	set ra = 0 , balance = amount - fee  where arid = $1`
 		res, err := sqldb.Exec(reset, arid)
 		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 		if err != nil {

@@ -87,7 +87,7 @@ func (sdb *sqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("SQLCommand")
+
 	rows, err := db.Query(cmd)
 
 	//fmt.Println("Query " + cmd)
@@ -186,7 +186,37 @@ func (sdb *sqlDB) CreateReceiptTable() error {
 		fmt.Println("CreateReceiptTable:" + err.Error())
 		return err
 	}
-	fmt.Println("CreateTable Done")
+	fmt.Println("CreateReceiptTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateCommissionTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.commission "+
+			"( "+
+			"Bid character varying(50) ,"+
+			"Rid character varying(50) ,"+
+			"date timestamp(0) without time zone not NULL, "+
+			"item character varying(50) not NULL, "+
+			"bname character varying(50) , "+
+			"amount integer not NULL, "+
+			"fee integer DEFAULT 0, "+
+			//"percent double precision DEFAULT 0 , "+
+			"percent integer DEFAULT 0 , "+
+			"SR integer DEFAULT 0 ,"+
+			"bouns integer DEFAULT 0 ,"+
+			"PRIMARY KEY (Bid,Rid)"+
+			") "+
+			"WITH ( OIDS = FALSE);"+
+			"ALTER TABLE public.commission "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateCommissionTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateCommissionTable Done")
 	return nil
 }
 
@@ -201,8 +231,9 @@ func (sdb *sqlDB) InitTable() error {
 	}
 
 	var mT = map[string]bool{
-		"ar":      false,
-		"receipt": false,
+		"ar":         false,
+		"receipt":    false,
+		"commission": false,
 	}
 
 	for rows.Next() {
@@ -216,6 +247,8 @@ func (sdb *sqlDB) InitTable() error {
 			mT["ar"] = true
 		case "receipt":
 			mT["receipt"] = true
+		case "commission":
+			mT["commission"] = true
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
 		}
@@ -230,6 +263,8 @@ func (sdb *sqlDB) InitTable() error {
 				err = sdb.CreateARTable()
 			case "receipt":
 				err = sdb.CreateReceiptTable()
+			case "commission":
+				err = sdb.CreateCommissionTable()
 			default:
 				fmt.Printf("unknown table %s.\n", t)
 			}
@@ -255,22 +290,23 @@ func (sdb *sqlDB) InitDB() bool {
 		if err := rows.Scan(&value); err != nil {
 			fmt.Println("err Scan %s\n", err)
 		}
-		return true
+		fmt.Println(value)
+		return false
 	}
 
 	if err := rows.Err(); err != nil {
 		fmt.Println("err rows.Err() %s\n", err)
-		return false
+		return true
 	}
 
 	if err := sdb.CreateDB(); err != nil {
 		fmt.Println("CreateDB Err() %s\n", err)
-		return false
+		return true
 	}
 
 	if err := sdb.InitTable(); err != nil {
 		fmt.Println("InitTable Err() %s\n", err)
-		return false
+		return true
 	}
 
 	return false

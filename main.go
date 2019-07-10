@@ -59,7 +59,7 @@ func main() {
 
 	apiConf := &mapi.APIconf{Router: router, MiddleWares: middlewares}
 	mapi.SetDI(myDI)
-	mapi.InitAPI(apiConf, mapi.AdminAPI(true), mapi.ARAPI(true), mapi.ReceiptAPI(true))
+	mapi.InitAPI(apiConf, mapi.AdminAPI(true), mapi.ARAPI(true), mapi.ReceiptAPI(true), mapi.CommissionAPI(true))
 	log.Printf("Listening on port %s", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), router))
 	// [END setting_port]

@@ -96,7 +96,7 @@ func (dbc *DBConf) GetSQLDB() InterSQLDB {
 		port:     dbc.SqlDBConf.Port,
 	}
 
-	if !dbc.sqldb.InitDB() {
+	if dbc.sqldb.InitDB() {
 		fmt.Println("Init DataBase error")
 	}
 	// if !dbc.sqldb.InitTable() {

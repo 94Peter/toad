@@ -42,7 +42,7 @@ type customer struct {
 type Saler struct {
 	BName   string  `json:"name"`
 	Percent float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
-	Bid     string  `json:"-"`
+	Bid     string  `json:"account"`
 }
 
 type AccountReceivable struct {
@@ -247,7 +247,7 @@ func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
 		return err
 	}
 	fmt.Println("UpdateARSales [GO]")
-	err = UpdateARSales(am.imr, rt.ARid)
+	err = UpdateARSales(am.imr, rt.ARid, ADD)
 	if err != nil {
 		return err
 	}

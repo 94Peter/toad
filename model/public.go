@@ -14,7 +14,9 @@ type PModel struct {
 }
 
 var (
-	pm *PModel
+	pm  *PModel
+	ADD = true
+	DEL = false
 )
 
 func GetPModel(imr interModelRes) *PModel {
@@ -28,9 +30,62 @@ func GetPModel(imr interModelRes) *PModel {
 	return pm
 }
 
-func UpdateARSales(imr interModelRes, arid string) (err error) {
-
+func GetSalesList(imr interModelRes, arid string) (saler []*Saler, err error) {
 	const Ssql = `Select sales from public.ar where ar.arid = '%s'`
+	interdb := imr.GetSQLDB()
+	rows, err := interdb.SQLCommand(fmt.Sprintf(Ssql, arid))
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	var salerlist []*Saler
+	for rows.Next() {
+		var str string
+		if err := rows.Scan(&str); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		//The origin saler data on database
+		err := json.Unmarshal([]byte(str), &salerlist)
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+	}
+
+	return salerlist, nil
+}
+
+func UpdateSalerList(salerlist []*Saler, Type bool) (salerList []*Saler) {
+
+	if Type {
+		saler := &Saler{
+			BName:   "testBname",
+			Percent: 3,
+			Bid:     "testBid",
+		}
+		salerlist = append(salerlist, saler)
+
+	} else {
+
+		i := 0
+		for range salerlist {
+			if salerlist[i].Bid == "testBid" {
+				break
+			}
+			i++
+		}
+		// Remove the element at index i from a.
+		copy(salerlist[i:], salerlist[i+1:])     // Shift a[i+1:] left one index.
+		salerlist[len(salerlist)-1] = nil        // Erase last element (write zero value).
+		salerlist = salerlist[:len(salerlist)-1] // Truncate slice.
+
+	}
+
+	return salerlist
+}
+
+func UpdateARSales(imr interModelRes, arid string, Type bool) (err error) {
+
 	const Usql = `Update public.ar set sales = $1 where ar.arid = $2`
 	interdb := imr.GetSQLDB()
 
@@ -39,35 +94,12 @@ func UpdateARSales(imr interModelRes, arid string) (err error) {
 		return err
 	}
 
-	rows, err := interdb.SQLCommand(fmt.Sprintf(Ssql, arid))
+	salerlist, err := GetSalesList(imr, arid)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return err
 	}
-	var salerlist []*Saler
 
-	for rows.Next() {
-		var str string
-		saler := &Saler{
-			BName:   "testBname",
-			Percent: 3,
-			Bid:     "testBid",
-		}
-
-		// if err := rows.Scan(&r.ARid, &s); err != nil {
-		// 	fmt.Println("err Scan " + err.Error())
-		// }
-		if err := rows.Scan(&str); err != nil {
-			fmt.Println("err Scan " + err.Error())
-		}
-		//The origin saler data on database
-		err := json.Unmarshal([]byte(str), &salerlist)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		salerlist = append(salerlist, saler)
-	}
+	salerlist = UpdateSalerList(salerlist, Type)
 
 	out, err := json.Marshal(salerlist)
 	if err != nil {

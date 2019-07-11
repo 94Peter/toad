@@ -154,11 +154,14 @@ func (rm *RTModel) DeleteReceiptData(Rid string) error {
 			fmt.Println(err)
 			return err
 		}
+		err = UpdateARSales(rm.imr, arid, DEL)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
-
 
 func (rm *RTModel) GetReceiptData(today, end time.Time) []*Receipt {
 	fmt.Println("GetReceiptData")
@@ -184,11 +187,12 @@ func (rm *RTModel) GetReceiptData(today, end time.Time) []*Receipt {
 		rtDataList = append(rtDataList, &rt)
 	}
 	fmt.Println("rtDataList Done")
-	out, err := json.Marshal(rtDataList)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(out))
+	// out, err := json.Marshal(rtDataList)
+	// if err != nil {
+	// 	fmt.Println("err rtDataList")
+	// 	return nil
+	// }
+	//fmt.Println(string(out))
 
 	rm.rtList = rtDataList
 	return rm.rtList

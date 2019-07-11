@@ -145,7 +145,7 @@ func (sdb *sqlDB) CreateARTable() error {
 			"fee integer DEFAULT 0, "+
 			"RA integer DEFAULT 0, "+
 			"balance integer DEFAULT 0, "+
-			"sales character varying(200), "+ //json[]
+			"sales character varying(600), "+ //json[]
 			"PRIMARY KEY (ARid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
@@ -161,7 +161,32 @@ func (sdb *sqlDB) CreateARTable() error {
 	fmt.Println("CreateARTable Done")
 	return nil
 }
+func (sdb *sqlDB) CreateSalaryTable() error {
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.Salary "+
+			"( "+
+			"Bid character varying(50) ,"+
+			"date timestamp(0) without time zone not NULL, "+
+			"cNo character varying(50) not NULL, "+
+			"caseName character varying(50) not NULL, "+
+			"type character varying(50) not NULL, "+
+			"BName character varying(50) not NULL, "+
+			"amount integer not NULL, "+
+			"invoiceNo character varying(50) , "+
+			"ARid character varying(50) not NULL, "+
+			"PRIMARY KEY (Rid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.receipt "+
+			"OWNER to %s; ", sdb.user))
 
+	if err != nil {
+		fmt.Println("CreateSalaryTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateSalaryTable Done")
+	return nil
+}
 func (sdb *sqlDB) CreateReceiptTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(

@@ -97,6 +97,7 @@ func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 
 	_err := am.CreateAccountReceivable(iAR.GetAR())
 	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error"))
 	} else {
 		w.Write([]byte("OK"))
@@ -124,6 +125,7 @@ func (api *ARAPI) createReceiptEndpoint(w http.ResponseWriter, req *http.Request
 	am := model.GetARModel(di)
 	_err := am.CreateReceipt(irt.GetReceipt())
 	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error()))
 	} else {
 		w.Write([]byte("OK"))

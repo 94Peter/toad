@@ -187,6 +187,131 @@ func (sdb *sqlDB) CreateSalaryTable() error {
 	fmt.Println("CreateSalaryTable Done")
 	return nil
 }
+
+func (sdb *sqlDB) CreatePrePayTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.PrePay "+
+			"( "+
+			"PPid character varying(50) ,"+
+			"date timestamp(0) without time zone not NULL, "+
+			"itemname character varying(50) ,"+
+			"describe character varying(50) ,"+
+			"Fee  integer DEFAULT 0, "+
+			"PRIMARY KEY (PPid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.PrePay "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreatePrePayTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreatePrePayTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateBranchPrePayTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.BranchPrePay "+
+			"( "+
+			"PPid character varying(50) ,"+
+			"Branch character varying(50) ,"+
+			"Cost  integer DEFAULT 0, "+
+			"PRIMARY KEY (PPid,Branch) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.BranchPrePay "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateBranchPrePayTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateBranchPrePayTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreatePocketTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.Pocket "+
+			"( "+
+			"Pid character varying(50) ,"+
+			"date timestamp(0) without time zone not NULL, "+
+			"branch character varying(50) ,"+
+			"itemname character varying(50) ,"+
+			"describe character varying(50) ,"+
+			"Income  integer DEFAULT 0, "+
+			"Fee  integer DEFAULT 0, "+
+			"Balance  integer not NULL, "+
+			"PRIMARY KEY (Pid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.Pocket "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreatePocketTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreatePocketTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateAccountItemTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.AccountItem "+
+			"( "+
+			"AccountItemName character varying(50) ,"+
+			"Valid integer DEFAULT 1, "+
+			"PRIMARY KEY (AccountItemName) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.AccountItem "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateAccountItemTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateAccountItemTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateAmortizationTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.amortization "+
+			"( "+
+			"Amorid character varying(50) ,"+
+			"branch character varying(50) ,"+
+			"date timestamp(0) without time zone not NULL, "+
+			"itemName character varying(50) not NULL, "+
+			"GainCost integer DEFAULT 0, "+
+			"AmortizationYearLimit integer DEFAULT 0,  "+
+			"MonthlyAmortizationAmount integer DEFAULT 0,  "+
+			"FirstAmortizationAmount integer DEFAULT 0,  "+
+			"HasAmortizationAmount integer DEFAULT 0,  "+
+			"NotAmortizationAmount integer DEFAULT 0,  "+
+			"isOver integer DEFAULT 0,  "+
+			"PRIMARY KEY (Amorid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.amortization "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateAmortizationTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateAmortizationTable Done")
+	return nil
+}
+
 func (sdb *sqlDB) CreateReceiptTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
@@ -254,11 +379,16 @@ func (sdb *sqlDB) InitTable() error {
 	if err != nil {
 		return err
 	}
-
+	//mapTable
 	var mT = map[string]bool{
-		"ar":         false,
-		"receipt":    false,
-		"commission": false,
+		"ar":           false,
+		"receipt":      false,
+		"commission":   false,
+		"amortization": false,
+		"pocket":       false,
+		"branchprepay": false,
+		"prepay":       false,
+		"accountitem":  false,
 	}
 
 	for rows.Next() {
@@ -274,24 +404,45 @@ func (sdb *sqlDB) InitTable() error {
 			mT["receipt"] = true
 		case "commission":
 			mT["commission"] = true
+		case "amortization":
+			mT["amortization"] = true
+		case "pocket":
+			mT["pocket"] = true
+		case "branchprepay":
+			mT["branchprepay"] = true
+		case "prepay":
+			mT["prepay"] = true
+		case "accountitem":
+			mT["accountitem"] = true
+
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
 		}
 	}
 
-	for t, s := range mT {
+	for tableName, status := range mT {
 		//fmt.Println("i=", t, " s=", s)
-		if !s {
+		if !status {
 			err = nil
-			switch t {
+			switch tableName {
 			case "ar":
 				err = sdb.CreateARTable()
 			case "receipt":
 				err = sdb.CreateReceiptTable()
 			case "commission":
 				err = sdb.CreateCommissionTable()
+			case "amortization":
+				err = sdb.CreateAmortizationTable()
+			case "accountitem":
+				err = sdb.CreateAccountItemTable()
+			case "pocket":
+				err = sdb.CreatePocketTable()
+			case "prepay":
+				err = sdb.CreatePrePayTable()
+			case "branchprepay":
+				err = sdb.CreateBranchPrePayTable()
 			default:
-				fmt.Printf("unknown table %s.\n", t)
+				fmt.Printf("unknown table %s.\n", tableName)
 			}
 			if err != nil {
 				fmt.Println(err)
@@ -315,8 +466,8 @@ func (sdb *sqlDB) InitDB() bool {
 		if err := rows.Scan(&value); err != nil {
 			fmt.Println("err Scan %s\n", err)
 		}
-		fmt.Println(value)
-		return false
+		fmt.Println("Data Base " + value + " exist")
+		//return false
 	}
 
 	if err := rows.Err(); err != nil {
@@ -325,8 +476,16 @@ func (sdb *sqlDB) InitDB() bool {
 	}
 
 	if err := sdb.CreateDB(); err != nil {
-		fmt.Println("CreateDB Err() %s\n", err)
-		return true
+		if strings.Index(err.Error(), "already exists") > -1 {
+			fmt.Println("toad already exists, init table")
+			if err := sdb.InitTable(); err != nil {
+				fmt.Println("InitTable Err() %s\n", err)
+				return true
+			}
+		} else {
+			fmt.Println("CreateDB Err() %s\n", err)
+			return true
+		}
 	}
 
 	if err := sdb.InitTable(); err != nil {

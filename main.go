@@ -59,7 +59,16 @@ func main() {
 
 	apiConf := &mapi.APIconf{Router: router, MiddleWares: middlewares}
 	mapi.SetDI(myDI)
-	mapi.InitAPI(apiConf, mapi.AdminAPI(true), mapi.ARAPI(true), mapi.ReceiptAPI(true), mapi.CommissionAPI(true))
+	mapi.InitAPI(
+		apiConf,
+		mapi.AdminAPI(true),
+		mapi.ARAPI(true), mapi.ReceiptAPI(true),
+		mapi.CommissionAPI(true),
+		mapi.AmortizationAPI(true),
+		mapi.PrePayAPI(true),
+		mapi.PocketAPI(true),
+		mapi.ConfigAPI(true),
+	)
 	log.Printf("Listening on port %s", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), router))
 	// [END setting_port]
@@ -137,7 +146,7 @@ func GetConf(env string, timezone string) *di {
 
 	myDI.Location = loc
 	myDI.Log.StartLog()
-	myDI.GetSQLDB() //for quickly test
+	myDI.GetSQLDB() //for quickly test DB
 
 	// var queryDate time.Time
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())

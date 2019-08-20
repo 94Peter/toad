@@ -340,6 +340,76 @@ func (sdb *sqlDB) CreateReceiptTable() error {
 	return nil
 }
 
+func (sdb *sqlDB) CreateConfigBranchTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.ConfigBranch "+
+			"( "+
+			"Branch character varying(50) ,"+
+			"Rent integer DEFAULT 0, "+
+			"AgentSign integer DEFAULT 0, "+
+			"PRIMARY KEY (Branch) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.ConfigBranch "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateConfigBranchTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateConfigBranchTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateConfigParameterTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.ConfigParameter "+
+			"( "+
+			"param character varying(50) ,"+
+			"value double precision DEFAULT 0, "+
+			"PRIMARY KEY (param) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.ConfigParameter "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateConfigParameterTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateConfigParameterTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateConfigBusinessTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.ConfigBusiness "+
+			"( "+
+			"Bid character varying(50) ,"+
+			"bname character varying(50) ,"+
+			"ZeroDate timestamp(0) without time zone not NULL, "+
+			"ValidDate  timestamp(0) without time zone not NULL, "+
+			"Title character varying(50) ,"+
+			"Percent  double precision DEFAULT 0, "+
+			"Salary integer DEFAULT 0, "+
+			"Pay integer DEFAULT 0, "+
+			"PRIMARY KEY (Bid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.ConfigBusiness "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateConfigBusinessTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateConfigBusinessTable Done")
+	return nil
+}
+
 func (sdb *sqlDB) CreateCommissionTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
@@ -381,14 +451,17 @@ func (sdb *sqlDB) InitTable() error {
 	}
 	//mapTable
 	var mT = map[string]bool{
-		"ar":           false,
-		"receipt":      false,
-		"commission":   false,
-		"amortization": false,
-		"pocket":       false,
-		"branchprepay": false,
-		"prepay":       false,
-		"accountitem":  false,
+		"ar":              false,
+		"receipt":         false,
+		"commission":      false,
+		"amortization":    false,
+		"pocket":          false,
+		"branchprepay":    false,
+		"prepay":          false,
+		"accountitem":     false,
+		"configbranch":    false,
+		"configbusiness":  false,
+		"configparameter": false,
 	}
 
 	for rows.Next() {
@@ -414,6 +487,12 @@ func (sdb *sqlDB) InitTable() error {
 			mT["prepay"] = true
 		case "accountitem":
 			mT["accountitem"] = true
+		case "configbranch":
+			mT["configbranch"] = true
+		case "configbusiness":
+			mT["configbusiness"] = true
+		case "configparameter":
+			mT["configparameter"] = true
 
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
@@ -441,6 +520,12 @@ func (sdb *sqlDB) InitTable() error {
 				err = sdb.CreatePrePayTable()
 			case "branchprepay":
 				err = sdb.CreateBranchPrePayTable()
+			case "configbranch":
+				err = sdb.CreateConfigBranchTable()
+			case "configbusiness":
+				err = sdb.CreateConfigBusinessTable()
+			case "configparameter":
+				err = sdb.CreateConfigParameterTable()
 			default:
 				fmt.Printf("unknown table %s.\n", tableName)
 			}

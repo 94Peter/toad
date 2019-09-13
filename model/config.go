@@ -10,8 +10,11 @@ import (
 )
 
 type ConfigParameter struct {
-	Param string  `json:"param"`
-	Value float64 `json:"value"`
+	Date   time.Time `json:"date"`
+	IT     float64   `json:"IT"`
+	NHI    float64   `json:"NHI"`
+	LI     float64   `json:"LI"`
+	NHI2nd float64   `json:"NHI2nd"`
 }
 
 type AccountItem struct {
@@ -20,20 +23,26 @@ type AccountItem struct {
 }
 
 type ConfigBranch struct {
-	Branch    string `json:"branch"`
-	Rent      int    `json:"rent"`
-	AgentSign int    `json:"agentSign"`
+	Branch        string  `json:"branch"`
+	Rent          int     `json:"rent"`
+	AgentSign     int     `json:"agentSign"`
+	CommercialFee float64 `json:"commercialFee"`
 }
 
-type ConfigBusiness struct {
-	Bid       string    `json:"id"`
-	BName     string    `json:"name"`
-	ZeroDate  time.Time `json:"zeroDate"`
-	ValidDate time.Time `json:"validDate"`
-	Title     string    `json:"title"`
-	Salary    int       `json:"salary"`
-	Pay       int       `json:"pay"`
-	Percent   float64   `json:"percent"`
+type ConfigSaler struct {
+	Sid            string    `json:"id"`
+	SName          string    `json:"name"`
+	ZeroDate       time.Time `json:"zeroDate"`
+	ValidDate      time.Time `json:"validDate"`
+	Title          string    `json:"title"`
+	Salary         int       `json:"salary"`
+	Pay            int       `json:"pay"`
+	Percent        float64   `json:"percent"`
+	FPercent       float64   `json:"fPercent"`
+	Branch         string    `json:"branch"`
+	PayrollBracket int       `json:"payrollBracket"` //投保金額
+	Enrollment     int       `json:"enrollment"`     //加保(眷屬人數)
+	Association    int       `json:"association"`    //公會
 }
 
 var (
@@ -45,7 +54,7 @@ type ConfigModel struct {
 	db                  db.InterSQLDB
 	ConfigBranchList    []*ConfigBranch
 	ConfigParameterList []*ConfigParameter
-	ConfigBusinessList  []*ConfigBusiness
+	ConfigSalerList     []*ConfigSaler
 	AccountItemList     []*AccountItem
 }
 
@@ -62,7 +71,7 @@ func GetConfigModel(imr interModelRes) *ConfigModel {
 
 func (configM *ConfigModel) GetConfigBranchData(today, end time.Time) []*ConfigBranch {
 
-	const qspl = `SELECT branch, rent, AgentSign FROM public.ConfigBranch;`
+	const qspl = `SELECT branch, rent, AgentSign, CommercialFee FROM public.ConfigBranch;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
@@ -77,7 +86,7 @@ func (configM *ConfigModel) GetConfigBranchData(today, end time.Time) []*ConfigB
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&cb.Branch, &cb.Rent, &cb.AgentSign); err != nil {
+		if err := rows.Scan(&cb.Branch, &cb.Rent, &cb.AgentSign, &cb.CommercialFee); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -98,17 +107,15 @@ func (configM *ConfigModel) Json(config string) ([]byte, error) {
 	case "ConfigBranch":
 		return json.Marshal(configM.ConfigBranchList)
 	case "ConfigParameter":
-		f := map[string]interface{}{}
-
-		for _, param := range configM.ConfigParameterList {
-			fmt.Println(param.Param)
-			f[param.Param] = param.Value
-		}
-
-		return json.Marshal(f)
-		//return json.Marshal(configM.ConfigParameterList)
-	case "ConfigBusiness":
-		return json.Marshal(configM.ConfigBusinessList)
+		// f := map[string]interface{}{}
+		// for _, param := range configM.ConfigParameterList {
+		// 	fmt.Println(param.Param)
+		// 	f[param.Param] = param.Value
+		// }
+		// return json.Marshal(f)
+		return json.Marshal(configM.ConfigParameterList)
+	case "ConfigSaler":
+		return json.Marshal(configM.ConfigSalerList)
 	case "AccountItem":
 		return json.Marshal(configM.AccountItemList)
 	default:
@@ -121,8 +128,8 @@ func (configM *ConfigModel) Json(config string) ([]byte, error) {
 func (configM *ConfigModel) CreateConfigBranch(cb *ConfigBranch) (err error) {
 
 	const sql = `INSERT INTO public.ConfigBranch
-	( branch, rent, agentsign)
-	VALUES ($1, $2, $3)
+	( branch, rent, agentsign, CommercialFee)
+	VALUES ($1, $2, $3, $4)
 	;`
 
 	interdb := configM.imr.GetSQLDB()
@@ -131,7 +138,7 @@ func (configM *ConfigModel) CreateConfigBranch(cb *ConfigBranch) (err error) {
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, cb.Branch, cb.Rent, cb.AgentSign)
+	res, err := sqldb.Exec(sql, cb.Branch, cb.Rent, cb.AgentSign, cb.CommercialFee)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -151,10 +158,10 @@ func (configM *ConfigModel) CreateConfigBranch(cb *ConfigBranch) (err error) {
 	return nil
 }
 
-func (configM *ConfigModel) UpdateConfigBranch(cb *ConfigBranch) (err error) {
+func (configM *ConfigModel) UpdateConfigBranch(Branch string, cb *ConfigBranch) (err error) {
 
 	const sql = `UPDATE public.configbranch
-				SET rent=$2, agentsign=$3
+				SET rent=$2, agentsign=$3 ,CommercialFee=$4
 				WHERE branch=$1;`
 
 	interdb := configM.imr.GetSQLDB()
@@ -163,7 +170,7 @@ func (configM *ConfigModel) UpdateConfigBranch(cb *ConfigBranch) (err error) {
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, cb.Branch, cb.Rent, cb.AgentSign)
+	res, err := sqldb.Exec(sql, Branch, cb.Rent, cb.AgentSign, cb.CommercialFee)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -185,7 +192,7 @@ func (configM *ConfigModel) UpdateConfigBranch(cb *ConfigBranch) (err error) {
 
 func (configM *ConfigModel) GetConfigParameterData(today, end time.Time) []*ConfigParameter {
 
-	const qspl = `SELECT param, value FROM public.ConfigParameter;`
+	const qspl = `SELECT date, nhi, LI, nhi2nd, it FROM public.ConfigParameter;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
@@ -200,7 +207,7 @@ func (configM *ConfigModel) GetConfigParameterData(today, end time.Time) []*Conf
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&cp.Param, &cp.Value); err != nil {
+		if err := rows.Scan(&cp.Date, &cp.NHI, &cp.LI, &cp.NHI2nd, &cp.IT); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -216,47 +223,42 @@ func (configM *ConfigModel) GetConfigParameterData(today, end time.Time) []*Conf
 	return configM.ConfigParameterList
 }
 
-func (configM *ConfigModel) UpdateConfigParameter(cp []*ConfigParameter) (err error) {
+func (configM *ConfigModel) UpdateConfigParameter(cp *ConfigParameter) (err error) {
 
 	const sql = `UPDATE public.configparameter
-				SET value=$2
-				WHERE param=$1;`
+				SET nhi=$2, LI=$3, nhi2nd=$4, it=$5
+				WHERE date=$1;`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
 	}
-	for _, param := range cp {
 
-		res, err := sqldb.Exec(sql, param.Param, param.Value)
-		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-		id, err := res.RowsAffected()
-		if err != nil {
-			fmt.Println("PG Affecte Wrong: ", err)
-			return err
-		}
-		fmt.Println(id)
+	res, err := sqldb.Exec(sql, cp.Date, cp.NHI, cp.LI, cp.NHI2nd, cp.IT)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
 
-		if id == 0 {
-			return errors.New("Invalid operation, update ConfigParameter")
-		}
+	if id == 0 {
+		return errors.New("Invalid operation, update ConfigParameter")
 
 	}
 
 	return nil
 }
 
-func (configM *ConfigModel) CreateConfigParameter(cp ConfigParameter) (err error) {
+func (configM *ConfigModel) DeleteConfigParameter(Date time.Time) (err error) {
 
-	const sql = `INSERT INTO public.ConfigParameter
-	( param, value)
-	VALUES ($1, $2)
-	;`
+	const sql = `DELETE FROM public.configparameter	WHERE Date=$1;`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -264,7 +266,39 @@ func (configM *ConfigModel) CreateConfigParameter(cp ConfigParameter) (err error
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, cp.Param, cp.Value)
+	res, err := sqldb.Exec(sql, Date)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation, DeleteConfigParameter")
+	}
+
+	return nil
+}
+
+func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err error) {
+
+	const sql = `INSERT INTO public.ConfigParameter
+	( date, nhi, LI, nhi2nd, it)
+	VALUES ($1, $2, $3, $4, $5);`
+
+	interdb := configM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, cp.Date, cp.NHI, cp.LI, cp.NHI2nd, cp.IT)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -284,28 +318,33 @@ func (configM *ConfigModel) CreateConfigParameter(cp ConfigParameter) (err error
 	return nil
 }
 
-func (configM *ConfigModel) GetConfigBusinessData(today, end time.Time) []*ConfigBusiness {
+func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 
-	const qspl = `SELECT Bid, BName, ZeroDate, Title, Salary, Percent, Pay ,ValidDate FROM public.ConfigBusiness;`
+	const qspl = `SELECT sid, sname, branch, zerodate, validdate, title, percent, fpercent,
+				  salary, pay, payrollbracket, enrollment, association
+				  FROM public.ConfigSaler where branch like '%s';`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
+	fmt.Println(fmt.Sprintf(qspl, branch))
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch))
 	if err != nil {
+		fmt.Println(err)
 		return nil
 	}
-	var cbDataList []*ConfigBusiness
+	var cbDataList []*ConfigSaler
 
 	for rows.Next() {
-		var cb ConfigBusiness
+		var cs ConfigSaler
 
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&cb.Bid, &cb.BName, &cb.ZeroDate, &cb.Title, &cb.Salary, &cb.Percent, &cb.Pay, &cb.ValidDate); err != nil {
+		if err := rows.Scan(&cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.ValidDate, &cs.Title, &cs.Percent, &cs.FPercent,
+			&cs.Salary, &cs.Pay, &cs.PayrollBracket, &cs.Enrollment, &cs.Association); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
-		cbDataList = append(cbDataList, &cb)
+		cbDataList = append(cbDataList, &cs)
 	}
 
 	// out, err := json.Marshal(arList)
@@ -313,16 +352,16 @@ func (configM *ConfigModel) GetConfigBusinessData(today, end time.Time) []*Confi
 	// 	panic(err)
 	// }
 	// fmt.Println(string(out))
-	configM.ConfigBusinessList = cbDataList
-	return configM.ConfigBusinessList
+	configM.ConfigSalerList = cbDataList
+	return configM.ConfigSalerList
 }
 
-func (configM *ConfigModel) CreateConfigBusiness(cb *ConfigBusiness) (err error) {
+func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 
-	const sql = `INSERT INTO public.configbusiness(
-		bid, bname, zerodate, validdate, title, percent, salary, pay)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
-	;`
+	const sql = `INSERT INTO public.configsaler(
+		sid, sname, branch, zerodate, validdate, title, percent, fpercent, salary,
+		pay, payrollbracket, enrollment, association)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -330,7 +369,8 @@ func (configM *ConfigModel) CreateConfigBusiness(cb *ConfigBusiness) (err error)
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, cb.Bid, cb.BName, cb.ZeroDate, cb.ValidDate, cb.Title, cb.Percent, cb.Salary, cb.Pay)
+	res, err := sqldb.Exec(sql, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.ValidDate, cs.Title, cs.Percent, cs.FPercent, cs.Salary,
+		cs.Pay, cs.PayrollBracket, cs.Enrollment, cs.Association)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -344,17 +384,18 @@ func (configM *ConfigModel) CreateConfigBusiness(cb *ConfigBusiness) (err error)
 	fmt.Println(id)
 
 	if id == 0 {
-		return errors.New("Invalid operation, ConfigBusiness")
+		return errors.New("Invalid operation, ConfigSaler")
 	}
 
 	return nil
 }
 
-func (configM *ConfigModel) UpdateConfigBusiness(cb *ConfigBusiness) (err error) {
+func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err error) {
 
-	const sql = `UPDATE public.configbusiness
-	SET  bname=$2, zerodate=$3, validdate=$4, title=$5, percent=$6, salary=$7, pay=$8
-	WHERE bid=$1;`
+	const sql = `UPDATE public.configsaler
+	SET zerodate=$2, validdate=$3, title=$4, percent=$5, fpercent=$6, salary=$7,
+	pay=$8, payrollbracket=$9, enrollment=$10, association=$11	
+	WHERE sid=$1 and zerodate=$2;`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -362,7 +403,8 @@ func (configM *ConfigModel) UpdateConfigBusiness(cb *ConfigBusiness) (err error)
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, cb.Bid, cb.BName, cb.ZeroDate, cb.ValidDate, cb.Title, cb.Percent, cb.Salary, cb.Pay)
+	res, err := sqldb.Exec(sql, Sid, cs.ZeroDate, cs.ValidDate, cs.Title, cs.Percent, cs.FPercent, cs.Salary,
+		cs.Pay, cs.PayrollBracket, cs.Enrollment, cs.Association)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -376,7 +418,7 @@ func (configM *ConfigModel) UpdateConfigBusiness(cb *ConfigBusiness) (err error)
 	fmt.Println(id)
 
 	if id == 0 {
-		return errors.New("Invalid operation, UpdateBusiness")
+		return errors.New("Invalid operation, UpdateSaler")
 	}
 
 	return nil

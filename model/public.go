@@ -30,6 +30,7 @@ func GetPModel(imr interModelRes) *PModel {
 	return pm
 }
 
+//取得應收帳款內的sales清單
 func GetSalesList(imr interModelRes, arid string) (saler []*Saler, err error) {
 	const Ssql = `Select sales from public.ar where ar.arid = '%s'`
 	interdb := imr.GetSQLDB()
@@ -59,9 +60,9 @@ func UpdateSalerList(salerlist []*Saler, Type bool) (salerList []*Saler) {
 
 	if Type {
 		saler := &Saler{
-			BName:   "testBname",
+			SName:   "testBname",
 			Percent: 3,
-			Bid:     "testBid",
+			Sid:     "testBid",
 		}
 		salerlist = append(salerlist, saler)
 
@@ -69,7 +70,7 @@ func UpdateSalerList(salerlist []*Saler, Type bool) (salerList []*Saler) {
 
 		i := 0
 		for range salerlist {
-			if salerlist[i].Bid == "testBid" {
+			if salerlist[i].Sid == "testBid" {
 				break
 			}
 			i++
@@ -84,6 +85,7 @@ func UpdateSalerList(salerlist []*Saler, Type bool) (salerList []*Saler) {
 	return salerlist
 }
 
+//更新應收帳款的saler
 func UpdateARSales(imr interModelRes, arid string, Type bool) (err error) {
 
 	const Usql = `Update public.ar set sales = $1 where ar.arid = $2`

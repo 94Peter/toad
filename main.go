@@ -62,12 +62,15 @@ func main() {
 	mapi.InitAPI(
 		apiConf,
 		mapi.AdminAPI(true),
-		mapi.ARAPI(true), mapi.ReceiptAPI(true),
+		mapi.ARAPI(true),
+		mapi.ReceiptAPI(true),
+		mapi.DeductAPI(true),
 		mapi.CommissionAPI(true),
 		mapi.AmortizationAPI(true),
 		mapi.PrePayAPI(true),
 		mapi.PocketAPI(true),
 		mapi.ConfigAPI(true),
+		mapi.SalaryAPI(true),
 	)
 	log.Printf("Listening on port %s", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), router))

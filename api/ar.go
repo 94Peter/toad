@@ -9,6 +9,7 @@ import (
 
 	"github.com/94peter/toad/model"
 	"github.com/94peter/toad/permission"
+	"github.com/94peter/toad/util"
 )
 
 type ARAPI bool
@@ -19,16 +20,16 @@ func (api ARAPI) Enable() bool {
 
 type inputAR struct {
 	//ARid     string    `json:"id"`
-	Date     time.Time `json:"completionDate"`
+	Date     time.Time `json:"completionDate"` //成交日期
 	CNo      string    `json:"contractNo"`
 	Customer struct {
 		Action string `json:"type"`
 		Name   string `json:"name"`
 	} `json:"customer"`
-	CaseName string         `json:"caseName"`
-	Amount   int            `json:"amount"`
-	Fee      int            `json:"fee"`
-	Sales    []*model.Saler `json:"sales"`
+	CaseName string `json:"caseName"`
+	Amount   int    `json:"amount"`
+	//Fee      int            `json:"fee"`
+	Sales []*model.Saler `json:"sales"`
 }
 type inputReceipt struct {
 	//Rid           string    `json:"-"` //no return this key
@@ -46,8 +47,9 @@ func (api ARAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/receivable", Next: api.getAccountReceivableEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/receivable", Next: api.createAccountReceivableEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable/{ID}", Next: api.deleteAccountReceivableEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/receipt", Next: api.createReceiptEndpoint, Method: "POST", Auth: false, Group: permission.All},
-
+		&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		// &APIHandler{Path: "/v1/category", Next: api.createCategoryEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/category/{NAME}", Next: api.deleteCategoryEndpoint, Method: "DELETE", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/user", Next: api.createUserEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
@@ -58,6 +60,27 @@ func (api ARAPI) GetAPIs() *[]*APIHandler {
 	}
 }
 
+func (api *ARAPI) deleteAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	vars := util.GetPathVars(req, []string{"ID"})
+	ID := vars["ID"].(string)
+
+	am := model.GetARModel(di)
+	if err := am.DeleteAccountReceivable(ID); err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	// if err := memberModel.Quit(phone); err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
+
+	w.Write([]byte("ok"))
+}
+
 func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	am := model.GetARModel(di)
@@ -65,7 +88,10 @@ func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.
 	today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
-	am.GetARData(today, end)
+	queryVar := util.GetQueryValue(req, []string{"key", "export"}, true)
+	key := (*queryVar)["key"].(string)
+
+	am.GetARData(today, end, key)
 	//data, err := json.Marshal(result)
 	data, err := am.Json()
 	if err != nil {
@@ -105,6 +131,35 @@ func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 
 }
 
+func (api *ARAPI) createDeductEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+
+	iDeduct := inputDeduct{}
+	err := json.NewDecoder(req.Body).Decode(&iDeduct)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := iDeduct.isDeductValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	DM := model.GetDecuctModel(di)
+
+	_err := DM.CreateDeduct(iDeduct.GetDeduct())
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error"))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+
 func (api *ARAPI) createReceiptEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
 	irt := inputReceipt{}
@@ -122,8 +177,10 @@ func (api *ARAPI) createReceiptEndpoint(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	am := model.GetARModel(di)
-	_err := am.CreateReceipt(irt.GetReceipt())
+	rm := model.GetRTModel(di)
+	_ = model.GetCModel(di)      //init Commission Model for create commission
+	_ = model.GetDecuctModel(di) //init Deduct Model for update DeductRid
+	_err := rm.CreateReceipt(irt.GetReceipt())
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error()))
@@ -148,6 +205,10 @@ func (iAR *inputAR) isARValid() (bool, error) {
 	}
 	if iAR.Customer.Action == "" {
 		return false, errors.New("Customer type is empty")
+	} else {
+		if !(iAR.Customer.Action == "sell" || iAR.Customer.Action == "buy") {
+			return false, errors.New("Customer type should be 'sell' or 'buy'")
+		}
 	}
 	if iAR.Customer.Name == "" {
 		return false, errors.New("Customer name is empty")
@@ -159,8 +220,19 @@ func (iAR *inputAR) isARValid() (bool, error) {
 	if iAR.Amount < 0 {
 		return false, errors.New("Amount is not valid")
 	}
-	if iAR.Fee < 0 || iAR.Fee > iAR.Amount {
-		return false, errors.New("Fee is not valid")
+	// if iAR.Fee < 0 || iAR.Fee > iAR.Amount {
+	// 	return false, errors.New("Fee is not valid")
+	// }
+	for _, element := range iAR.Sales {
+		if element.Percent < 0 {
+			return false, errors.New("Percent is not valid")
+		}
+		if element.Sid == "" {
+			return false, errors.New("account is empty")
+		}
+		if element.SName == "" {
+			return false, errors.New("name is empty")
+		}
 	}
 	if len(iAR.Sales) == 0 {
 		return false, errors.New("Sales is empty")
@@ -193,8 +265,8 @@ func (iAR *inputAR) GetAR() *model.AR {
 		CNo:      iAR.CNo,
 		CaseName: iAR.CaseName,
 		Customer: iAR.Customer,
-		Fee:      iAR.Fee,
-		Sales:    iAR.Sales,
+		//Fee:      iAR.Fee,
+		Sales: iAR.Sales,
 	}
 }
 

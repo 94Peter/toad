@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/94peter/pica/permission"
 	"github.com/94peter/toad/model"
+	"github.com/94peter/toad/pdf"
 	"github.com/94peter/toad/util"
 )
 
@@ -22,12 +24,18 @@ type inputUpdateReceipt struct {
 	Amount int    `json:"amount"`
 }
 
+type exportReceiptId struct {
+	RidList []struct {
+		Rid string `json:"rid"`
+	} `json:"idList"`
+}
+
 type inputInvoice struct {
 	Rid string `json:"id"`
 	//Date   time.Time `json:"date"`
-	Title       string `json:"title"`
-	GUI         string `json:"GUI"`
-	InvoiceType string `json:"invoiceType"`
+	Title   string `json:"title"`
+	BuyerID string `json:"buyerID"`
+	//InvoiceType string `json:"invoiceType"`
 }
 
 func (api ReceiptAPI) GetAPIs() *[]*APIHandler {
@@ -35,7 +43,10 @@ func (api ReceiptAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/receipt", Next: api.getReceiptEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/receipt/{ID}", Next: api.deleteReceiptEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/receipt/{ID}", Next: api.updateReceiptEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+
 		&APIHandler{Path: "/v1/invoice", Next: api.createInvoiceEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/invoice/export", Next: api.exportInvoiceEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/invoice/{ID}", Next: api.getInvoiceDetailEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		// &APIHandler{Path: "/v1/category", Next: api.createCategoryEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/category/{NAME}", Next: api.deleteCategoryEndpoint, Method: "DELETE", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/user", Next: api.createUserEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
@@ -57,10 +68,23 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 	begin := (*queryVar)["begin"].(string)
 	end := (*queryVar)["end"].(string)
 	if begin == "" {
-		begin = "2000-01-01T00:00:00Z"
+		begin = "1980-01-01"
 	}
+
 	if end == "" {
-		end = "now()"
+		end = "2200-01-01"
+	}
+	_, err := time.ParseInLocation("2006-01-02", begin, time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("begin date is not valid, %s", err.Error())))
+		return
+	}
+	_, err = time.ParseInLocation("2006-01-02", end, time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("end date is not valid, %s", err.Error())))
+		return
 	}
 
 	rm.GetReceiptData(begin, end)
@@ -72,6 +96,55 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+}
+
+func (api *ReceiptAPI) getInvoiceDetailEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	im := model.GetInvoiceModel(di)
+	//var queryDate time.Time
+	//today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
+	//end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
+
+	vars := util.GetPathVars(req, []string{"ID"})
+	ID := vars["ID"].(string)
+	fmt.Println(ID)
+
+	iv, err := im.GetInvoiceDataFromAPI(ID)
+	//data, err := json.Marshal(result)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	data, err := json.Marshal(iv)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+func (api *ReceiptAPI) exportInvoiceEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	fmt.Println("exportInvoiceEndpoint")
+	exportId := exportReceiptId{}
+	err := json.NewDecoder(req.Body).Decode(&exportId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+	im := model.GetInvoiceModel(di)
+	p := pdf.GetNewPDF(pdf.PageSizeA4) // to renew
+	for index, element := range exportId.RidList {
+		if index != 0 {
+			p.NewPage()
+		}
+		im.GetInvoicePDF(element.Rid, p)
+	}
+	util.DeleteAllFile()
+	w.Write(p.GetBytesPdf())
 }
 func (api *ReceiptAPI) deleteReceiptEndpoint(w http.ResponseWriter, req *http.Request) {
 
@@ -143,22 +216,33 @@ func (api *ReceiptAPI) createInvoiceEndpoint(w http.ResponseWriter, req *http.Re
 	}
 
 	im := model.GetInvoiceModel(di)
+	model.GetRTModel(di) // init receipt model
 
-	_err := im.CreateInvoice(iInovice.GetInvoice())
+	data, _err := im.CreateInvoice(iInovice.GetInvoice())
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error()))
 	} else {
-		w.Write([]byte("OK"))
+		tmap := make(map[string]interface{})
+		tmap["status"] = "OK"
+		tmap["invoiceNo"] = data
+		out, err := json.MarshalIndent(tmap, "", "  ")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(_err.Error()))
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(out))
+		}
 	}
 
 }
 
 func (iInovice *inputInvoice) GetInvoice() *model.Invoice {
 	return &model.Invoice{
-		GUI:   iInovice.GUI,
-		Title: iInovice.Title,
-		Rid:   iInovice.Rid,
+		BuyerID: iInovice.BuyerID,
+		Title:   iInovice.Title,
+		Rid:     iInovice.Rid,
 	}
 }
 
@@ -167,20 +251,8 @@ func (iInovice *inputInvoice) isInvoiceValid() (bool, error) {
 		return false, errors.New("id is empty")
 	}
 
-	if iInovice.InvoiceType == "TUI" {
-		if iInovice.GUI == "" {
-			return false, errors.New("gui is empty")
-		}
-		if iInovice.Title == "" {
-			return false, errors.New("title is empty")
-		}
-
-	} else if iInovice.InvoiceType == "" {
-		return false, errors.New("invoiceType is empty")
-	} else if iInovice.InvoiceType == "DUI" {
-		return true, nil
-	} else {
-		return false, errors.New("invoiceType is not vaild")
+	if iInovice.BuyerID != "" && len(iInovice.BuyerID) != 8 {
+		return false, errors.New("Buyer is not valid")
 	}
 
 	return true, nil

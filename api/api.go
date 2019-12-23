@@ -63,6 +63,8 @@ type AppRes interface {
 	GetLocation() *time.Location
 	GetDB() db.InterDB
 	GetSQLDB() db.InterSQLDB
+
+	GetSMTPConf() util.SendMail
 }
 
 var (

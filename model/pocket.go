@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
+	"dforcepro.com/report"
+	"github.com/94peter/toad/pdf"
 	"github.com/94peter/toad/resource/db"
+	"github.com/94peter/toad/util"
 )
 
 type Pocket struct {
@@ -81,6 +85,21 @@ func (pocketM *PocketModel) GetPocketData(beginDate, endDate, branch string) []*
 
 func (pocketM *PocketModel) Json() ([]byte, error) {
 	return json.Marshal(pocketM.pocketList)
+}
+
+func (pocketM *PocketModel) PDF() []byte {
+	p := pdf.GetNewPDF()
+
+	table := pdf.GetDataTable(pdf.Pocket)
+
+	data, T_Income, T_Fee, T_Balance := pocketM.addInfoTable(table, p)
+	//data, _, _, _ := amorM.addAmorInfoTable(table, p)
+
+	p.CustomizedPocketTitle(data, "108年6月份內湖店設")
+	p.DrawTablePDF(data)
+	p.CustomizedPocket(data, T_Income, T_Fee, T_Balance)
+	return p.GetBytesPdf()
+
 }
 
 //介紹累加SQL
@@ -324,3 +343,110 @@ group by CircleID, branch
 ) p2 on p1.CircleID = p2.CircleID and p1.branch = p2.branch
 where p1.description = '上期結餘' and p2.count is NULL
 ;*/
+
+func (pocketM *PocketModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf) (tabel_final *pdf.DataTable,
+	T_Income, T_Fee, T_Balance int) {
+
+	//text := "fd"
+	//width := mypdf.MeasureTextWidth(text)
+	//tabel.ColumnLen
+	T_Income, T_Fee, T_Balance = 0, 0, 0
+
+	for _, element := range pocketM.pocketList {
+		//
+		text := element.Date.Format("2006-01-02")
+		text, _ = util.ADtoROC(text, "ch")
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
+		vs := &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		text = element.Branch
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		text = element.ItemName
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 2)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		text = element.Description
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 3)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		T_Income += element.Income
+		text = strconv.Itoa(element.Income)
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		T_Fee += element.Fee
+		text = strconv.Itoa(element.Fee)
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 5)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		T_Balance = element.Balance
+		text = strconv.Itoa(element.Balance)
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 6)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+	}
+
+	// text := "總計金額"
+	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
+	// vs := &pdf.TableStyle{
+	// 	Text:  text,
+	// 	Bg:    report.ColorWhite,
+	// 	Front: report.ColorTableLine,
+	// }
+	// tabel.RawData = append(tabel.RawData, vs)
+	// text = strconv.Itoa(T_SR)
+	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
+	// vs = &pdf.TableStyle{
+	// 	Text:  text,
+	// 	Bg:    report.ColorWhite,
+	// 	Front: report.ColorTableLine,
+	// }
+	// tabel.RawData = append(tabel.RawData, vs)
+	// text = strconv.Itoa(T_Bonus)
+	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
+	// vs = &pdf.TableStyle{
+	// 	Text:  text,
+	// 	Bg:    report.ColorWhite,
+	// 	Front: report.ColorTableLine,
+	// }
+	// tabel.RawData = append(tabel.RawData, vs)
+
+	tabel_final = tabel
+	return
+}

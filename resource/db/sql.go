@@ -27,6 +27,16 @@ type sqlDB struct {
 	db       string
 }
 
+// edb=# -- 依照 Session 設定
+// edb=# set timezone to 'ROC';
+// SET
+// edb=# -- 設定某帳號預設時區
+// edb=# ALTER ROLE enterprisedb SET timezone TO 'ROC';
+// ALTER ROLE
+// edb=# -- 設定某 Database 的預設時區
+// edb=# ALTER DATABASE edb SET timezone TO 'ROC';
+// ALTER DATABASE
+
 func (sdb *sqlDB) ConnectSQLDB() (*sql.DB, error) {
 
 	//完整的資料格式連線如下
@@ -95,9 +105,11 @@ func (sdb *sqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer db.Close()
 
 	if rows.Err() != nil {
+		fmt.Println(rows.Err())
 		return nil, rows.Err()
 	}
 
@@ -132,7 +144,8 @@ func (sdb *sqlDB) CreateDeductTable() error {
 			"item character varying(50) ,"+
 			"description character varying(50) ,"+
 			"Fee  integer DEFAULT 0, "+
-			"Rid  character varying(50) ,"+
+			"Rid  character varying(50)  ,"+
+			"Checknumber  character varying(50) DEFAULT '',"+
 			"PRIMARY KEY (Did) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
@@ -144,6 +157,40 @@ func (sdb *sqlDB) CreateDeductTable() error {
 		return err
 	}
 	fmt.Println("CreateDeductTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateHouseGoTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.housego "+
+			"( "+
+			"ARid character varying(50) not NULL,"+
+			"id character varying(50) not NULL,"+
+			"data character varying(500) ,"+
+			// "date timestamp(0) without time zone not NULL, "+
+			// "cNo character varying(50) not NULL, "+
+			// "caseName character varying(50) not NULL, "+
+			// "type character varying(50) not NULL, "+
+			// "name character varying(50) not NULL, "+
+			// "amount integer not NULL, "+
+			//"fee integer DEFAULT 0, "+ //應扣費用
+			//"RA integer DEFAULT 0, "+ //已收金額
+			//"balance integer DEFAULT 0, "+
+			//"sales character varying(600), "+ //json[]
+			"PRIMARY KEY (ARid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			" ALTER TABLE public.housego "+
+			"OWNER to %s; ", sdb.user))
+	//"alter table public.ar alter column ra set default 0;"+
+	//"alter table public.ar alter column balance set default 0;"+
+
+	if err != nil {
+		fmt.Println("CreateTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreatehousegoTable Done")
 	return nil
 }
 
@@ -188,26 +235,66 @@ func (sdb *sqlDB) CreateARTable() error {
 	fmt.Println("CreateARTable Done")
 	return nil
 }
+
+func (sdb *sqlDB) CreateNHISalaryTable() error {
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.NHISalary "+
+			"( "+
+			"Sid character varying(50) ,"+
+			"BSid character varying(50) ,"+
+			"SName character varying(50) ,"+
+			"PayrollBracket integer DEFAULT 0, "+
+			"Salary integer DEFAULT 0, "+
+			"Pbonus integer DEFAULT 0, "+
+			"Bonus integer DEFAULT 0, "+
+			"Total integer DEFAULT 0, "+
+			"PD integer DEFAULT 0, "+ // 累進差額 (Progressive Difference)
+			"SalaryBalance integer DEFAULT 0, "+
+			"FourBouns integer DEFAULT 0, "+
+			"SP integer DEFAULT 0, "+
+			"FourSP integer DEFAULT 0, "+
+			"PTSP integer DEFAULT 0, "+
+			"PRIMARY KEY (BSid,Sid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.NHISalary "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateNHISalaryTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateNHISalaryTable Done")
+	return nil
+}
+
 func (sdb *sqlDB) CreateSalerSalaryTable() error {
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.SalerSalary "+
 			"( "+
 			"Sid character varying(50) ,"+
-			"Date timestamp(0) without time zone not NULL, "+
+			"BSid character varying(50) ,"+
+			"SName character varying(50) ,"+
+			//"Date timestamp(0) without time zone not NULL, "+
+			"Date character varying(7) not NULL, "+
 			"Branch character varying(50),"+
+			"Salary integer DEFAULT 0, "+
 			"Pbonus integer DEFAULT 0, "+
 			"Lbonus integer DEFAULT 0, "+
 			"Abonus integer DEFAULT 0, "+
+			"Total integer DEFAULT 0, "+
 			"SP integer DEFAULT 0, "+
 			"Tax integer DEFAULT 0, "+
 			"LaborFee  integer DEFAULT 0, "+
 			"HealthFee  integer DEFAULT 0, "+
 			"Welfare  integer DEFAULT 0, "+
-			"Org integer DEFAULT 0, "+
+			"CommercialFee integer DEFAULT 0, "+ //商耕費(原本組織費)
 			"Other  integer DEFAULT 0, "+
 			"TAmount integer DEFAULT 0, "+
-			//"Lock integer DEFAULT 0, "+
-			"PRIMARY KEY (Sid,Date,Branch) "+
+			"Description character varying(50) ,"+
+			"WorkDay   integer DEFAULT 30, "+
+			"Year character varying(4),"+
+			"PRIMARY KEY (BSid,Sid,Date,Branch) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.SalerSalary "+
@@ -225,12 +312,14 @@ func (sdb *sqlDB) CreateBranchSalaryTable() error {
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.BranchSalary "+
 			"( "+
-			"Date timestamp(0) without time zone not NULL, "+
+			"BSid character varying(50), "+
+			// "Date timestamp(0) without time zone not NULL, "+
+			"Date character varying(50) not NULL, "+
 			"Branch character varying(50),"+
 			"Name character varying(50),"+
 			"Total integer DEFAULT 0, "+
-			"Lock integer DEFAULT 0, "+
-			"PRIMARY KEY (Date,Branch) "+
+			"Lock character varying(50) DEFAULT '未完成', "+
+			"PRIMARY KEY (BSid,Branch) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.BranchSalary "+
@@ -369,17 +458,44 @@ func (sdb *sqlDB) CreateAmortizationTable() error {
 	return nil
 }
 
+func (sdb *sqlDB) CreateAmorMapTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.AmorMap "+
+			"( "+
+			"Amorid character varying(50) ,"+
+			"Date character varying(7) ,"+
+			//"Bsid character varying(50) ,"+
+			"Cost integer DEFAULT 0, "+
+			"PRIMARY KEY (Amorid,Date) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.AmorMap "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateAmorMapTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateAmorMapTable Done")
+	return nil
+}
+
 func (sdb *sqlDB) CreateInvoiceTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.Invoice "+
 			"( "+
 			"Rid character varying(50) ,"+
-			"invoice character varying(50) ,"+
+			"InvoiceNo character varying(20) ,"+
+			"BuyerID character varying(20) ,"+
+			"SellerID  character varying(20) ,"+
+			"RandomNum character varying(10) ,"+
 			"Title character varying(50) DEFAULT NULL,"+
-			"Date timestamp(0) without time zone not NULL, "+
-			"GUI  character varying(50) DEFAULT NULL, "+
+			"Date  character varying(50) DEFAULT NULL, "+
 			"Amount  integer not NULL, "+
+			"left_qrcode  character varying(200) DEFAULT NULL, "+
+			"right_qrcode character varying(200) DEFAULT NULL, "+
 			"PRIMARY KEY (Rid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
@@ -454,6 +570,8 @@ func (sdb *sqlDB) CreateConfigBranchTable() error {
 			"Rent integer DEFAULT 0, "+
 			"AgentSign integer DEFAULT 0, "+
 			"CommercialFee double precision DEFAULT 0,"+
+			"Manager character varying(50) ,"+
+			"Sid character varying(50) ,"+
 			"PRIMARY KEY (Branch) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
@@ -473,12 +591,14 @@ func (sdb *sqlDB) CreateConfigParameterTable() error {
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.ConfigParameter "+
 			"( "+
+			"id character varying(50) ,"+
 			"date timestamp(0) without time zone not NULL,"+
 			"NHI double precision DEFAULT 0, "+
 			"LI double precision DEFAULT 0, "+
 			"NHI2nd double precision DEFAULT 0, "+
-			"IT double precision DEFAULT 0, "+
-			"PRIMARY KEY (date) "+
+			"MMW  integer  DEFAULT 0, "+
+			//"IT double precision DEFAULT 0, "+
+			"PRIMARY KEY (id) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.ConfigParameter "+
@@ -497,6 +617,7 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.ConfigSaler "+
 			"( "+
+			"csid character varying(50) ,"+
 			"Sid character varying(50) ,"+
 			"Sname character varying(50) ,"+
 			"Branch character varying(50) ,"+
@@ -509,8 +630,13 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 			"Pay integer DEFAULT 0, "+ //未來薪資
 			"PayrollBracket integer DEFAULT 0, "+ //投保金額
 			"Enrollment integer DEFAULT 0, "+ //加保(眷屬人數)
-			"Association integer DEFAULT 0, "+
-			"PRIMARY KEY (Sid, ZeroDate) "+
+			"Association integer DEFAULT 0, "+ // 公會
+			"Address character varying(50) DEFAULT '', "+ // 地址
+			"Birth character varying(50) DEFAULT '', "+ // 出生年月日
+			"IdentityNum character varying(50) DEFAULT '', "+ // 身份證字號
+			"Bankaccount character varying(50) DEFAULT '', "+ // 銀行帳戶
+			//"Email character varying(50) DEFAULT '', "+ // 信箱
+			"PRIMARY KEY (csid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.ConfigSaler "+
@@ -532,6 +658,7 @@ func (sdb *sqlDB) CreateCommissionTable() error {
 			"Sid character varying(50) ,"+
 			"Rid character varying(50) ,"+
 			"ARid character varying(50) ,"+
+			"BSid character varying(50) ,"+
 			//"date timestamp(0) without time zone not NULL, "+
 			"item character varying(50) not NULL, "+
 			"SName character varying(50) , "+
@@ -539,8 +666,10 @@ func (sdb *sqlDB) CreateCommissionTable() error {
 			//"fee integer DEFAULT 0, "+
 			//"percent double precision DEFAULT 0 , "+
 			"CPercent double precision DEFAULT 0 , "+
-			"SR double precision DEFAULT 0 ,"+
-			"bonus double precision DEFAULT 0 ,"+
+			"SR integer DEFAULT 0 ,"+
+			"bonus integer DEFAULT 0 ,"+
+			"status character varying(50) DEFAULT 'normal',"+
+			"bankaccount character varying(50) DEFAULT 'normal',"+
 			"PRIMARY KEY (Sid,Rid)"+
 			") "+
 			"WITH ( OIDS = FALSE);"+
@@ -552,6 +681,47 @@ func (sdb *sqlDB) CreateCommissionTable() error {
 		return err
 	}
 	fmt.Println("CreateCommissionTable Done")
+	return nil
+}
+
+//收入支出 (紅利店長表)
+func (sdb *sqlDB) CreateIncomeExpenseTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.IncomeExpense "+
+			"( "+
+			"BSid character varying(50) ,"+
+			"SR integer DEFAULT 0,"+
+			"BusinessTax integer DEFAULT 0,"+
+			"SalesAmounts integer  DEFAULT 0,"+
+			"PBonus integer  DEFAULT 0,"+ //獎金(績效))
+			"LBonus integer  DEFAULT 0,"+ //組長(領導)
+			"AmorCost integer  DEFAULT 0,"+
+			"AgentSign integer  DEFAULT 0,"+
+			"Rent integer  DEFAULT 0,"+
+			"Commercialfee integer  DEFAULT 0,"+
+			"Salary integer  DEFAULT 0,"+
+			"Prepay integer  DEFAULT 0,"+
+			"Pocket integer  DEFAULT 0,"+
+			"AnnualBonus integer  DEFAULT 0,"+
+			"SalerFee integer  DEFAULT 0,"+
+			"PreTax integer  DEFAULT 0,"+
+			"AfterTax integer  DEFAULT 0,"+
+			"EarnAdjust  integer  DEFAULT 0,"+
+			"LastLoss  integer  DEFAULT 0,"+
+			"BusinessIncomeTax  integer  DEFAULT 0,"+
+			"ManagerBonus  integer  DEFAULT 0,"+
+			"PRIMARY KEY (BSid)"+
+			") "+
+			"WITH ( OIDS = FALSE);"+
+			"ALTER TABLE public.IncomeExpense "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateIncomeExpenseTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateIncomeExpenseTable Done")
 	return nil
 }
 
@@ -571,6 +741,7 @@ func (sdb *sqlDB) InitTable() error {
 		"deduct":          false,
 		"commission":      false,
 		"amortization":    false,
+		"amormap":         false,
 		"pocket":          false,
 		"branchprepay":    false,
 		"prepay":          false,
@@ -582,6 +753,9 @@ func (sdb *sqlDB) InitTable() error {
 		"armap":           false,
 		"salersalary":     false,
 		"branchsalary":    false,
+		"nhisalary":       false,
+		"incomeexpense":   false,
+		"housego":         false,
 	}
 
 	for rows.Next() {
@@ -605,6 +779,9 @@ func (sdb *sqlDB) InitTable() error {
 			break
 		case "amortization":
 			mT["amortization"] = true
+			break
+		case "amormap":
+			mT["amormap"] = true
 			break
 		case "pocket":
 			mT["pocket"] = true
@@ -639,6 +816,15 @@ func (sdb *sqlDB) InitTable() error {
 		case "branchsalary":
 			mT["branchsalary"] = true
 			break
+		case "nhisalary":
+			mT["nhisalary"] = true
+			break
+		case "incomeexpense":
+			mT["incomeexpense"] = true
+			break
+		case "housego":
+			mT["housego"] = true
+			break
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
 		}
@@ -663,6 +849,9 @@ func (sdb *sqlDB) InitTable() error {
 				break
 			case "amortization":
 				err = sdb.CreateAmortizationTable()
+				break
+			case "amormap":
+				err = sdb.CreateAmorMapTable()
 				break
 			case "accountitem":
 				err = sdb.CreateAccountItemTable()
@@ -697,6 +886,16 @@ func (sdb *sqlDB) InitTable() error {
 			case "branchsalary":
 				err = sdb.CreateBranchSalaryTable()
 				break
+			case "nhisalary":
+				err = sdb.CreateNHISalaryTable()
+				break
+			case "incomeexpense":
+				err = sdb.CreateIncomeExpenseTable()
+				break
+			case "housego":
+				err = sdb.CreateHouseGoTable()
+				break
+
 			default:
 				fmt.Printf("unknown table %s.\n", tableName)
 				break

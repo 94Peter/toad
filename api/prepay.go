@@ -15,7 +15,7 @@ import (
 type PrePayAPI bool
 
 type inputPrePay struct {
-	Date        time.Time             `json:"date"`
+	Date        string                `json:"date"`
 	ItemName    string                `json:"itemName"`
 	Description string                `json:"description"`
 	Fee         int                   `json:"fee"`
@@ -37,6 +37,8 @@ func (api PrePayAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/prepay", Next: api.createPrePayEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/prepay/{ID}", Next: api.deletePrePayEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/prepay/{ID}", Next: api.updatePrePayEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+
+		&APIHandler{Path: "/v1/prepay/export", Next: api.exportPrePayEndpoint, Method: "GET", Auth: false, Group: permission.All},
 	}
 }
 
@@ -60,14 +62,50 @@ func (api *PrePayAPI) deletePrePayEndpoint(w http.ResponseWriter, req *http.Requ
 	return
 }
 
+func (api *PrePayAPI) exportPrePayEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	PrePayM := model.GetPrePayModel(di)
+	model.GetSystemModel(di)
+	queryVar := util.GetQueryValue(req, []string{"date"}, true)
+	by_m := (*queryVar)["date"].(string)
+	ey_m := by_m
+
+	if by_m == "" {
+		by_m = "1980-01"
+		ey_m = "2200-01"
+	}
+
+	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+
+	PrePayM.GetPrePayData(by_m, ey_m)
+	w.Write(PrePayM.PDF())
+}
+
 func (api *PrePayAPI) getPrePayEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	PrePayM := model.GetPrePayModel(di)
-	var queryDate time.Time
-	today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
-	end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
+	queryVar := util.GetQueryValue(req, []string{"date"}, true)
+	by_m := (*queryVar)["date"].(string)
+	ey_m := by_m
 
-	PrePayM.GetPrePayData(today, end)
+	if by_m == "" {
+		by_m = "1980-01"
+		ey_m = "2200-01"
+	}
+
+	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+
+	PrePayM.GetPrePayData(by_m, ey_m)
 	//data, err := json.Marshal(result)
 	data, err := PrePayM.Json()
 	if err != nil {
@@ -144,10 +182,11 @@ func (iPrePay *inputPrePay) isPrePayValid() (bool, error) {
 	// 	return false, errors.New("permission error")
 	// }
 
-	// if t := time.Now().Unix(); t <= iAR.Date.Unix() {
-	// 	//未來的成交案 => 不成立
-	// 	return false, errors.New("CompletionDate is not valid")
-	// }
+	_, err := time.ParseInLocation("2006-01-02", iPrePay.Date, time.Local)
+	if err != nil {
+		return false, err
+	}
+
 	if iPrePay.Description == "" {
 		return false, errors.New("description is empty")
 	}
@@ -163,7 +202,7 @@ func (iPrePay *inputPrePay) isPrePayValid() (bool, error) {
 		return false, errors.New("prepay is not valid")
 	}
 
-	_, err := json.Marshal(iPrePay)
+	_, err = json.Marshal(iPrePay)
 	if err != nil {
 		return false, err
 	}
@@ -172,8 +211,9 @@ func (iPrePay *inputPrePay) isPrePayValid() (bool, error) {
 }
 
 func (iPrePay *inputPrePay) GetPrePay() *model.PrePay {
+	_time, _ := time.ParseInLocation("2006-01-02", iPrePay.Date, time.Local)
 	return &model.PrePay{
-		Date:        iPrePay.Date,
+		Date:        _time,
 		ItemName:    iPrePay.ItemName,
 		Description: iPrePay.Description,
 		Fee:         iPrePay.Fee,

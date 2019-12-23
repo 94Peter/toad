@@ -4,9 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
+	"dforcepro.com/report"
+	"github.com/94peter/toad/pdf"
 	"github.com/94peter/toad/resource/db"
+	"github.com/94peter/toad/util"
 )
 
 type PrePay struct {
@@ -45,11 +50,13 @@ func GetPrePayModel(imr interModelRes) *PrePayModel {
 	return prepayM
 }
 
-func (prepayM *PrePayModel) GetPrePayData(today, end time.Time) []*PrePay {
+func (prepayM *PrePayModel) GetPrePayData(startDate, endDate string) []*PrePay {
 
-	const PrePayspl = `SELECT PPid, Date, itemname, description, fee FROM public.PrePay;`
+	const PrePayspl = `SELECT PPid, Date, itemname, description, fee FROM public.PrePay
+					   where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval)) ;`
+
 	db := prepayM.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(PrePayspl))
+	rows, err := db.SQLCommand(fmt.Sprintf(PrePayspl, startDate+"-01", endDate+"-01"))
 	if err != nil {
 		return nil
 	}
@@ -95,6 +102,40 @@ func (prepayM *PrePayModel) GetPrePayData(today, end time.Time) []*PrePay {
 
 func (prepayM *PrePayModel) Json() ([]byte, error) {
 	return json.Marshal(prepayM.prepayList)
+}
+
+func (prepayM *PrePayModel) PDF() []byte {
+	p := pdf.GetNewPDF()
+
+	table := pdf.GetDataTable(pdf.Prepay)
+
+	//取得現有店家
+	branchbyte, err := systemM.GetBranchData()
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	//將店家資料變成string array , 順便新增最大欄位數
+	branchList := []string{}
+	s := strings.Split(string(branchbyte), "\"")
+	for _, each := range s {
+		fmt.Println(each)
+		if each != "," && each != "[" && each != "]" {
+			branchList = append(branchList, each)
+			table.ColumnWidth = append(table.ColumnWidth, pdf.TextWidth)
+		}
+	}
+	table.ColumnLen = len(table.ColumnWidth)
+	fmt.Println(" T len", len(table.ColumnWidth))
+
+	data, Total := prepayM.addInfoTable(table, p, branchList)
+	fmt.Println(" data len", len(data.ColumnWidth))
+	p.CustomizedPrepayTitle(data, "108年6月份內湖店", branchList)
+	data.RawData = data.RawData[4:]
+	p.DrawTablePDF(data)
+	p.CustomizedPrepay(data, Total)
+	return p.GetBytesPdf()
+
 }
 
 func (prepayM *PrePayModel) DeletePrePay(ID string) (err error) {
@@ -256,4 +297,121 @@ func (prepayM *PrePayModel) UpdatePrePay(ID string, prepay *PrePay) (err error) 
 		i++
 	}
 	return nil
+}
+
+func (prepayM *PrePayModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf, branch []string) (tabel_final *pdf.DataTable,
+	Total []int) {
+	//Total[0] For 支出金額
+	Total = []int{}
+	for i := 0; i < len(branch)+1; i++ {
+		Total = append(Total, 0)
+	}
+
+	for _, element := range prepayM.prepayList {
+		//
+		text := element.Date.Format("2006-01-02")
+		text, _ = util.ADtoROC(text, "ch")
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
+		vs := &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		text = element.ItemName
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		text = element.Description
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 2)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		Total[0] += element.Fee
+		text = strconv.Itoa(element.Fee)
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 3)
+		vs = &pdf.TableStyle{
+			Text:  text,
+			Bg:    report.ColorWhite,
+			Front: report.ColorTableLine,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
+		//
+		fmt.Println("s")
+		index := 4
+		for k := 0; k < len(branch); k++ {
+			text = "-"
+			for _, Prepay := range element.PrePay {
+				if Prepay.Branch == branch[k] {
+					text = strconv.Itoa(Prepay.Cost)
+					Total[k+1] += Prepay.Cost
+				}
+			}
+			fmt.Println("k", k, " branch:", branch[k], " T len", len(tabel.ColumnWidth), " text:", text)
+			pdf.ResizeWidth(tabel, p.GetTextWidth(text), index+k)
+			vs = &pdf.TableStyle{
+				Text:  text,
+				Bg:    report.ColorWhite,
+				Front: report.ColorTableLine,
+			}
+			tabel.RawData = append(tabel.RawData, vs)
+		}
+		// text = strconv.Itoa(element.Income)
+		// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
+		// vs = &pdf.TableStyle{
+		// 	Text:  text,
+		// 	Bg:    report.ColorWhite,
+		// 	Front: report.ColorTableLine,
+		// }
+		// tabel.RawData = append(tabel.RawData, vs)
+		// //
+		// T_Fee += element.Fee
+		// text = strconv.Itoa(element.Fee)
+		// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 5)
+		// vs = &pdf.TableStyle{
+		// 	Text:  text,
+		// 	Bg:    report.ColorWhite,
+		// 	Front: report.ColorTableLine,
+		// }
+		// tabel.RawData = append(tabel.RawData, vs)
+
+	}
+
+	// text := "總計金額"
+	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
+	// vs := &pdf.TableStyle{
+	// 	Text:  text,
+	// 	Bg:    report.ColorWhite,
+	// 	Front: report.ColorTableLine,
+	// }
+	// tabel.RawData = append(tabel.RawData, vs)
+	// text = strconv.Itoa(T_SR)
+	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
+	// vs = &pdf.TableStyle{
+	// 	Text:  text,
+	// 	Bg:    report.ColorWhite,
+	// 	Front: report.ColorTableLine,
+	// }
+	// tabel.RawData = append(tabel.RawData, vs)
+	// text = strconv.Itoa(T_Bonus)
+	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
+	// vs = &pdf.TableStyle{
+	// 	Text:  text,
+	// 	Bg:    report.ColorWhite,
+	// 	Front: report.ColorTableLine,
+	// }
+	// tabel.RawData = append(tabel.RawData, vs)
+
+	tabel_final = tabel
+	return
 }

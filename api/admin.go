@@ -22,6 +22,8 @@ func (api AdminAPI) GetAPIs() *[]*APIHandler {
 	}
 }
 
+var auth_token = "eyJhbGciOiJSUzI1NiIsImtpZCI6ImRldiIsInR5cCI6IkpXVCJ9.eyJleHAiOjEwNzkzOTAyMzIxLCJpYXQiOjE1NzA1MzAyODQsImlzcyI6InBpY2Fpc3MiLCJzeXMiOiJ0b2FkIn0.dCeCH2cYCm5MewP2lCpLGJV4ka4C8j4joHL23YlphRQJpOemKBRLReCXKFQh1GhdnFKXh6xh9ULox_BUBZxckdRDoJo5-R7fXM7eOy5hIRFyOwO8FOuKJ50QddR0qoLbuLbzIklJncxDRftBcujuOFFAFEBIkR5Nq9TyBEgIkSI"
+
 type test_struct struct {
 	Test string
 }
@@ -31,7 +33,32 @@ func (api *AdminAPI) getCategoryEndpoint(w http.ResponseWriter, req *http.Reques
 	//db.Query("select * from public.ab")
 	//isDB := db.InitDB()
 
-	w.Write([]byte(fmt.Sprintf("hi..")))
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", "https://pica957.appspot.com/v1/toad/category", nil)
+	if err != nil {
+		// handle error
+		fmt.Println(err)
+	}
+
+	req.Header.Set("auth-token", auth_token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		// handle error
+		fmt.Println(err)
+	}
+	defer resp.Body.Close()
+
+	sitemap, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	fmt.Println(string(sitemap))
+
+	w.Write(sitemap)
 }
 
 func (api *AdminAPI) t(w http.ResponseWriter, req *http.Request) {
@@ -57,3 +84,13 @@ func (api *AdminAPI) t(w http.ResponseWriter, req *http.Request) {
 
 	w.Write([]byte(fmt.Sprintf("hi..%s", t.Test)))
 }
+
+/*
+DELETE FROM public.ar;
+DELETE FROM public.armap;
+DELETE FROM public.branchsalary;
+DELETE FROM public.salersalary;
+DELETE FROM public.incomeexpense;
+DELETE FROM public.receipt;
+DELETE FROM public.commission;
+*/

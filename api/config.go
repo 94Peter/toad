@@ -16,6 +16,7 @@ type ConfigAPI bool
 
 const isCreate = 1
 const isUpdate = 2
+const isDelete = 3
 
 type inputAccountItem struct {
 	ItemName string `json:"itemName"`
@@ -36,12 +37,17 @@ type inputConfigSaler struct {
 	Association    int     `json:"association"`    //公會
 	// ZeroDate       time.Time `json:"zeroDate"`
 	// ValidDate      time.Time `json:"validDate"`
+	Address     string `json:"address"`
+	Birth       string `json:"birth"`
+	IdentityNum string `json:"identityNum"`
+	BankAccount string `json:"bankAccount"`
 }
 
 type inputConfigParameter struct {
 	//Date   time.Time `json:"date"`
-	Date   string  `json:"date"`
-	IT     float64 `json:"IT"`
+	Date string `json:"date"`
+	//IT     float64 `json:"IT"`
+	MMW    int     `json:"MMW"` //最低基本薪資
 	NHI    float64 `json:"NHI"`
 	LI     float64 `json:"LI"`
 	NHI2nd float64 `json:"NHI2nd"`
@@ -51,6 +57,8 @@ type inputConfigBranch struct {
 	Rent          int     `json:"rent"`
 	AgentSign     int     `json:"agentSign"`
 	CommercialFee float64 `json:"commercialFee"`
+	Manager       string  `json:"manager"`
+	Sid           string  `json:"sid"`
 }
 
 func (api ConfigAPI) Enable() bool {
@@ -70,12 +78,13 @@ func (api ConfigAPI) GetAPIs() *[]*APIHandler {
 
 		&APIHandler{Path: "/v1/config/parameter", Next: api.getConfigParameterEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/parameter", Next: api.createConfigParameterEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/parameter", Next: api.updateConfigParameterEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/parameter/{Date}", Next: api.deleteConfigParameterEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/parameter/{id}", Next: api.updateConfigParameterEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/parameter/{id}", Next: api.deleteConfigParameterEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/config/saler", Next: api.getConfigSalerEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/saler", Next: api.createConfigSalerEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/saler/{ID}", Next: api.updateConfigSalerEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler/{csID}", Next: api.updateConfigSalerEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler/{csID}", Next: api.deleteConfigSalerEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 	}
 }
 
@@ -211,10 +220,10 @@ func (api *ConfigAPI) createConfigBranchEndpoint(w http.ResponseWriter, req *htt
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.CreateConfigBranch(iCBranch.GetConfigBranch(isCreate))
+	_err := configM.CreateConfigBranchWithManager(iCBranch.GetConfigBranch(isCreate))
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error,maybe already exist"))
+		w.Write([]byte("Error,maybe already exist or Saler is not exist or Branch not match"))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -246,7 +255,7 @@ func (api *ConfigAPI) updateConfigBranchEndpoint(w http.ResponseWriter, req *htt
 	_err := configM.UpdateConfigBranch(Branch, iCBranch.GetConfigBranch(isUpdate))
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error:" + _err.Error()))
+		w.Write([]byte(_err.Error() + ",maybe Saler is not exist or Branch not match"))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -255,19 +264,19 @@ func (api *ConfigAPI) updateConfigBranchEndpoint(w http.ResponseWriter, req *htt
 
 func (api *ConfigAPI) deleteConfigParameterEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-	vars := util.GetPathVars(req, []string{"Date"})
-	Date := vars["Date"].(string)
+	vars := util.GetPathVars(req, []string{"id"})
+	id := vars["id"].(string)
 
 	configM := model.GetConfigModel(di)
 
-	time, err := time.ParseInLocation("2006-01-02", Date, time.Local)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("date is not valid, " + err.Error()))
-		return
-	}
+	// time, err := time.ParseInLocation("2006-01-02", Date, time.Local)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte("date is not valid, " + err.Error()))
+	// 	return
+	// }
 
-	_err := configM.DeleteConfigParameter(time)
+	_err := configM.DeleteConfigParameter(id)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe is not exist"))
@@ -326,8 +335,10 @@ func (api *ConfigAPI) createConfigParameterEndpoint(w http.ResponseWriter, req *
 }
 
 func (api *ConfigAPI) updateConfigParameterEndpoint(w http.ResponseWriter, req *http.Request) {
-	//Get params from body
+	vars := util.GetPathVars(req, []string{"id"})
+	id := vars["id"].(string)
 
+	//Get params from body
 	//iCParam := []*inputConfigParameter{}
 	iCParam := inputConfigParameter{}
 	err := json.NewDecoder(req.Body).Decode(&iCParam)
@@ -345,7 +356,7 @@ func (api *ConfigAPI) updateConfigParameterEndpoint(w http.ResponseWriter, req *
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.UpdateConfigParameter(iCParam.GetConfigParameter())
+	_err := configM.UpdateConfigParameter(iCParam.GetConfigParameter(), id)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
@@ -410,8 +421,8 @@ func (api *ConfigAPI) createConfigSalerEndpoint(w http.ResponseWriter, req *http
 
 func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-	vars := util.GetPathVars(req, []string{"ID"})
-	Sid := vars["ID"].(string)
+	vars := util.GetPathVars(req, []string{"csID"})
+	csID := vars["csID"].(string)
 
 	iCSaler := inputConfigSaler{}
 	err := json.NewDecoder(req.Body).Decode(&iCSaler)
@@ -429,7 +440,24 @@ func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.UpdateConfigSaler(iCSaler.GetConfigSaler(), Sid)
+	_err := configM.UpdateConfigSaler(iCSaler.GetConfigSaler(), csID)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error:" + _err.Error()))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+
+func (api *ConfigAPI) deleteConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+	vars := util.GetPathVars(req, []string{"csID"})
+	csID := vars["csID"].(string)
+
+	configM := model.GetConfigModel(di)
+
+	_err := configM.DeleteConfigSaler(csID)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
@@ -475,6 +503,12 @@ func (iCBranch *inputConfigBranch) isConfigBranchValid(command int) (bool, error
 			return false, errors.New("branch is empty")
 		}
 	}
+	if iCBranch.Manager == "" {
+		return false, errors.New("manager is empty")
+	}
+	if iCBranch.Sid == "" {
+		return false, errors.New("sid is empty")
+	}
 	if iCBranch.Rent < 0 {
 		return false, errors.New("rent is not valid")
 	}
@@ -497,6 +531,8 @@ func (iCBranch *inputConfigBranch) GetConfigBranch(command int) *model.ConfigBra
 			Rent:          iCBranch.Rent,
 			AgentSign:     iCBranch.AgentSign,
 			CommercialFee: iCBranch.CommercialFee,
+			Manager:       iCBranch.Manager,
+			Sid:           iCBranch.Sid,
 		}
 	}
 	if command == isUpdate {
@@ -504,6 +540,8 @@ func (iCBranch *inputConfigBranch) GetConfigBranch(command int) *model.ConfigBra
 			Rent:          iCBranch.Rent,
 			AgentSign:     iCBranch.AgentSign,
 			CommercialFee: iCBranch.CommercialFee,
+			Manager:       iCBranch.Manager,
+			Sid:           iCBranch.Sid,
 		}
 	}
 	return nil
@@ -519,8 +557,8 @@ func isConfigParameterValid(iCParam inputConfigParameter) (bool, error) {
 		return false, errors.New("date is not valid, " + err.Error())
 	}
 
-	if iCParam.IT < 0 || iCParam.IT > 100 {
-		return false, errors.New("IT is not valid")
+	if iCParam.MMW < 0 {
+		return false, errors.New("MMW is not valid")
 	}
 	if iCParam.NHI < 0 || iCParam.NHI > 100 {
 		return false, errors.New("NHI is not valid")
@@ -619,13 +657,6 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 		return false, errors.New("association is not valid")
 	}
 
-	// if iCSaler.ValidDate == "" {
-	// 	return false, errors.New("validDate is empty")
-	// }
-	// if iCSaler.ZeroDate == "" {
-	// 	return false, errors.New("zeroDate is empty")
-	// }
-
 	// if iCSaler.Branch == "" {
 	// 	return false, errors.New("branch is empty")
 	// }
@@ -645,10 +676,15 @@ func (iCSaler *inputConfigSaler) GetConfigSaler() *model.ConfigSaler {
 		Title:          iCSaler.Title,
 		ValidDate:      valid_time,
 		ZeroDate:       zero_time,
+		FPercent:       iCSaler.FPercent,
 		Branch:         iCSaler.Branch,
 		PayrollBracket: iCSaler.PayrollBracket,
 		Enrollment:     iCSaler.Enrollment,
 		Association:    iCSaler.Association,
+		Address:        iCSaler.Address,
+		Birth:          iCSaler.Birth,
+		IdentityNum:    iCSaler.IdentityNum,
+		BankAccount:    iCSaler.BankAccount,
 	}
 }
 
@@ -658,7 +694,7 @@ func (iCParam *inputConfigParameter) GetConfigParameter() *model.ConfigParameter
 		Date:   the_time,
 		NHI:    iCParam.NHI,
 		NHI2nd: iCParam.NHI2nd,
-		IT:     iCParam.IT,
+		MMW:    iCParam.MMW,
 		LI:     iCParam.LI,
 	}
 }

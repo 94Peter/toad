@@ -30,8 +30,9 @@ type inputDeduct struct {
 type inputUpdateDeduct struct {
 	// Status string    `json:"status"`
 	// Date   time.Time `json:"date"`
-	Date   string `json:"date"`
-	Status string `json:"status"`
+	Date        string `json:"date"`
+	Status      string `json:"status"`
+	CheckNumber string `json:"checkNumber"` //票號
 }
 
 func (api DeductAPI) GetAPIs() *[]*APIHandler {
@@ -55,13 +56,20 @@ func (api *DeductAPI) getDeductEndpoint(w http.ResponseWriter, req *http.Request
 	ey_m := (*queryVar)["date"].(string)
 	mtype := (*queryVar)["type"].(string)
 	if by_m == "" {
-		by_m = "2000-01"
+		by_m = "1980-01"
 		ey_m = "2200-01"
 	}
 	if mtype == "" || mtype == "全部" || strings.ToLower(mtype) == "all" {
 		mtype = "%"
 	}
-	fmt.Println("by_m:", by_m)
+
+	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+	//fmt.Println("by_m:", by_m)
 	dm.GetDeductData(by_m, ey_m, mtype)
 	//data, err := json.Marshal(result)
 	data, err := dm.Json()
@@ -111,7 +119,7 @@ func (api *DeductAPI) updateDeductEndpoint(w http.ResponseWriter, req *http.Requ
 
 	DM := model.GetDecuctModel(di)
 
-	_err := DM.UpdateDeduct(ID, iUD.Status, iUD.Date)
+	_err := DM.UpdateDeduct(ID, iUD.Status, iUD.Date, iUD.CheckNumber)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error" + _err.Error()))
@@ -136,18 +144,18 @@ func (iUD *inputUpdateDeduct) isUpdateDeductValid() (bool, error) {
 		}
 		//https://blog.csdn.net/tianzhaixing2013/article/details/74625906
 		//the_time, err := time.ParseInLocation("2006-01-02T15:04:05Z", iUD.Date, time.Local)
-		the_time, err := time.ParseInLocation("2006-01-02", iUD.Date, time.Local)
-		if err == nil {
-			unix_time := the_time.Unix()
-			// fmt.Println("方法二 时间戳：", unix_time, reflect.TypeOf(unix_time))
-			// fmt.Println("now：", time.Now().Unix())
-			if t := time.Now().Unix(); t < unix_time {
-				//未來的成交案 => 不成立
-				return false, errors.New("date is not valid, future date")
-			}
-		} else {
-			return false, errors.New("date is not valid, " + err.Error())
-		}
+		// the_time, err := time.ParseInLocation("2006-01-02", iUD.Date, time.Local)
+		// if err == nil {
+		// 	unix_time := the_time.Unix()
+		// 	// fmt.Println("方法二 时间戳：", unix_time, reflect.TypeOf(unix_time))
+		// 	// fmt.Println("now：", time.Now().Unix())
+		// 	if t := time.Now().Unix(); t < unix_time {
+		// 		//未來的成交案 => 不成立
+		// 		return false, errors.New("date is not valid, future date")
+		// 	}
+		// } else {
+		// 	return false, errors.New("date is not valid, " + err.Error())
+		// }
 	} else if iUD.Status == "" {
 		return false, errors.New("status is empty")
 	} else {
@@ -158,14 +166,6 @@ func (iUD *inputUpdateDeduct) isUpdateDeductValid() (bool, error) {
 }
 
 func (iDeduct *inputDeduct) isDeductValid() (bool, error) {
-	// if !util.IsStrInList(iAR.Permission, permission.All...) {
-	// 	return false, errors.New("permission error")
-	// }
-
-	// if t := time.Now().Unix(); t <= iDeduct.Date.Unix() {
-	// 	//未來的成交案 => 不成立
-	// 	return false, errors.New("date is not valid")
-	// }
 
 	if iDeduct.ARid == "" {
 		return false, errors.New("arid is empty")

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/94peter/pica/permission"
 	"github.com/94peter/toad/model"
@@ -14,12 +15,13 @@ import (
 type AmortizationAPI bool
 
 type inputAmortization struct {
-	Branch                    string `json:"branch"`
-	ItemName                  string `json:"itemName"`
-	GainCost                  int    `json:"gainCost"`
-	AmortizationYearLimit     int    `json:"amortizationYearLimit"`
-	MonthlyAmortizationAmount int    `json:"monthlyAmortizationAmount"`
-	FirstAmortizationAmount   int    `json:"firstAmortizationAmount"`
+	Date                  string `json:"date"`
+	Branch                string `json:"branch"`
+	ItemName              string `json:"itemName"`
+	GainCost              int    `json:"gainCost"`
+	AmortizationYearLimit int    `json:"amortizationYearLimit"`
+	//MonthlyAmortizationAmount int    `json:"monthlyAmortizationAmount"`
+	//FirstAmortizationAmount   int    `json:"firstAmortizationAmount"`
 }
 
 func (api AmortizationAPI) Enable() bool {
@@ -31,7 +33,33 @@ func (api AmortizationAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/amortization", Next: api.getAmortizationEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/amortization", Next: api.createAmortizationEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/amortization/{ID}", Next: api.deleteAmortizationEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+
+		&APIHandler{Path: "/v1/amortization/export", Next: api.exportAmortizationEndpoint, Method: "GET", Auth: false, Group: permission.All},
 	}
+}
+
+func (api *AmortizationAPI) exportAmortizationEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+	//vars := util.GetPathVars(req, []string{"ID"})
+	//amorID := vars["ID"].(string)
+	amor := model.GetAmortizationModel(di)
+
+	queryVar := util.GetQueryValue(req, []string{"date", "branch"}, true)
+	by_m := (*queryVar)["date"].(string)
+	ey_m := by_m
+	branch := (*queryVar)["branch"].(string)
+	if by_m == "" {
+		by_m = "1980-01"
+		ey_m = "2200-01"
+	}
+	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
+		branch = "%"
+	}
+
+	amor.GetAmortizationData(by_m, ey_m, branch)
+
+	w.Write(amor.PDF())
+
 }
 
 func (api *AmortizationAPI) deleteAmortizationEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -66,7 +94,7 @@ func (api *AmortizationAPI) getAmortizationEndpoint(w http.ResponseWriter, req *
 	ey_m := by_m
 	branch := (*queryVar)["branch"].(string)
 	if by_m == "" {
-		by_m = "2000-01"
+		by_m = "1980-01"
 		ey_m = "2200-01"
 	}
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
@@ -122,35 +150,45 @@ func (iAmor *inputAmortization) isAmorValid() (bool, error) {
 	// 	//未來的成交案 => 不成立
 	// 	return false, errors.New("CompletionDate is not valid")
 	// }
+
+	_, err := time.ParseInLocation("2006-01-02", iAmor.Date, time.Local)
+	if err != nil {
+		return false, errors.New("date is not valid, " + err.Error())
+	}
+
 	if iAmor.Branch == "" {
 		return false, errors.New("Branch is empty")
 	}
 	if iAmor.AmortizationYearLimit < 0 {
 		return false, errors.New("AmortizationYearLimit is not valid")
 	}
-	if iAmor.FirstAmortizationAmount < 0 {
-		return false, errors.New("FirstAmortizationAmount is not valid")
-	}
+	// if iAmor.FirstAmortizationAmount < 0 {
+	// 	return false, errors.New("FirstAmortizationAmount is not valid")
+	// }
 	if iAmor.GainCost < 0 {
 		return false, errors.New("GainCost is not valid")
 	}
 	if iAmor.ItemName == "" {
 		return false, errors.New("Branch is empty")
 	}
-	if iAmor.MonthlyAmortizationAmount < 0 {
-		return false, errors.New("MonthlyAmortizationAmount is not valid")
-	}
+	// if iAmor.MonthlyAmortizationAmount < 0 {
+	// 	return false, errors.New("MonthlyAmortizationAmount is not valid")
+	// }
 
 	return true, nil
 }
 
 func (iAmor *inputAmortization) GetAmortization() *model.Amortization {
+	date, _ := time.ParseInLocation("2006-01-02", iAmor.Date, time.Local)
+	var MonthlyAmortizationAmount = iAmor.GainCost / (iAmor.AmortizationYearLimit * 12)
+	var FirstAmortizationAmount = MonthlyAmortizationAmount + iAmor.GainCost%(iAmor.AmortizationYearLimit*12)
 	return &model.Amortization{
 		Branch:                    iAmor.Branch,
 		Itemname:                  iAmor.ItemName,
 		Gaincost:                  iAmor.GainCost,
+		Date:                      date,
 		AmortizationYearLimit:     iAmor.AmortizationYearLimit,
-		MonthlyAmortizationAmount: iAmor.MonthlyAmortizationAmount,
-		FirstAmortizationAmount:   iAmor.FirstAmortizationAmount,
+		MonthlyAmortizationAmount: MonthlyAmortizationAmount,
+		FirstAmortizationAmount:   FirstAmortizationAmount,
 	}
 }

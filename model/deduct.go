@@ -22,6 +22,7 @@ type Deduct struct {
 	CNo         string    `json:"contractNo"`
 	CaseName    string    `json:"caseName"`
 	Type        string    `json:"type"`
+	CheckNumber string    `json:"checkNumber"`
 }
 
 type NullTime struct {
@@ -77,10 +78,10 @@ func (nt *NullTime) Scan(value interface{}) error {
 func (decuctModel *DeductModel) GetDeductData(by_m, ey_m, mtype string) []*Deduct {
 
 	//
-	const qspl = `SELECT D.Did, D.date , D.status, D.item, D.fee, D.Description, R.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D 
+	const qspl = `SELECT D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , R.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D 
 				inner join public.ar as AR on AR.arid = D.arid
 				Left join public.receipt as R on R.rid = D.rid
-				where (R.date >= '%s' and R.date < ('%s'::date + '1 month'::interval) or R.date is null ) 
+				where ( to_timestamp(date_part('epoch',R.date)::int) >= '%s' and to_timestamp(date_part('epoch',R.date)::int) < ('%s'::date + '1 month'::interval) or R.date is null ) 
 				and (D.item like '%s' OR  D.status like '%s');`
 	//where D.rid = R.rid;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
@@ -98,7 +99,7 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m, mtype string) []*Deduc
 		/*null time cannot scan into time.Time */
 		var Ddate, RDate NullTime
 
-		if err := rows.Scan(&d.Did, &Ddate, &d.Status, &d.Item, &d.Fee, &d.Description, &RDate, &d.CNo, &d.CaseName, &d.Type); err != nil {
+		if err := rows.Scan(&d.Did, &Ddate, &d.Status, &d.Item, &d.Fee, &d.Description, &d.CheckNumber, &RDate, &d.CNo, &d.CaseName, &d.Type); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -185,13 +186,13 @@ func (decuctModel *DeductModel) DeleteDeduct(ID string) (err error) {
 	return nil
 }
 
-func (decuctModel *DeductModel) UpdateDeduct(Did, status, date string) (err error) {
+func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber string) (err error) {
 
 	// const sql = `UPDATE public.deduct
 	// 			SET status=$1
 	// 			WHERE did = $2;`
 
-	sql := fmt.Sprintf("UPDATE public.deduct Set status = $1, date = $2 Where did = $3")
+	sql := fmt.Sprintf("UPDATE public.deduct Set status = $1, date = $2 , checkNumber = $3 Where did = $4")
 	// if mtype == "date" {
 	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = to_timestamp($1 ,'YYYY-MM-DD hh24:mi:ss') Where did = $2", mtype)
 	// }
@@ -205,7 +206,7 @@ func (decuctModel *DeductModel) UpdateDeduct(Did, status, date string) (err erro
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, status, getNil(date), Did)
+	res, err := sqldb.Exec(sql, status, getNil(date), checkNumber, Did)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)

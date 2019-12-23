@@ -7,11 +7,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/94peter/toad/util"
-
+	"github.com/94peter/toad/model"
 	"github.com/94peter/toad/resource/sms"
+	"github.com/94peter/toad/util"
 
 	"dforcepro.com/resource"
 	"dforcepro.com/resource/logger"
@@ -27,6 +28,70 @@ import (
 // [START main_func]
 
 func main() {
+
+	// smtpHost := "smtp.gmail.com"       // 你可以改为其他的
+	// smtpPort := "587"                  // 端口
+	// smtpPass := "nqnbzmrmywrtvyyv"     // 密码
+	// smtpUser := "crgcrg0034@gmail.com" // 用户
+	// subject := "test"
+	// body := "testbody"
+	// fname := "hello.pdf"
+	// util.RunSendMail(smtpHost, smtpPort, smtpPass, smtpUser, "geassyayaoo3@gmail.com", subject, body, fname)
+
+	//excel.GetExcel()
+
+	// //f := excelize.NewFile()
+	// ex := excel.GetExcel()
+	// data := excel.GetDataTable(2)
+	// data.RawData["A10"] = "ds"
+	// ex.FillText(data)
+	// // Create a new sheet.
+
+	// // index := f.NewSheet("薪轉戶")
+	// // f.DeleteSheet("Sheet1")
+	// // f.SetCellValue("薪轉戶", "B2", 100)
+	// // f.SetColWidth("薪轉戶", "C", "C", 35)
+	// // f.SetColWidth("薪轉戶", "D", "E", 60)
+
+	// // // Set active sheet of the workbook.
+	// // f.SetActiveSheet(index)
+	// // // Save xlsx file by the given path.
+	// fakeId := fmt.Sprintf("%d", time.Now().Unix())
+
+	// err := ex.File.SaveAs("./Book" + fakeId + ".xlsx")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+
+	//return
+
+	// const dir = "pdf/"
+	// //獲取原始檔列表
+	// f, err := ioutil.ReadDir(dir)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// fzip, _ := os.Create("img-50.zip")
+	// w := zip.NewWriter(fzip)
+	// defer w.Close()
+	// for _, file := range f {
+	// 	fw, _ := w.Create(file.Name())
+	// 	filecontent, err := ioutil.ReadFile(dir + file.Name())
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// 	n, err := fw.Write(filecontent)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// 	fmt.Println(n)
+	// }
+
+	// fmt.Println(pdf.SayHelloTo("f"))
+	// p := pdf.GetNewPDF()
+	// p.DrawPDF(pdf.GetDataTable(""))
+	//return
+
 	// [START setting_port]
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -47,6 +112,7 @@ func main() {
 	}
 
 	myDI := GetConf(env, timezone)
+
 	router := mux.NewRouter()
 	//middleConf := di.APIConf.Middle
 	middle.SetDI(myDI)
@@ -71,7 +137,9 @@ func main() {
 		mapi.PocketAPI(true),
 		mapi.ConfigAPI(true),
 		mapi.SalaryAPI(true),
+		mapi.SystemAPI(true),
 	)
+	initBranch(myDI)
 	log.Printf("Listening on port %s", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), router))
 	// [END setting_port]
@@ -94,6 +162,8 @@ type di struct {
 		Name  string `yaml:"name"`
 		Phone string `yaml:"phone"`
 	} `yaml:"init"`
+
+	SMTPConf util.SendMail `yaml:"smtpConf"`
 }
 
 func (d *di) GetLoginURL() string {
@@ -114,6 +184,10 @@ func (d *di) GetSMS() sms.InterSMS {
 
 func (d *di) GetJWTConf() *util.JwtConf {
 	return d.JWTConf
+}
+
+func (d *di) GetSMTPConf() util.SendMail {
+	return d.SMTPConf
 }
 
 func (d *di) GetLocation() *time.Location {
@@ -158,6 +232,28 @@ func GetConf(env string, timezone string) *di {
 	// mm := _model.GetARModel.Get
 
 	return &myDI
+}
+
+func initBranch(myDI *di) {
+	systemM := model.GetSystemModel(myDI)
+	configM := model.GetConfigModel(myDI)
+	branchbyte, err := systemM.GetBranchData()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	branchList := []string{}
+	s := strings.Split(string(branchbyte), "\"")
+	for _, each := range s {
+		fmt.Println(each)
+		if each != "," && each != "[" && each != "]" {
+			branchList = append(branchList, each)
+		}
+	}
+	fmt.Println(branchList)
+
+	configM.CreateConfigBranch(branchList)
 }
 
 // [END main_func]

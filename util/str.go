@@ -62,3 +62,34 @@ func IntToFixStrLen(val int, length int) (string, error) {
 	}
 	return StrAppend(returnStr, t), nil
 }
+
+// 西元轉中華民國
+func ADtoROC(adStr, format string) (TW_Date string, err error) {
+	TWyear, err := strconv.Atoi(adStr[0:4])
+	fmt.Println(TWyear)
+	TWyear = TWyear - 1911
+	TWmonth, err := strconv.Atoi(adStr[5:7])
+	TWday := 1
+	if len(adStr) > 7 {
+		TWday, err = strconv.Atoi(adStr[8:10])
+	}
+
+	switch format {
+	case "ch":
+		TW_Date = fmt.Sprintf("%d年%d月%d日", TWyear, TWmonth, TWday)
+		break
+	case "file":
+		TW_Date = fmt.Sprintf("%d%d", TWyear, TWmonth)
+		break
+	case "invoice":
+		if TWmonth%2 == 0 {
+			TWmonth = TWmonth - 1
+		}
+		TW_Date = fmt.Sprintf("%d年%d月-%d月", TWyear, TWmonth, TWmonth+1)
+		break
+	default:
+		TW_Date = fmt.Sprintf("%d/%s/%s", TWyear, adStr[5:7], adStr[8:10])
+		break
+	}
+	return
+}

@@ -10,15 +10,15 @@ import (
 )
 
 type Receipt struct {
-	Rid           string    `json:"id"`
-	ARid          string    `json:"-"` //no return this key
-	Date          time.Time `json:"date"`
-	CNo           string    `json:"contractNo"`
-	CaseName      string    `json:"caseName"`
-	CustomertType string    `json:"customertType"`
-	Name          string    `json:"customerName"`
-	Amount        int       `json:"amount"`    //收款
-	InvoiceNo     string    `json:"invoiceNo"` //發票號碼
+	Rid          string    `json:"id"`
+	ARid         string    `json:"-"` //no return this key
+	Date         time.Time `json:"date"`
+	CNo          string    `json:"contractNo"`
+	CaseName     string    `json:"caseName"`
+	CustomerType string    `json:"customertType"`
+	Name         string    `json:"customerName"`
+	Amount       int       `json:"amount"`    //收款
+	InvoiceNo    string    `json:"invoiceNo"` //發票號碼
 }
 
 type RTModel struct {
@@ -106,15 +106,53 @@ func (rm *RTModel) DeleteReceiptData(Rid string) error {
 	return nil
 }
 
+func (rm *RTModel) GetReceiptDataByID(rid string) *Receipt {
+
+	//if invoiceno is null in Database return ""
+	//const qspl = `SELECT rid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
+	//left join public.invoice I on  I.Rid = R.rid
+	//
+	fmt.Println("GetReceiptDataByID:", rid)
+	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(iv.invoiceno, null),'') 
+					FROM public.receipt R
+					inner join public.ar AR on AR.arid = R.arid
+					left join public.invoice iv on iv.rid = r.rid				
+					where r.rid = '%s'`
+
+	db := rm.imr.GetSQLDB()
+
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, rid))
+	if err != nil {
+		fmt.Println("[rows err]:", err)
+		return nil
+	}
+
+	var rt Receipt
+	for rows.Next() {
+
+		fmt.Println("scan start")
+		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount, &rt.InvoiceNo); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		fmt.Println("scan end")
+	}
+	fmt.Println("GetReceiptDataByID Done")
+
+	return &rt
+}
+
 func (rm *RTModel) GetReceiptData(begin, end string) []*Receipt {
 
 	//if invoiceno is null in Database return ""
 	//const qspl = `SELECT rid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
-	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, AR.type, AR.name , R.amount, COALESCE(NULLIF(I.invoice, null),'')
-				  FROM public.receipt R
-				  inner join public.ar AR on AR.arid = R.arid
-				  left join public.invoice I on  I.Rid = R.rid
-				  where R.date >= '%s' and R.date <= '%s'`
+	//left join public.invoice I on  I.Rid = R.rid
+
+	//COALESCE(NULLIF(R.invoiceno, null),'')
+	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(iv.invoiceno, null),'') 
+					FROM public.receipt R
+					inner join public.ar AR on AR.arid = R.arid
+					left join public.invoice iv on iv.rid = r.rid					
+					where to_timestamp(date_part('epoch',R.date)::int) >= '%s' and to_timestamp(date_part('epoch',R.date)::int) <= '%s'::date + '86399999 milliseconds'::interval `
 	db := rm.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, begin, end))
 	if err != nil {
@@ -128,7 +166,7 @@ func (rm *RTModel) GetReceiptData(begin, end string) []*Receipt {
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomertType, &rt.Name, &rt.Amount, &rt.InvoiceNo); err != nil {
+		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount, &rt.InvoiceNo); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -146,17 +184,52 @@ func (rm *RTModel) GetReceiptData(begin, end string) []*Receipt {
 	return rm.rtList
 }
 
+func (rm *RTModel) GetReceiptDataByRid(rid string) *Receipt {
+
+	//if invoiceno is null in Database return ""
+	//const qspl = `SELECT rid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
+	//left join public.invoice I on  I.Rid = R.rid
+	//
+	fmt.Println("GetReceiptDataByRid:", rid)
+	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(R.invoiceno, null),'')
+					FROM public.receipt R
+					inner join public.ar AR on AR.arid = R.arid					
+					where R.rid = '%s' `
+	db := rm.imr.GetSQLDB()
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, rid))
+	if err != nil {
+		return nil
+	}
+
+	for rows.Next() {
+		rt := &Receipt{}
+
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount, &rt.InvoiceNo); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		return rt
+	}
+
+	return nil
+}
+
 func (rm *RTModel) Json() ([]byte, error) {
 	return json.Marshal(rm.rtList)
 }
 
 func (rm *RTModel) CreateReceipt(rt *Receipt) (err error) {
 	fmt.Println("CreateReceipt : arid is ", rt.ARid)
-
-	//arid exist
-	//(加總歷史收款明細 + 此筆單子) <= 應收款項的收款
+	/*
+	*前端時間 會送 yyyy-mm-dd 16:00:00 的UTC時間，方便計算，此地直接 加8小。
+	*arid exist
+	*(加總歷史收款明細 + 此筆單子) <= 應收款項的收款
+	**/
 	const sql = `INSERT INTO public.receipt (Rid, Date, Amount, ARid)
-				SELECT * FROM (SELECT $1::varchar(50), to_timestamp($2,'YYYY-MM-DD hh24:mi:ss'), $3::INTEGER , $4::varchar(50)) AS tmp
+				SELECT * FROM (SELECT $1::varchar(50), to_timestamp($2,'YYYY-MM-DD hh24:mi:ss') , $3::INTEGER , $4::varchar(50)) AS tmp
 				WHERE  
 					EXISTS ( SELECT arid from public.ar ar WHERE arid = $4 ) 
 				and ( select $3 + COALESCE(SUM(amount),0) FROM public.receipt  where arid = $4 ) <=  (SELECT amount from public.ar ar WHERE arid = $4)				

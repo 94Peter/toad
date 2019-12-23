@@ -35,7 +35,42 @@ func (api PocketAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/pocket", Next: api.createPocketEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/pocket/{ID}", Next: api.updatePocketEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/pocket/{ID}", Next: api.deletePocketEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+
+		&APIHandler{Path: "/v1/pocket/export", Next: api.exportPocketEndpoint, Method: "GET", Auth: false, Group: permission.All},
 	}
+}
+
+func (api *PocketAPI) exportPocketEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	PocketM := model.GetPocketModel(di)
+	//var queryDate time.Time
+
+	queryVar := util.GetQueryValue(req, []string{"date", "branch"}, true)
+	by_m := (*queryVar)["date"].(string)
+	ey_m := by_m
+	branch := (*queryVar)["branch"].(string)
+
+	if by_m == "" {
+		by_m = "1980-01"
+		ey_m = "2200-01"
+	}
+
+	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+
+	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
+		branch = "%"
+	}
+
+	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
+	// end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
+
+	PocketM.GetPocketData(by_m, ey_m, branch)
+	w.Write(PocketM.PDF())
 }
 
 func (api *PocketAPI) deletePocketEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -67,10 +102,19 @@ func (api *PocketAPI) getPocketEndpoint(w http.ResponseWriter, req *http.Request
 	by_m := (*queryVar)["date"].(string)
 	ey_m := by_m
 	branch := (*queryVar)["branch"].(string)
+
 	if by_m == "" {
-		by_m = "2000-01"
+		by_m = "1980-01"
 		ey_m = "2200-01"
 	}
+
+	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}

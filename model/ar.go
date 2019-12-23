@@ -4,23 +4,28 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/94peter/toad/resource/db"
 )
 
+var ACTION_BUY = "buy"
+var ACTION_SELL = "sell"
+
 //`json:"id"` 回傳重新命名
 type AR struct {
-	ARid     string    `json:"id"`
-	Date     time.Time `json:"completionDate"`
-	CNo      string    `json:"contractNo"`
-	Customer customer  `json:"customer"`
-	CaseName string    `json:"caseName"`
-	Amount   int       `json:"amount"`
-	Fee      int       `json:"fee"`
-	Balance  int       `json:"balance"`        //未收金額
-	RA       int       `json:"receivedAmount"` //已收金額
-	Sales    []*Saler  `json:"sales"`
+	ARid     string      `json:"id"`
+	Date     time.Time   `json:"completionDate"`
+	CNo      string      `json:"contractNo"`
+	Customer Customer    `json:"customer"`
+	CaseName string      `json:"caseName"`
+	Amount   int         `json:"amount"`
+	Fee      int         `json:"fee"`
+	Balance  int         `json:"balance"`        //未收金額
+	RA       int         `json:"receivedAmount"` //已收金額
+	Sales    []*MAPSaler `json:"sales"`
 }
 
 // type Receipt struct {
@@ -34,7 +39,7 @@ type AR struct {
 // 	InvoiceNo string //發票號碼
 // }
 
-type customer struct {
+type Customer struct {
 	Action string `json:"type"`
 	Name   string `json:"name"`
 }
@@ -43,12 +48,50 @@ type Saler struct {
 	SName   string  `json:"name"`
 	Percent float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
 	Sid     string  `json:"account"`
+	Branch  string  `json:"branch"`
+	Title   string  `json:"title"`
+}
+
+type MAPSaler struct {
+	SName   string  `json:"name"`
+	Percent float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
+	Sid     string  `json:"account"`
+}
+
+type HouseGoMAPSaler struct {
+	SName   string  `json:"name"`
+	Percent float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
+	Sid     string  `json:"id"`
+}
+
+type HouseGo struct {
+	ARid string `json:"arid"`
+	ID   string `json:"id"`
+	Data string `json:"data"`
 }
 
 type AccountReceivable struct {
 	db db.InterSQLDB
 	//res interModelRes
 	ar []*AR
+}
+
+type inputhouseGoAR struct {
+	ARid     int       `json:"id"`
+	Date     time.Time `json:"completionDate"` //成交日期
+	CNo      string    `json:"contractNo"`
+	CaseName string    `json:"caseName"`
+
+	Sell struct {
+		Amount int    `json:"amount"`
+		Name   string `json:"name"`
+	} `json:"sell"`
+
+	Buyer struct {
+		Amount int    `json:"amount"`
+		Name   string `json:"name"`
+	} `json:"buyer"`
+	Sales []*HouseGoMAPSaler `json:"sales"`
 }
 
 var (
@@ -67,9 +110,53 @@ func GetARModel(imr interModelRes) *ARModel {
 }
 
 type ARModel struct {
-	imr    interModelRes
-	db     db.InterSQLDB
-	arList []*AR
+	imr       interModelRes
+	db        db.InterSQLDB
+	arList    []*AR
+	salerList []*Saler
+	hgList    []*HouseGo
+}
+
+func (am *ARModel) GetSalerData(branch string) []*Saler {
+
+	const qspl = `SELECT A.sid, A.sname, A.branch, A.percent, A.title
+					FROM public.ConfigSaler A 
+					Inner Join ( 
+						select sid, max(zerodate) zerodate from public.configsaler cs 
+						where now() > zerodate
+						group by sid 
+					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+					where A.branch like '%s';`
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := am.imr.GetSQLDB()
+	//fmt.Println(fmt.Sprintf(qspl, branch))
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch))
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	var salerList []*Saler
+
+	for rows.Next() {
+		var saler Saler
+
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&saler.Sid, &saler.SName, &saler.Branch, &saler.Percent, &saler.Title); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		salerList = append(salerList, &saler)
+	}
+
+	// out, err := json.Marshal(arList)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
+	am.salerList = salerList
+	return am.salerList
 }
 
 func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
@@ -97,7 +184,7 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 	const qspl = `SELECT ARid, Date, cNo, CaseName, Type, Name, Amount, Fee, RA, Balance, Sales	FROM public.AR;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := am.imr.GetSQLDB()
-	fmt.Println(sql)
+	//fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
 
 	rows, err := db.SQLCommand(sql)
@@ -110,8 +197,8 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 	for rows.Next() {
 		var r AR
 
-		var ctm customer
-		var col_sales string
+		var ctm Customer
+		//var col_sales string
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
@@ -120,10 +207,10 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 		}
 		r.Customer = ctm
 		r.Balance = r.Amount - r.RA
-		err := json.Unmarshal([]byte(col_sales), &r.Sales)
-		if err != nil {
-			fmt.Println(err)
-		}
+		// err := json.Unmarshal([]byte(col_sales), &r.Sales)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// }
 
 		arDataList = append(arDataList, &r)
 	}
@@ -137,7 +224,7 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 
 	for rows.Next() {
 		var arid string
-		var saler Saler
+		var saler MAPSaler
 
 		if err := rows.Scan(&arid, &saler.Sid, &saler.Percent, &saler.SName); err != nil {
 			fmt.Println("err Scan " + err.Error())
@@ -184,8 +271,60 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 
 }
 
-func (am *ARModel) Json() ([]byte, error) {
-	return json.Marshal(am.arList)
+func (am *ARModel) GetHouseGoData(today, end time.Time, key string) []*HouseGo {
+
+	//index := "%" + key + "%"
+	sql := "SELECT arid, id, data FROM public.housego"
+
+	/*
+	*balance equal ar.amount - COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA
+	*but I do with r.Balance = r.Amount - r.RA
+	 */
+
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := am.imr.GetSQLDB()
+	//fmt.Println(sql)
+	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
+
+	rows, err := db.SQLCommand(sql)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	var hgList []*HouseGo
+
+	for rows.Next() {
+		var hg HouseGo
+
+		//var col_sales string
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&hg.ARid, &hg.ID, &hg.Data); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		hgList = append(hgList, &hg)
+	}
+
+	am.hgList = hgList
+	return am.hgList
+
+}
+
+func (am *ARModel) Json(mtype string) ([]byte, error) {
+	switch mtype {
+	case "ar":
+		return json.Marshal(am.arList)
+	case "saler":
+		return json.Marshal(am.salerList)
+	case "housego":
+		return json.Marshal(am.hgList)
+	default:
+		fmt.Println("unknown config type")
+		break
+	}
+	return nil, nil
 }
 
 func (am *ARModel) DeleteAccountReceivable(ID string) (err error) {
@@ -195,7 +334,7 @@ func (am *ARModel) DeleteAccountReceivable(ID string) (err error) {
 				delete from public.receipt where arid = '%s';
 				delete from public.commission where arid = '%s';
 				delete from public.deduct where arid = '%s';
-				delete from public.armap where arid = '%s';
+				delete from public.armap where arid = '%s';			
 				`
 
 	interdb := am.imr.GetSQLDB()
@@ -222,12 +361,8 @@ func (am *ARModel) DeleteAccountReceivable(ID string) (err error) {
 	return nil
 }
 
-func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
-	fmt.Println("CreateAccountReceivable")
-
-	const sql = `INSERT INTO public.ar(
-		ARid, Date, CNo, CaseName, Type, Name, Amount)
-		VALUES ($1, $2, $3, $4, $5, $6, $7);`
+func (am *ARModel) DeleteHouseGo(ID string) (err error) {
+	const sql = `DELETE FROM public.housego where id = '%s';`
 
 	interdb := am.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -235,29 +370,65 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 		return err
 	}
 	fmt.Println("sqldb Exec")
-
-	out, err := json.Marshal(receivable)
+	res, err := sqldb.Exec(fmt.Sprintf(sql, ID))
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return err
 	}
-	fmt.Println("receivable data:", string(out))
-	salers, err := json.Marshal(receivable.Sales)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("salers data:", string(salers))
 
-	t := time.Now().Unix()
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	if id <= 0 {
+		return errors.New("DeleteHouseGo not found anything")
+	}
+	return nil
+}
+
+func (am *ARModel) CreateAccountReceivable(receivable *AR, json string) (err error) {
+	fmt.Println("CreateAccountReceivable")
+	//to_timestamp
+	const sql = `INSERT INTO public.ar(
+		ARid, Date, CNo, CaseName, Type, Name, Amount)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (ARid) DO nothing
+		;`
+	// ON CONFLICT (ARid) DO UPDATE
+	// SET Date = excluded.Date,
+	// 	CNo = excluded.CNo,
+	// 	Type = excluded.Type,
+	// 	CaseName = excluded.CaseName,
+	// 	Name = excluded.Name,
+	// 	Amount = excluded.Amount
+
+	interdb := am.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	//fakeId := time.Now().Unix()
+	fakeId := strconv.FormatInt(time.Now().Unix(), 10)
+	if receivable.ARid != "" {
+		fakeId = receivable.ARid
+	}
 	//unix_time := time.Time(receivable.CompletionDate).Unix()
 
-	out, err2 := json.Marshal(receivable.Sales)
-	if err2 != nil {
-		panic(err)
-	}
-	fmt.Println(string(out))
-	fmt.Println(receivable.Fee)
+	fmt.Println("fakeId:", fakeId)
+	fmt.Println("receivable.Date:", receivable.Date)
+	fmt.Println("Unix:", receivable.Date.Unix())
 
-	res, err := sqldb.Exec(sql, t, receivable.Date, receivable.CNo, receivable.CaseName, receivable.Customer.Action, receivable.Customer.Name, receivable.Amount)
+	_UTC, err1 := time.LoadLocation("") //等同于"UTC"
+	if err1 != nil {
+		fmt.Println(err1)
+	}
+	fmt.Println(receivable.Date.In(_UTC))
+	fmt.Println(receivable.Date.In(_UTC).Unix())
+
+	res, err := sqldb.Exec(sql, fakeId, receivable.Date.In(_UTC), receivable.CNo, receivable.CaseName, receivable.Customer.Action, receivable.Customer.Name, receivable.Amount)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -272,6 +443,16 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 
 	fmt.Println(id)
 
+	// //住通重複ID的話，需要刪除本來的ID對應，重新建立。
+	// if receivable.ARid != "" {
+	// 	const mapClearSql = `DELETE FROM public.ARMAP WHERE ARid = $1`
+	// 	_, err := sqldb.Exec(mapClearSql, receivable.ARid)
+	// 	if err != nil {
+	// 		fmt.Println("DELETE ARMAP ", err)
+	// 	}
+	// }
+
+	//應收帳款成功才建立應收帳款的業務對應表
 	if id > 0 {
 		const mapSql = `INSERT INTO public.ARMAP(
 			ARid, Sid, proportion , SName )
@@ -279,7 +460,7 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 
 		for _, element := range receivable.Sales {
 			// element is the element from someSlice for where we are
-			res, err := sqldb.Exec(mapSql, t, element.Sid, element.Percent, element.SName)
+			res, err := sqldb.Exec(mapSql, fakeId, element.Sid, element.Percent, element.SName)
 			//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 			if err != nil {
 				fmt.Println("ARMAP ", err)
@@ -293,106 +474,59 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR) (err error) {
 			fmt.Println(id)
 		}
 	}
+	if id == 0 {
+		am.CreateHouseGoDuplicate(fakeId, json)
+		return errors.New("duplicate data")
+	}
+	return nil
+}
 
+func (am *ARModel) CreateHouseGoDuplicate(ID, data string) (err error) {
+
+	//不知道為什麼用$字號 放入數字會報錯。
+	const sql = `INSERT INTO public.housego
+				(arid, id, data)
+				VALUES ('%d', '%s', '%s');
+				`
+
+	interdb := am.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	fmt.Println("CreateHouseGoDuplicate Exec")
+
+	//fakeId := time.Now().Unix()
+	fakeId := time.Now().Unix()
+
+	///fmt.Println("fakeId ", fakeId)
+	//fmt.Println("ID ", ID)
+	//fmt.Println("data :", data)
+	data = strings.ReplaceAll(data, " ", "")
+	data = strings.ReplaceAll(data, "\n", "")
+	// ID 不取 "_b" && "_s"
+	sss := fmt.Sprintf(sql, fakeId, ID[0:len(ID)-2], data)
+	//fmt.Println("sss :", sss)
+	res, err := sqldb.Exec(sss)
+	if err != nil {
+		fmt.Println("[error]CreateHouseGoDuplicate:", err)
+		return err
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	if id <= 0 {
+		return errors.New("CreateHouseGoDuplicate not found anything")
+	}
 	return nil
 }
 
 func (rt *Receipt) setRid(id string) {
 	rt.Rid = id
 }
-
-// func (am *ARModel) CreateReceipt(rt *Receipt) (err error) {
-// 	fmt.Println("CreateReceipt")
-
-// 	//condition: balance <= Amount 未收金額<=繳款金額
-// 	const sql = `INSERT INTO public.receipt
-// 	(Rid, Date, CNo, CaseName, Type, Name, Amount, ARid)
-// 	select $1, $2, CNo, CaseName, Type, Name, $3, ARid
-// 	from public.AR where ARid = $4 and Balance >= $3;`
-
-// 	interdb := am.imr.GetSQLDB()
-// 	sqldb, err := interdb.ConnectSQLDB()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Println("sqldb Exec")
-
-// 	out, err := json.Marshal(rt)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Println(string(out))
-
-// 	t := time.Now().Unix()
-// 	res, err := sqldb.Exec(sql, t, rt.Date, rt.Amount, rt.ARid)
-// 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return err
-// 	}
-
-// 	id, err := res.RowsAffected()
-// 	if err != nil {
-// 		fmt.Println("PG Affecte Wrong: ", err)
-// 		return err
-// 	}
-// 	fmt.Println(id)
-
-// 	if id == 0 {
-// 		return errors.New("Invalid operation, may be the ID does not exist or amount is not vaild")
-// 	}
-// 	Rid := fmt.Sprintf("%v", t)
-// 	rt.setRid(Rid)
-// 	err = UpdateARInfo(am.imr, rt.ARid)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Println("UpdateARSales [GO]")
-// 	err = UpdateARSales(am.imr, rt.ARid, ADD)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Println("CreateCommission [GO]")
-// 	err = am.CreateCommission(rt)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-// func (am *ARModel) CreateCommission(rt *Receipt) (err error) {
-
-// 	const sql = `INSERT INTO public.commission
-// 	(Bid, Rid, Item, Amount, Fee, BName, Percent, SR, Bouns, Date)
-// 	select $1, $2, "cno"||' '||"casename"||' '||"type", Amount, Fee, $3, $4, $5 ,(Amount-Fee)*$4, $6
-// 	from public.ar where arid = $7 ;`
-
-// 	interdb := am.imr.GetSQLDB()
-// 	sqldb, err := interdb.ConnectSQLDB()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	res, err := sqldb.Exec(sql, "I-am-Bid"+rt.ARid, rt.Rid, "I-am-Bname", 87, 200, rt.Date, rt.ARid)
-// 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return err
-// 	}
-// 	id, err := res.RowsAffected()
-// 	if err != nil {
-// 		fmt.Println("PG Affecte Wrong: ", err)
-// 		return err
-// 	}
-// 	fmt.Println(id)
-
-// 	if id == 0 {
-// 		return errors.New("Invalid operation, CreateCommission")
-// 	}
-
-// 	return nil
-// }
 
 //not used now (move to public model)
 //建立 修改 刪除 收款單時，需要更改應收款項計算項目
@@ -452,3 +586,99 @@ func (am *ARModel) UpdateARInfo(arid string) (err error) {
 // func fetchSales(sale *sale) error {
 
 // }
+func (am *ARModel) UpgradeARInfo(arid string) (err error) {
+
+	select_sql := "SELECT arid, id, data FROM public.housego where arid = '" + arid + "';"
+
+	/*
+	*balance equal ar.amount - COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA
+	*but I do with r.Balance = r.Amount - r.RA
+	 */
+
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := am.imr.GetSQLDB()
+	//fmt.Println(sql)
+	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
+
+	rows, err := db.SQLCommand(select_sql)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	var hgList []*HouseGo
+
+	var data string    //原本的json字串
+	var Oldarid string //儲存於AR TABLE的arid (不含 _s or _b)
+	for rows.Next() {
+		var hg HouseGo
+
+		if err := rows.Scan(&hg.ARid, &Oldarid, &data); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		hgList = append(hgList, &hg)
+	}
+
+	iGoAR := inputhouseGoAR{}
+	err = json.Unmarshal([]byte(data), &iGoAR)
+	if err != nil {
+		return err
+	}
+	fmt.Println(iGoAR)
+	am.DeleteAccountReceivable(Oldarid + "_b")
+	am.DeleteAccountReceivable(Oldarid + "_s")
+	am.DeleteHouseGo(Oldarid)
+	ar := iGoAR.GetAR(ACTION_BUY)
+	err = am.CreateAccountReceivable(ar, data)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	ar = iGoAR.GetAR(ACTION_SELL)
+	err = am.CreateAccountReceivable(ar, data)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	return nil
+}
+
+func (iGoAR *inputhouseGoAR) GetAR(action string) *AR {
+	var customer = Customer{}
+	var amount = 0
+	var arid string
+	customer.Action = "none"
+	if action == ACTION_BUY {
+		customer.Action = ACTION_BUY
+		amount = iGoAR.Buyer.Amount
+		arid = strconv.Itoa(iGoAR.ARid) + "_b"
+	} else if action == ACTION_SELL {
+		arid = strconv.Itoa(iGoAR.ARid) + "_s"
+		customer.Action = ACTION_SELL
+		amount = iGoAR.Sell.Amount
+	}
+
+	customer.Name = iGoAR.Buyer.Name
+
+	var sales []*MAPSaler
+	for _, element := range iGoAR.Sales {
+		var data = MAPSaler{}
+		data.Percent = element.Percent
+		data.SName = element.SName
+		data.Sid = element.Sid
+		sales = append(sales, &data)
+	}
+
+	return &AR{
+		ARid:     arid,
+		Amount:   amount,
+		Date:     iGoAR.Date,
+		CNo:      iGoAR.CNo,
+		CaseName: iGoAR.CaseName,
+		Customer: customer,
+		//Fee:      iAR.Fee,
+		Sales: sales,
+	}
+}

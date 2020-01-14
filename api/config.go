@@ -3,6 +3,9 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -47,10 +50,11 @@ type inputConfigParameter struct {
 	//Date   time.Time `json:"date"`
 	Date string `json:"date"`
 	//IT     float64 `json:"IT"`
-	MMW    int     `json:"MMW"` //最低基本薪資
-	NHI    float64 `json:"NHI"`
-	LI     float64 `json:"LI"`
-	NHI2nd float64 `json:"NHI2nd"`
+	MMW         int     `json:"MMW"` //最低基本薪資
+	NHI         float64 `json:"NHI"`
+	LI          float64 `json:"LI"`
+	NHI2nd      float64 `json:"NHI2nd"`
+	AnnualRatio float64 `json:"annualRatio"`
 }
 type inputConfigBranch struct {
 	Branch        string  `json:"branch"`
@@ -73,8 +77,10 @@ func (api ConfigAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/config/item/{ItemName}", Next: api.deleteAccountItemEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/config/branch", Next: api.getConfigBranchEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/branch", Next: api.createConfigBranchEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		//&APIHandler{Path: "/v1/config/branch", Next: api.createConfigBranchEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/branch", Next: api.createConfigBranchEndpointWithStringArray, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/branch/{Branch}", Next: api.updateConfigBranchEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/branch/{Branch}", Next: api.deleteConfigBranchEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/config/parameter", Next: api.getConfigParameterEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/parameter", Next: api.createConfigParameterEndpoint, Method: "POST", Auth: false, Group: permission.All},
@@ -199,6 +205,66 @@ func (api *ConfigAPI) getConfigBranchEndpoint(w http.ResponseWriter, req *http.R
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+}
+
+func (api *ConfigAPI) createConfigBranchEndpointWithStringArray(w http.ResponseWriter, req *http.Request) {
+	//取得body
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Printf("Error reading body: %v", err)
+		http.Error(w, "can't read body", http.StatusBadRequest)
+		return
+	}
+	//將body讀成string
+	branch := fmt.Sprintf("%s", body)
+	//去除"字符 寫入 golang str array
+
+	branchList := []string{}
+	s := strings.Split(string(branch), "\"")
+	for _, each := range s {
+		if each != "," && each != "[" && each != "]" {
+			branchList = append(branchList, each)
+		}
+	}
+	fmt.Println(branchList)
+
+	configM := model.GetConfigModel(di)
+	err = configM.CreateConfigBranch(branchList)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	} else {
+		w.Write([]byte("OK"))
+	}
+}
+
+func (api *ConfigAPI) deleteConfigBranchEndpoint(w http.ResponseWriter, req *http.Request) {
+	vars := util.GetPathVars(req, []string{"Branch"})
+	Branch := vars["Branch"].(string)
+
+	iCBranch := inputConfigBranch{}
+	err := json.NewDecoder(req.Body).Decode(&iCBranch)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := iCBranch.isConfigBranchValid(isUpdate); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	configM := model.GetConfigModel(di)
+
+	_err := configM.DeleteConfigBranch(Branch)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(_err.Error() + ",maybe Saler is not exist or Branch not match"))
+	} else {
+		w.Write([]byte("OK"))
+	}
 }
 
 func (api *ConfigAPI) createConfigBranchEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -569,6 +635,10 @@ func isConfigParameterValid(iCParam inputConfigParameter) (bool, error) {
 	if iCParam.LI < 0 || iCParam.LI > 100 {
 		return false, errors.New("LI is not valid")
 	}
+
+	if iCParam.AnnualRatio < 0 || iCParam.AnnualRatio > 100 {
+		return false, errors.New("AnnualRatio is not valid")
+	}
 	// if t := time.Now().Unix(); t <= iAR.Date.Unix() {
 	// 	//未來的成交案 => 不成立
 	// 	return false, errors.New("CompletionDate is not valid")
@@ -691,10 +761,11 @@ func (iCSaler *inputConfigSaler) GetConfigSaler() *model.ConfigSaler {
 func (iCParam *inputConfigParameter) GetConfigParameter() *model.ConfigParameter {
 	the_time, _ := time.ParseInLocation("2006-01-02", iCParam.Date, time.Local)
 	return &model.ConfigParameter{
-		Date:   the_time,
-		NHI:    iCParam.NHI,
-		NHI2nd: iCParam.NHI2nd,
-		MMW:    iCParam.MMW,
-		LI:     iCParam.LI,
+		Date:        the_time,
+		NHI:         iCParam.NHI,
+		NHI2nd:      iCParam.NHI2nd,
+		MMW:         iCParam.MMW,
+		LI:          iCParam.LI,
+		AnnualRatio: iCParam.AnnualRatio,
 	}
 }

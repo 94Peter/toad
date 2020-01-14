@@ -13,10 +13,11 @@ type ConfigParameter struct {
 	ID   string    `json:"id"`
 	Date time.Time `json:"date"`
 	//IT     float64   `json:"IT"`
-	MMW    int     `json:"MMW"` //最低基本薪資
-	NHI    float64 `json:"NHI"`
-	LI     float64 `json:"LI"`
-	NHI2nd float64 `json:"NHI2nd"`
+	MMW         int     `json:"MMW"` //最低基本薪資
+	NHI         float64 `json:"NHI"`
+	LI          float64 `json:"LI"`
+	NHI2nd      float64 `json:"NHI2nd"`
+	AnnualRatio float64 `json:"annualRatio"`
 }
 
 type AccountItem struct {
@@ -293,9 +294,39 @@ func (configM *ConfigModel) UpdateConfigBranch(Branch string, cb *ConfigBranch) 
 	return nil
 }
 
+func (configM *ConfigModel) DeleteConfigBranch(Branch string) (err error) {
+
+	const sql = `DELETE FROM public.configbranch WHERE branch = $1;`
+
+	interdb := configM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, Branch)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation,DeleteConfigBranch")
+	}
+
+	return nil
+}
+
 func (configM *ConfigModel) GetConfigParameterData(today, end time.Time) []*ConfigParameter {
 
-	const qspl = `SELECT id, date, nhi, LI, nhi2nd, MMW FROM public.ConfigParameter;`
+	const qspl = `SELECT id, date, nhi, LI, nhi2nd, MMW , AnnualRatio FROM public.ConfigParameter;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
@@ -310,7 +341,7 @@ func (configM *ConfigModel) GetConfigParameterData(today, end time.Time) []*Conf
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&cp.ID, &cp.Date, &cp.NHI, &cp.LI, &cp.NHI2nd, &cp.MMW); err != nil {
+		if err := rows.Scan(&cp.ID, &cp.Date, &cp.NHI, &cp.LI, &cp.NHI2nd, &cp.MMW, &cp.AnnualRatio); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -329,8 +360,8 @@ func (configM *ConfigModel) GetConfigParameterData(today, end time.Time) []*Conf
 func (configM *ConfigModel) UpdateConfigParameter(cp *ConfigParameter, ID string) (err error) {
 
 	const sql = `UPDATE public.configparameter
-				SET date=$1, nhi=$2, LI=$3, nhi2nd=$4, MMW=$5
-				WHERE id=$6;`
+				SET date=$1, nhi=$2, LI=$3, nhi2nd=$4, MMW=$5 , annualratio=$6
+				WHERE id=$7;`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -338,7 +369,7 @@ func (configM *ConfigModel) UpdateConfigParameter(cp *ConfigParameter, ID string
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, cp.Date, cp.NHI, cp.LI, cp.NHI2nd, cp.MMW, ID)
+	res, err := sqldb.Exec(sql, cp.Date, cp.NHI, cp.LI, cp.NHI2nd, cp.MMW, cp.AnnualRatio, ID)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -392,8 +423,8 @@ func (configM *ConfigModel) DeleteConfigParameter(ID string) (err error) {
 func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err error) {
 
 	const sql = `INSERT INTO public.ConfigParameter
-	(id, date, nhi, LI, nhi2nd, MMW)
-	VALUES ($1, $2, $3, $4, $5, $6);`
+	(id, date, nhi, LI, nhi2nd, MMW , annualratio)
+	VALUES ($1, $2, $3, $4, $5, $6, $7);`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -401,7 +432,7 @@ func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err erro
 		return err
 	}
 	fakeId := time.Now().Unix()
-	res, err := sqldb.Exec(sql, fakeId, cp.Date, cp.NHI, cp.LI, cp.NHI2nd, cp.MMW)
+	res, err := sqldb.Exec(sql, fakeId, cp.Date, cp.NHI, cp.LI, cp.NHI2nd, cp.MMW, cp.AnnualRatio)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)

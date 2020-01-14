@@ -194,6 +194,32 @@ func (sdb *sqlDB) CreateHouseGoTable() error {
 	return nil
 }
 
+func (sdb *sqlDB) CreateAccountTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.account "+
+			"( "+
+			"account character varying(50) not NULL,"+
+			"passoword character varying(50) not NULL,"+
+			"name character varying(50) not NULL,"+
+			"auth character varying(50) not NULL, "+
+			"createdate timestamp(0) without time zone not NULL, "+
+			"PRIMARY KEY (account) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			" ALTER TABLE public.account "+
+			"OWNER to %s; ", sdb.user))
+	//"alter table public.ar alter column ra set default 0;"+
+	//"alter table public.ar alter column balance set default 0;"+
+
+	if err != nil {
+		fmt.Println("CreateTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreatehousegoTable Done")
+	return nil
+}
+
 func (sdb *sqlDB) CreateARTable() error {
 
 	// CREATE SEQUENCE public."generateID"
@@ -597,6 +623,7 @@ func (sdb *sqlDB) CreateConfigParameterTable() error {
 			"LI double precision DEFAULT 0, "+
 			"NHI2nd double precision DEFAULT 0, "+
 			"MMW  integer  DEFAULT 0, "+
+			"AnnualRatio double precision DEFAULT 0,"+
 			//"IT double precision DEFAULT 0, "+
 			"PRIMARY KEY (id) "+
 			") "+
@@ -756,6 +783,7 @@ func (sdb *sqlDB) InitTable() error {
 		"nhisalary":       false,
 		"incomeexpense":   false,
 		"housego":         false,
+		"account":         false,
 	}
 
 	for rows.Next() {
@@ -825,6 +853,10 @@ func (sdb *sqlDB) InitTable() error {
 		case "housego":
 			mT["housego"] = true
 			break
+		case "account":
+			mT["account"] = true
+			break
+
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
 		}
@@ -894,6 +926,9 @@ func (sdb *sqlDB) InitTable() error {
 				break
 			case "housego":
 				err = sdb.CreateHouseGoTable()
+				break
+			case "account":
+				err = sdb.CreateAccountTable()
 				break
 
 			default:

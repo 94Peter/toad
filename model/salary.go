@@ -693,7 +693,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	COALESCE(commissionTable.SR,0) SR, COALESCE(commissionTable.SR / 1.05 ,0) salesamounts , COALESCE(commissionTable.SR - commissionTable.SR / 1.05 ,0) businesstax, configTable.agentsign, configTable.rent, configTable.commercialfee, 
 	( COALESCE(commissionTable.SR,0)/1.05  - COALESCE(amorTable.thisMonthAmor,0) - configTable.agentsign - configTable.rent - COALESCE(pocketTable.pocket,0) - COALESCE(prepayTable.prepay,0) - BonusTable.PBonus - 
 	BonusTable.Salary - BonusTable.LBonus - COALESCE(commissionTable.SR,0) * 0.05 - configTable.commercialfee - 0  ) PreTax ,
-	COALESCE(commissionTable.SR * 0.05 ,0) Annualbonus
+	COALESCE(commissionTable.SR * cp.annualratio ,0) Annualbonus
 	FROM public.branchsalary  BS
 	inner join (
 	  SELECT sum(BonusTable.pbonus) PBonus , sum(BonusTable.lbonus) LBonus, sum(BonusTable.Salary) Salary, bsid  FROM public.SalerSalary BonusTable group by bsid
@@ -729,6 +729,12 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 		Select sum(pretax) OVER (partition by branch Order by Date asc) pretaxTotal , branch , Date qq , IE.bsid FROM public.incomeexpense IE
 		inner join public.BranchSalary BS on  IE.bsid = BS.bsid
 	) incomeexpense on incomeexpense.bsid = BS.bsid 
+	cross join(
+		select  c.annualratio from public.ConfigParameter C
+		inner join(
+			select  max(date) date from public.ConfigParameter 
+		) A on A.date = C.date limit 1
+	) cp
 	where date = $1
 	) subtable
 	ON CONFLICT (bsid) DO Nothing;

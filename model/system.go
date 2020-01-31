@@ -12,12 +12,14 @@ import (
 )
 
 type SystemAccount struct {
-	Account string `json:"id"`
+	Account string `json:"account"`
 	Name    string `json:"name"`
 	//Branch  string `json:"branch"`
-	Email    string `json:"email"`
-	Auth     string `json:"auth"`
-	Password string `json:"passoword"`
+	Email      string `json:"email"`
+	Auth       string `json:"auth"`
+	Password   string `json:"-"`
+	Phone      string `json:"-"` //保留欄位 目前沒用到
+	CreateDate string `json:"createDate"`
 }
 
 type SystemBranch struct {
@@ -50,7 +52,39 @@ func GetSystemModel(imr interModelRes) *SystemModel {
 	return systemM
 }
 
-func (systemM *SystemModel) GetAccountData(branch string) ([]byte, error) {
+func (systemM *SystemModel) GetAccountData() error {
+	const qspl = `SELECT account, name, auth, createdate, email, phone FROM public.account;`
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := systemM.imr.GetSQLDB()
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
+	if err != nil {
+		return nil
+	}
+	var saDataList []*SystemAccount
+
+	for rows.Next() {
+		var sa SystemAccount
+
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&sa.Account, &sa.Name, &sa.Auth, &sa.CreateDate, &sa.Email, &sa.Phone); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		saDataList = append(saDataList, &sa)
+	}
+
+	// out, err := json.Marshal(arList)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
+	systemM.systemAccountList = saDataList
+	return nil
+}
+
+func (systemM *SystemModel) GetAccountDataFromPICA(branch string) ([]byte, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", picaURL+"v1/toad/user", nil)
@@ -203,7 +237,7 @@ func (systemM *SystemModel) Json(mtype string) ([]byte, error) {
 
 func (systemM *SystemModel) CreateSystemAccount(systemAccount *SystemAccount) (err error) {
 
-	const sql = `INSERT INTO public.account(account, passoword, name, auth, createdate)	VALUES ($1, $2, $3, $4, $5) ON CONFLICT (account) DO nothing;`
+	const sql = `INSERT INTO public.account(account, passoword, name, auth, createdate, email, phone)	VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (account) DO nothing;`
 	//and ( select sum(amount)+$3 FROM public.receipt  where arid = $4 group by arid ) <=  (SELECT amount from public.ar ar WHERE arid = $4);`
 
 	interdb := systemM.imr.GetSQLDB()
@@ -212,7 +246,7 @@ func (systemM *SystemModel) CreateSystemAccount(systemAccount *SystemAccount) (e
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, systemAccount.Account, systemAccount.Password, systemAccount.Name, systemAccount.Auth, time.Now())
+	res, err := sqldb.Exec(sql, systemAccount.Account, encryptPassword(systemAccount.Password), systemAccount.Name, systemAccount.Auth, time.Now(), systemAccount.Email, systemAccount.Phone)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -227,6 +261,105 @@ func (systemM *SystemModel) CreateSystemAccount(systemAccount *SystemAccount) (e
 
 	if id == 0 {
 		return errors.New("Invalid operation, CreateSystemAccount")
+	}
+
+	return nil
+}
+
+func (systemM *SystemModel) UpdateSystemAccount(systemAccount *SystemAccount) (err error) {
+
+	const sql = `UPDATE public.account 
+	SET name=$3 ,auth=$4 , email = $5 , phone = $6
+	Where account = $1 and passoword=$2;`
+
+	interdb := systemM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, systemAccount.Account, encryptPassword(systemAccount.Password), systemAccount.Name, systemAccount.Auth, systemAccount.Email, systemAccount.Phone)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation, UpdateSystemAccount")
+	}
+
+	return nil
+}
+
+func encryptPassword(pwd string) string {
+	return pwd
+	//return util.MD5(pwd)
+}
+
+func (systemM *SystemModel) UpdateSystemAccountPassword(newpassword string, systemAccount *SystemAccount) (err error) {
+
+	const sql = `UPDATE public.account 
+	SET passoword=$3
+	Where account = $1 and passoword=$2;`
+
+	interdb := systemM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, systemAccount.Account, encryptPassword(systemAccount.Password), encryptPassword(newpassword))
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation, UpdateSystemAccount")
+	}
+
+	return nil
+}
+
+func (systemM *SystemModel) DeleteSystemAccount(account string) (err error) {
+
+	const sql = `DELETE FROM public.account WHERE account = $1;`
+
+	interdb := systemM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, account)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation, DeleteSystemAccount")
 	}
 
 	return nil

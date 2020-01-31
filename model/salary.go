@@ -75,11 +75,13 @@ type NHISalary struct {
 type IncomeExpense struct {
 	BSid string `json:"bsid"`
 
-	Income struct {
-		SR           int `json:"sr"`
-		Salesamounts int `json:"salesamounts"`
-		Businesstax  int `json:"businesstax"`
-	} `json:"income"`
+	// Income struct {
+	// 	SR           int `json:"sr"`
+	// 	Salesamounts int `json:"salesamounts"`
+	// 	Businesstax  int `json:"businesstax"`
+	// } `json:"income"`
+
+	Income Income `json:"income"`
 
 	Expense Expense `json:"expense"`
 
@@ -91,18 +93,25 @@ type IncomeExpense struct {
 	EarnAdjust        int `json:"earnAdjust"`
 }
 
+type Income struct {
+	SR           int `json:"sr"`
+	Salesamounts int `json:"salesamounts"`
+	Businesstax  int `json:"businesstax"`
+}
+
 type Expense struct {
-	Pbonus        int `json:"pbonus"`
-	LBonus        int `json:"lBonus"`
-	Salary        int `json:"salary"`
-	Prepay        int `json:"prepay"`
-	Pocket        int `json:"pocket"`
-	Amorcost      int `json:"amorcost"`
-	Agentsign     int `json:"agentsign"`
-	Rent          int `json:"rent"`
-	Commercialfee int `json:"commercialFee"`
-	Annualbonus   int `json:"annualBonus"`
-	SalerFee      int `json:"salerFee"`
+	Pbonus        int     `json:"pbonus"`
+	LBonus        int     `json:"lBonus"`
+	Salary        int     `json:"salary"`
+	Prepay        int     `json:"prepay"`
+	Pocket        int     `json:"pocket"`
+	Amorcost      int     `json:"amorcost"`
+	Agentsign     int     `json:"agentsign"`
+	Rent          int     `json:"rent"`
+	Commercialfee int     `json:"commercialFee"`
+	Annualbonus   int     `json:"annualBonus"`
+	AnnualRatio   float64 `json:"annualRatio"`
+	SalerFee      int     `json:"salerFee"`
 }
 
 type Cid struct {
@@ -236,7 +245,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 		date, _ := util.ADtoROC(salaryM.salerSalaryList[0].Date, "file")
 		p.WriteFile(salaryM.salerSalaryList[0].Branch + "薪資表" + date)
 		break
-	case pdf.AgentSign:
+	case pdf.AgentSign: //5
 		//var total_SR, total_Bonus = 0.0, 0.0
 		// for _, saler := range salaryM.SystemAccountList {
 		// 	table.RawData = table.RawData[:table.ColumnLen]
@@ -264,18 +273,25 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 		//total_Bonus += Bonus
 		p.CustomizedAgentSign(table, T_SR, T_Bonus)
 		break
-	case pdf.SalarCommission:
-		for _, saler := range salaryM.SystemAccountList {
-			fmt.Println("saler:", saler.Name)
+	case pdf.SalarCommission: //8
+		mailList, err := salaryM.getSalerEmail()
+		if err != nil {
+			//getSalerEmail 失敗
+			fmt.Println(err)
+			return
+		}
+		for _, saler := range mailList {
+			fmt.Println("saler:", saler.SName)
 			table = pdf.GetDataTable(mtype)
-			data, T_SR, T_Bonus := salaryM.addSalerCommissionInfoTable(table, p, salaryM.CommissionList, saler.Account)
+			data, T_SR, T_Bonus := salaryM.addSalerCommissionInfoTable(table, p, salaryM.CommissionList, saler.Sid)
 			p.DrawTablePDF(data)
-			p.CustomizedSalerCommission(data, saler.Name, int(T_Bonus), int(T_SR))
+			p.CustomizedSalerCommission(data, saler.SName, int(T_Bonus), int(T_SR))
 		}
 		break
 	case pdf.SalerSalary: //7
 		if len(salaryM.salerSalaryList) > 0 {
-			systemM.GetAccountData(salaryM.salerSalaryList[0].Branch)
+			//systemM.GetAccountData()
+			mailList, err := salaryM.getSalerEmail()
 
 			for index, element := range salaryM.salerSalaryList {
 				p := pdf.GetNewPDF()
@@ -294,9 +310,16 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 				p.WriteFile(fname)
 				//p = nil
 				if send == "true" {
-					for _, myAccount := range systemM.systemAccountList {
-						if myAccount.Account == element.Sid {
+					if err != nil {
+						//getSalerEmail 失敗
+						fmt.Println(err)
+						return
+					}
+
+					for _, myAccount := range mailList {
+						if myAccount.Sid == element.Sid {
 							fmt.Println(myAccount, element)
+							fmt.Println(fname)
 							util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, "geassyayaoo3@gmail.com", pdf.ReportToString(mtype), "開啟若有密碼，則為123456", fname+".pdf")
 						}
 					}
@@ -677,7 +700,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 
 	//(subtable.pretaxTotal + subtable.PreTax )  lastloss ,   應該不包含這期虧損
 	const sql = `INSERT INTO public.incomeexpense
-	(bsid, Pbonus ,LBonus, salary, prepay, pocket, amorcost, sr, annualbonus, salesamounts,  businesstax, agentsign, rent, commercialfee, pretax, businessincometax, aftertax,  lastloss, managerbonus )	
+	(bsid, Pbonus ,LBonus, salary, prepay, pocket, amorcost, sr, annualbonus, salesamounts,  businesstax, agentsign, rent, commercialfee, pretax, businessincometax, aftertax,  lastloss, managerbonus, annualratio )	
 	WITH  vals  AS (VALUES ( 'none' ) )
 	SELECT subtable.bsid , subtable.Pbonus, subtable.LBonus , subtable.salary, subtable.prepay, subtable.pocket , subtable.thisMonthAmor , subtable.sr, subtable.annualbonus, subtable.salesamounts , subtable.businesstax , subtable.agentsign , subtable.rent,
 	subtable.commercialfee, subtable.PreTax , ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) BusinessIncomeTax, 
@@ -686,14 +709,14 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	( CASE WHEN (subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal + subtable.PreTax ) + 0 > 0 then 
 	            (subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal + subtable.PreTax ) + 0
 	  else 0 end
-	) managerbonus
+	) managerbonus  , subtable.annualratio
 	FROM vals as v
 	cross join (
 	SELECT incomeexpense.branch , COALESCE(incomeexpense.pretaxTotal ,0) pretaxTotal , BS.Bsid,BonusTable.PBonus , BonusTable.LBonus , BonusTable.Salary , COALESCE(prepayTable.prepay,0) prepay , COALESCE(pocketTable.pocket,0) pocket , COALESCE(amorTable.thisMonthAmor,0) thisMonthAmor,
 	COALESCE(commissionTable.SR,0) SR, COALESCE(commissionTable.SR / 1.05 ,0) salesamounts , COALESCE(commissionTable.SR - commissionTable.SR / 1.05 ,0) businesstax, configTable.agentsign, configTable.rent, configTable.commercialfee, 
 	( COALESCE(commissionTable.SR,0)/1.05  - COALESCE(amorTable.thisMonthAmor,0) - configTable.agentsign - configTable.rent - COALESCE(pocketTable.pocket,0) - COALESCE(prepayTable.prepay,0) - BonusTable.PBonus - 
 	BonusTable.Salary - BonusTable.LBonus - COALESCE(commissionTable.SR,0) * 0.05 - configTable.commercialfee - 0  ) PreTax ,
-	COALESCE(commissionTable.SR * cp.annualratio ,0) Annualbonus
+	COALESCE(commissionTable.SR * configTable.annualratio ,0) Annualbonus , configTable.annualratio
 	FROM public.branchsalary  BS
 	inner join (
 	  SELECT sum(BonusTable.pbonus) PBonus , sum(BonusTable.lbonus) LBonus, sum(BonusTable.Salary) Salary, bsid  FROM public.SalerSalary BonusTable group by bsid
@@ -723,18 +746,12 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 		group by bsid
 	) commissionTable on commissionTable.bsid = BS.bsid 
 	inner join(
-		Select branch, rent, agentsign, commercialfee FROM public.configbranch	
+		Select branch, rent, agentsign, commercialfee , annualratio FROM public.configbranch	
 	) configTable on configTable.branch = BS.branch 
 	left join(
 		Select sum(pretax) OVER (partition by branch Order by Date asc) pretaxTotal , branch , Date qq , IE.bsid FROM public.incomeexpense IE
 		inner join public.BranchSalary BS on  IE.bsid = BS.bsid
-	) incomeexpense on incomeexpense.bsid = BS.bsid 
-	cross join(
-		select  c.annualratio from public.ConfigParameter C
-		inner join(
-			select  max(date) date from public.ConfigParameter 
-		) A on A.date = C.date limit 1
-	) cp
+	) incomeexpense on incomeexpense.bsid = BS.bsid 	
 	where date = $1
 	) subtable
 	ON CONFLICT (bsid) DO Nothing;
@@ -913,7 +930,7 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 
 func (salaryM *SalaryModel) GetIncomeExpenseData(bsID string) []*IncomeExpense {
 
-	const spl = `SELECT bsid, sr, businesstax, salesamounts, pbonus, lbonus, amorcost, agentsign, rent, commercialfee, salary, prepay, pocket, annualbonus, salerfee, pretax, aftertax, earnadjust, lastloss, businessincometax, managerbonus
+	const spl = `SELECT bsid, sr, businesstax, salesamounts, pbonus, lbonus, amorcost, agentsign, rent, commercialfee, salary, prepay, pocket, annualbonus, salerfee, pretax, aftertax, earnadjust, lastloss, businessincometax, managerbonus, annualratio
 	FROM public.incomeexpense where bsid = '%s';`
 	db := salaryM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(spl, bsID))
@@ -927,7 +944,7 @@ func (salaryM *SalaryModel) GetIncomeExpenseData(bsID string) []*IncomeExpense {
 
 		if err := rows.Scan(&ie.BSid, &ie.Income.SR, &ie.Income.Businesstax, &ie.Income.Salesamounts, &ie.Expense.Pbonus, &ie.Expense.LBonus, &ie.Expense.Amorcost, &ie.Expense.Agentsign,
 			&ie.Expense.Rent, &ie.Expense.Commercialfee, &ie.Expense.Salary, &ie.Expense.Prepay, &ie.Expense.Pocket, &ie.Expense.Annualbonus, &ie.Expense.SalerFee, &ie.Pretax,
-			&ie.Aftertax, &ie.EarnAdjust, &ie.Lastloss, &ie.BusinessIncomeTax, &ie.ManagerBonus); err != nil {
+			&ie.Aftertax, &ie.EarnAdjust, &ie.Lastloss, &ie.BusinessIncomeTax, &ie.ManagerBonus, &ie.Expense.AnnualRatio); err != nil {
 			fmt.Println("err Scan " + err.Error())
 			return nil
 		}
@@ -1138,13 +1155,13 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid string) 
 func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid string) (err error) {
 
 	const sql = `UPDATE public.incomeExpense
-	SET salerfee = $2 , earnadjust = $3::integer , pretax = pretax + salerFee - $2 ,
-	businessincometax = (CASE WHEN (pretax + salerFee - $2) * 0.2 > 0 then (pretax + salerFee - $2) * 0.2 else 0 end ),
-	aftertax = (pretax + salerFee - $2) - (CASE WHEN (pretax + salerFee - $2) * 0.2 > 0 then (pretax + salerFee - $2) * 0.2 else 0 end ) , 
+	SET salerfee = $2 , earnadjust = $3::integer , pretax = (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) , annualratio = $4 , annualBonus = sr * $4 / 100 ,
+	businessincometax = (CASE WHEN (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) * 0.2 > 0 then (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) * 0.2 else 0 end ),
+	aftertax = (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) - (CASE WHEN (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) * 0.2 > 0 then (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) * 0.2 else 0 end ) , 
 	managerbonus = (CASE WHEN (
-		((pretax + salerFee - $2) - (CASE WHEN (pretax + salerFee - $2) * 0.2 > 0 then (pretax + salerFee - $2) * 0.2 else 0 end ) + lastLoss + $3 ) > 0
+		((pretax + salerFee - $2 + annualBonus - sr * $4 / 100) - (CASE WHEN (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) * 0.2 > 0 then (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) * 0.2 else 0 end ) + lastLoss + $3 ) > 0
 	) then (
-		((pretax + salerFee - $2) - (CASE WHEN (pretax + salerFee - $2) * 0.2 > 0 then (pretax + salerFee - $2) * 0.2 else 0 end ) + lastLoss + $3 ) * 0.2
+		((pretax + salerFee - $2 + annualBonus - sr * $4 / 100 - $2) - (CASE WHEN (pretax + salerFee - $2 + annualBonus - sr * $4 / 100 - $2) * 0.2 > 0 then (pretax + salerFee - $2 + annualBonus - sr * $4 / 100 - $2) * 0.2 else 0 end ) + lastLoss + $3 ) * 0.2
 	)
 	ELSE 0 END)
 	WHERE bsid = $1;`
@@ -1156,7 +1173,7 @@ func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid stri
 	}
 	fmt.Println(ie.EarnAdjust)
 	fmt.Println(ie.Expense.SalerFee)
-	res, err := sqldb.Exec(sql, bsid, ie.Expense.SalerFee, ie.EarnAdjust)
+	res, err := sqldb.Exec(sql, bsid, ie.Expense.SalerFee, ie.EarnAdjust, ie.Expense.AnnualRatio)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Update err] ", err)
@@ -1683,8 +1700,8 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 		cDataList = append(cDataList, &c)
 	}
 	if len(cDataList) > 0 {
-		systemM.GetAccountData(cDataList[0].Branch)
-		salerList = systemM.systemAccountList
+		//systemM.GetAccountData()
+		//salerList = systemM.systemAccountList
 		date, _ = util.ADtoROC(date, "file")
 		salaryM.FnamePdf = cDataList[0].Branch + "實績分配表" + date
 
@@ -1696,7 +1713,7 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 	fmt.Println("salerList :", string(out))
 	out, _ = json.Marshal(cDataList)
 	fmt.Println("cDataList :", string(out))
-	salaryM.SystemAccountList = salerList
+	//salaryM.SystemAccountList = salerList
 	salaryM.CommissionList = cDataList
 	return
 
@@ -1777,17 +1794,17 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 		cDataList = append(cDataList, &c)
 	}
 	if len(cDataList) > 0 {
-		systemM.GetAccountData(cDataList[0].Branch)
-		salerList = systemM.systemAccountList
+		//systemM.GetAccountData()
+		//salerList = systemM.systemAccountList
 	} else {
-		salerList = nil
+		//salerList = nil
 	}
 
 	out, _ := json.Marshal(salerList)
 	fmt.Println("salerList :", string(out))
 	out, _ = json.Marshal(cDataList)
 	fmt.Println("cDataList :", string(out))
-	salaryM.SystemAccountList = salerList
+	//salaryM.SystemAccountList = salerList
 	salaryM.CommissionList = cDataList
 	return
 }
@@ -1844,18 +1861,14 @@ func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 		c.DedectItem = DedectItem.Value
 		salaryM.CommissionList = append(salaryM.CommissionList, &c)
 	}
+	//這邊在做啥小?
 	if len(salaryM.CommissionList) > 0 {
-		systemM.GetAccountData(salaryM.CommissionList[0].Branch)
+		systemM.GetAccountData()
 		salerList := systemM.systemAccountList
 		for _, element := range salerList {
 			salaryM.SystemAccountList = append(salaryM.SystemAccountList, element)
 		}
 	}
-
-	// out, _ := json.Marshal(salerList)
-	// fmt.Println("salerList :", string(out))
-	// out, _ = json.Marshal(cDataList)
-	// fmt.Println("cDataList :", string(out))
 
 	return
 }
@@ -2639,4 +2652,52 @@ func (salaryM *SalaryModel) addIncomeTaxReturnInfoTable(mtype int) (DataList []*
 	DataList = append(DataList, table)
 
 	return
+}
+
+func (salaryM *SalaryModel) getSalerEmail(things ...string) ([]*ConfigSaler, error) {
+
+	branch := "%"
+	for _, it := range things {
+		branch = it
+	}
+
+	const qspl = `SELECT A.sid, A.sname, A.branch, A.Email
+					FROM public.ConfigSaler A 
+					Inner Join ( 
+						select sid, max(zerodate) zerodate from public.configsaler cs 
+						where now() > zerodate
+						group by sid 
+					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+					where A.branch like '%s';`
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := salaryM.imr.GetSQLDB()
+	//fmt.Println(fmt.Sprintf(qspl, branch))
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch))
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	var saList []*ConfigSaler
+
+	for rows.Next() {
+		var saler ConfigSaler
+
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&saler.Sid, &saler.SName, &saler.Branch, &saler.Email); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		saList = append(saList, &saler)
+	}
+
+	out, err := json.Marshal(saList)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(out))
+
+	return saList, nil
+
 }

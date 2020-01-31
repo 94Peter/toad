@@ -203,6 +203,8 @@ func (sdb *sqlDB) CreateAccountTable() error {
 			"passoword character varying(50) not NULL,"+
 			"name character varying(50) not NULL,"+
 			"auth character varying(50) not NULL, "+
+			"email character varying(50) not NULL, "+ // 信箱
+			"phone character varying(50) DEFAULT '', "+ // 信箱
 			"createdate timestamp(0) without time zone not NULL, "+
 			"PRIMARY KEY (account) "+
 			") "+
@@ -596,6 +598,7 @@ func (sdb *sqlDB) CreateConfigBranchTable() error {
 			"Rent integer DEFAULT 0, "+
 			"AgentSign integer DEFAULT 0, "+
 			"CommercialFee double precision DEFAULT 0,"+
+			"AnnualRatio double precision DEFAULT 0,"+
 			"Manager character varying(50) ,"+
 			"Sid character varying(50) ,"+
 			"PRIMARY KEY (Branch) "+
@@ -623,7 +626,7 @@ func (sdb *sqlDB) CreateConfigParameterTable() error {
 			"LI double precision DEFAULT 0, "+
 			"NHI2nd double precision DEFAULT 0, "+
 			"MMW  integer  DEFAULT 0, "+
-			"AnnualRatio double precision DEFAULT 0,"+
+			//"AnnualRatio double precision DEFAULT 0,"+
 			//"IT double precision DEFAULT 0, "+
 			"PRIMARY KEY (id) "+
 			") "+
@@ -662,7 +665,8 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 			"Birth character varying(50) DEFAULT '', "+ // 出生年月日
 			"IdentityNum character varying(50) DEFAULT '', "+ // 身份證字號
 			"Bankaccount character varying(50) DEFAULT '', "+ // 銀行帳戶
-			//"Email character varying(50) DEFAULT '', "+ // 信箱
+			"Email character varying(50) DEFAULT '', "+ // 信箱
+			"Phone character varying(50) DEFAULT '', "+ // 電話
 			"PRIMARY KEY (csid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
@@ -738,6 +742,7 @@ func (sdb *sqlDB) CreateIncomeExpenseTable() error {
 			"LastLoss  integer  DEFAULT 0,"+
 			"BusinessIncomeTax  integer  DEFAULT 0,"+
 			"ManagerBonus  integer  DEFAULT 0,"+
+			"AnnualRatio double precision DEFAULT 0,"+
 			"PRIMARY KEY (BSid)"+
 			") "+
 			"WITH ( OIDS = FALSE);"+

@@ -46,8 +46,9 @@ type inputSalerSalary struct {
 }
 
 type inputIncomeExpense struct {
-	SalerFee   int `json:"salerFee"`
-	EarnAdjust int `json:"earnAdjust"`
+	SalerFee    int     `json:"salerFee"`
+	EarnAdjust  int     `json:"earnAdjust"`
+	AnnualRatio float64 `json:"annualRatio"`
 }
 
 type salarylock struct {
@@ -463,6 +464,9 @@ func (iIE *inputIncomeExpense) inpuIncomeExpenseValid() (bool, error) {
 	if iIE.SalerFee < 0 {
 		return false, errors.New("salerFee is not valid")
 	}
+	if iIE.AnnualRatio < 0 || iIE.AnnualRatio > 100 {
+		return false, errors.New("annualRatio is not valid")
+	}
 
 	return true, nil
 }
@@ -494,8 +498,10 @@ func (iIE *inputIncomeExpense) GetIncomeExpense() *model.IncomeExpense {
 
 	return &model.IncomeExpense{
 		EarnAdjust: iIE.EarnAdjust,
+
 		Expense: model.Expense{
-			SalerFee: iIE.SalerFee,
+			SalerFee:    iIE.SalerFee,
+			AnnualRatio: iIE.AnnualRatio,
 		},
 	}
 }

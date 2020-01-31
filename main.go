@@ -138,6 +138,7 @@ func main() {
 		mapi.ConfigAPI(true),
 		mapi.SalaryAPI(true),
 		mapi.SystemAPI(true),
+		mapi.IndexAPI(true),
 	)
 	initBranch(myDI)
 	log.Printf("Listening on port %s", port)

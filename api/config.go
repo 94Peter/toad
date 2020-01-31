@@ -44,17 +44,19 @@ type inputConfigSaler struct {
 	Birth       string `json:"birth"`
 	IdentityNum string `json:"identityNum"`
 	BankAccount string `json:"bankAccount"`
+	Email       string `json:"email"`
+	Phone       string `json:"phone"`
 }
 
 type inputConfigParameter struct {
 	//Date   time.Time `json:"date"`
 	Date string `json:"date"`
 	//IT     float64 `json:"IT"`
-	MMW         int     `json:"MMW"` //最低基本薪資
-	NHI         float64 `json:"NHI"`
-	LI          float64 `json:"LI"`
-	NHI2nd      float64 `json:"NHI2nd"`
-	AnnualRatio float64 `json:"annualRatio"`
+	MMW    int     `json:"MMW"` //最低基本薪資
+	NHI    float64 `json:"NHI"`
+	LI     float64 `json:"LI"`
+	NHI2nd float64 `json:"NHI2nd"`
+	//AnnualRatio float64 `json:"annualRatio"`
 }
 type inputConfigBranch struct {
 	Branch        string  `json:"branch"`
@@ -62,6 +64,7 @@ type inputConfigBranch struct {
 	AgentSign     int     `json:"agentSign"`
 	CommercialFee float64 `json:"commercialFee"`
 	Manager       string  `json:"manager"`
+	AnnualRatio   float64 `json:"annualRatio"`
 	Sid           string  `json:"sid"`
 }
 
@@ -86,6 +89,8 @@ func (api ConfigAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/config/parameter", Next: api.createConfigParameterEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/parameter/{id}", Next: api.updateConfigParameterEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/parameter/{id}", Next: api.deleteConfigParameterEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+
+		&APIHandler{Path: "/v1/config/saler/check", Next: api.checkConfigSalerEndpoint, Method: "POST", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/config/saler", Next: api.getConfigSalerEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/saler", Next: api.createConfigSalerEndpoint, Method: "POST", Auth: false, Group: permission.All},
@@ -217,11 +222,18 @@ func (api *ConfigAPI) createConfigBranchEndpointWithStringArray(w http.ResponseW
 	}
 	//將body讀成string
 	branch := fmt.Sprintf("%s", body)
-	//去除"字符 寫入 golang str array
+
+	err2 := strings.ContainsAny(branch, "{:}") || (len(branch) <= 4) || !strings.ContainsAny(branch, "[\"]")
+	if err2 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid string array format"))
+		return
+	}
 
 	branchList := []string{}
 	s := strings.Split(string(branch), "\"")
 	for _, each := range s {
+		//去除"字符 寫入 golang str array
 		if each != "," && each != "[" && each != "]" {
 			branchList = append(branchList, each)
 		}
@@ -456,6 +468,35 @@ func (api *ConfigAPI) getConfigSalerEndpoint(w http.ResponseWriter, req *http.Re
 	w.Write(data)
 }
 
+func (api *ConfigAPI) checkConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+
+	iCSaler := inputConfigSaler{}
+	err := json.NewDecoder(req.Body).Decode(&iCSaler)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := iCSaler.checkConfigSalerVaild(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	configM := model.GetConfigModel(di)
+
+	r, _err := configM.CheckConfigSaler(iCSaler.IdentityNum, iCSaler.ZeroDate)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(_err.Error()))
+	} else {
+		w.Write([]byte(r))
+	}
+
+}
+
 func (api *ConfigAPI) createConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
 
@@ -586,7 +627,9 @@ func (iCBranch *inputConfigBranch) isConfigBranchValid(command int) (bool, error
 	if iCBranch.CommercialFee < 0 || iCBranch.CommercialFee > 100 {
 		return false, errors.New("commercialFee is not valid")
 	}
-
+	if iCBranch.AnnualRatio < 0 || iCBranch.AnnualRatio > 100 {
+		return false, errors.New("AnnualRatio is not valid")
+	}
 	return true, nil
 }
 
@@ -598,6 +641,7 @@ func (iCBranch *inputConfigBranch) GetConfigBranch(command int) *model.ConfigBra
 			AgentSign:     iCBranch.AgentSign,
 			CommercialFee: iCBranch.CommercialFee,
 			Manager:       iCBranch.Manager,
+			AnnualRatio:   iCBranch.AnnualRatio,
 			Sid:           iCBranch.Sid,
 		}
 	}
@@ -607,6 +651,7 @@ func (iCBranch *inputConfigBranch) GetConfigBranch(command int) *model.ConfigBra
 			AgentSign:     iCBranch.AgentSign,
 			CommercialFee: iCBranch.CommercialFee,
 			Manager:       iCBranch.Manager,
+			AnnualRatio:   iCBranch.AnnualRatio,
 			Sid:           iCBranch.Sid,
 		}
 	}
@@ -636,9 +681,9 @@ func isConfigParameterValid(iCParam inputConfigParameter) (bool, error) {
 		return false, errors.New("LI is not valid")
 	}
 
-	if iCParam.AnnualRatio < 0 || iCParam.AnnualRatio > 100 {
-		return false, errors.New("AnnualRatio is not valid")
-	}
+	// if iCParam.AnnualRatio < 0 || iCParam.AnnualRatio > 100 {
+	// 	return false, errors.New("AnnualRatio is not valid")
+	// }
 	// if t := time.Now().Unix(); t <= iAR.Date.Unix() {
 	// 	//未來的成交案 => 不成立
 	// 	return false, errors.New("CompletionDate is not valid")
@@ -680,14 +725,28 @@ func isConfigParameterValid(iCParam inputConfigParameter) (bool, error) {
 	return true, nil
 }
 
+func (iCSaler *inputConfigSaler) checkConfigSalerVaild() (bool, error) {
+
+	_, err := time.ParseInLocation("2006-01-02", iCSaler.ZeroDate, time.Local)
+	if err != nil {
+		return false, errors.New("zeroDate is not valid, " + err.Error())
+	}
+
+	if iCSaler.IdentityNum == "" {
+		return false, errors.New("IdentityNum is empty")
+	}
+
+	return true, nil
+}
+
 func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 	// if !util.IsStrInList(iAR.Permission, permission.All...) {
 	// 	return false, errors.New("permission error")
 	// }
 	if command == isCreate {
-		if iCSaler.Sid == "" {
-			return false, errors.New("id is empty")
-		}
+		// if iCSaler.Sid == "" {
+		// 	return false, errors.New("id is empty")
+		// }
 		if iCSaler.SName == "" {
 			return false, errors.New("name is empty")
 		}
@@ -726,7 +785,10 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 	if !(iCSaler.Association == 0 || iCSaler.Association == 1) {
 		return false, errors.New("association is not valid")
 	}
-
+	if iCSaler.IdentityNum == "" {
+		return false, errors.New("identityNum is empty")
+	}
+	iCSaler.Sid = iCSaler.IdentityNum
 	// if iCSaler.Branch == "" {
 	// 	return false, errors.New("branch is empty")
 	// }
@@ -755,17 +817,19 @@ func (iCSaler *inputConfigSaler) GetConfigSaler() *model.ConfigSaler {
 		Birth:          iCSaler.Birth,
 		IdentityNum:    iCSaler.IdentityNum,
 		BankAccount:    iCSaler.BankAccount,
+		Email:          iCSaler.Email,
+		Phone:          iCSaler.Phone,
 	}
 }
 
 func (iCParam *inputConfigParameter) GetConfigParameter() *model.ConfigParameter {
 	the_time, _ := time.ParseInLocation("2006-01-02", iCParam.Date, time.Local)
 	return &model.ConfigParameter{
-		Date:        the_time,
-		NHI:         iCParam.NHI,
-		NHI2nd:      iCParam.NHI2nd,
-		MMW:         iCParam.MMW,
-		LI:          iCParam.LI,
-		AnnualRatio: iCParam.AnnualRatio,
+		Date:   the_time,
+		NHI:    iCParam.NHI,
+		NHI2nd: iCParam.NHI2nd,
+		MMW:    iCParam.MMW,
+		LI:     iCParam.LI,
+		//AnnualRatio: iCParam.AnnualRatio,
 	}
 }

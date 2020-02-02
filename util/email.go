@@ -118,7 +118,7 @@ func (mail SendMail) Send(message Message) error {
 		attachment := "\r\n--" + boundary + "\r\n"
 		attachment += "Content-Transfer-Encoding:base64\r\n"
 		attachment += "Content-Disposition:attachment\r\n"
-		attachment += "Content-Type:" + message.attachment.contentType + ";name=\"" + strings.ReplaceAll(message.attachment.name, PdfDir, "") + "\"\r\n" //更改信箱中看到的檔案名稱
+		attachment += "Content-Type:" + message.attachment.contentType + ";name=\"" + strings.Replace(message.attachment.name, PdfDir, "", -1) + "\"\r\n" //更改信箱中看到的檔案名稱
 		buffer.WriteString(attachment)
 		defer func() {
 			if err := recover(); err != nil {

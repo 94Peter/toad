@@ -102,8 +102,189 @@ paths:
           description: bad request
         '500':
           description: internal server error
+  /v1/receipt/{ID}:
+    put:
+      tags: [receipt]
+      summary: 更新收款資料 (admin)
+      operationId: update-receipt
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReceipt'
+      responses:
+        '200':
+          description: ok
+        '400':
+          description: bad request
+        '500':
+          description: internal server error
+    delete:
+      tags: [receipt]
+      summary: 刪除收款資料 (admin)
+      operationId: delete-receipt
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+        '404':
+          description: not found receipt
+        '500':
+          description: internal server error
+  /v1/commission:
+    get:
+      tags: [commission]
+      summary: 取得佣金清單
+      operationId: get-commission
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: start
+          required: true
+          schema:
+            type: string
+          description: 起始日期
+        - in: query
+          name: end
+          required: true
+          schema:
+            type: string
+          description: 結束日期
+        - in: query
+          name: export
+          required: false
+          schema:
+            type: string
+          description: 匯出pdf
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCommission'
+        '204':
+          description: no content
+        '500':
+          description: internal server error
+  /v1/salary:
+    post:
+      tags: [salary]
+      summary: 建立薪資
+      operationId: create-salary
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSalary'
+      responses:
+        '200':
+          description: ok
+        '400':
+          description: bad request
+        '500':
+          description: internal server error
+    get:
+      tags: [salary]
+      summary: 取得薪資清單 (近半年的資料)
+      operationId: get-salary
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSalaryList'
+        '204':
+          description: no content
+        '500':
+          description: internal server error
+
 components:
   schemas:
+    GetSalaryList:
+      type: object
+      properties:
+        date:
+          type: string
+          description: 建立時間
+        name:
+          type: string
+          description: 名稱
+        category:
+          type: string
+          description: 分店
+        amount:
+          type: string
+          description: 薪資總額
+    CreateSalary:
+      type: object
+      properties:
+        name:
+          type: string
+        commissionList:
+          type: array
+          items:
+            type: string
+    GetCommission:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          description: 收款日期
+        item:
+          type: string
+          description: 收款項目
+        amount:
+          type: integer
+          description: 收款金額
+        fee:
+          type: integer
+          description: 扣款金額
+        name:
+          type: string
+          description: 業務名稱
+        proportion:
+          type: number
+          description: 比例
+        performance:
+          type: number
+          description: 實績
+        bonus:
+          type: integer
+          description: 獎金
+        
+    UpdateReceipt:
+      type: object
+      properties:
+        date:
+          type: string
+          description: 合約編號
+        amount:
+          type: integer
+          description: 收款金額
     GetReceipt:
       type: object
       properties:

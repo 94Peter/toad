@@ -3,25 +3,18 @@ package main
 // [START import]
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/94peter/toad/model"
-	"github.com/94peter/toad/resource/sms"
-	"github.com/94peter/toad/util"
+	"github.com/94peter/toad/resource"
 
-	"dforcepro.com/resource"
-	"dforcepro.com/resource/logger"
 	"github.com/gorilla/mux"
-	yaml "gopkg.in/yaml.v2"
 
 	mapi "github.com/94peter/toad/api"
 	"github.com/94peter/toad/middle"
-	mdb "github.com/94peter/toad/resource/db"
 )
 
 // [END import]
@@ -111,7 +104,7 @@ func main() {
 		log.Printf("Defaulting to timezone %s", timezone)
 	}
 
-	myDI := GetConf(env, timezone)
+	myDI := resource.GetConf(env, timezone)
 
 	router := mux.NewRouter()
 	//middleConf := di.APIConf.Middle
@@ -146,96 +139,7 @@ func main() {
 	// [END setting_port]
 }
 
-type di struct {
-	// Mongodb  *db.Mongo         `yaml:"mongodb,omitempty"`
-	// Redis    *db.Redis         `yaml:"redis,omitempty"`
-	// Elastic  *db.Elastic       `yaml:"elastic,omitempty"`
-	DBconf  *mdb.DBConf      `yaml:"dbConf"`
-	Log     logger.Logger    `yaml:"log,omitempty"`
-	APIConf resource.APIConf `yaml:"api,omitempty"`
-	// SysMap   map[string]string `yaml:"sysMap,omitempty"`
-	Location *time.Location `yaml:"-"`
-	SMSConf  *sms.SMSConf   `yaml:"smsConf"`
-	JWTConf  *util.JwtConf  `yaml:"jwtConf"`
-	LoginURL string         `yaml:"loginURL"`
-	Init     struct {
-		Email string `yaml:"email"`
-		Name  string `yaml:"name"`
-		Phone string `yaml:"phone"`
-	} `yaml:"init"`
-
-	SMTPConf util.SendMail `yaml:"smtpConf"`
-}
-
-func (d *di) GetLoginURL() string {
-	return d.LoginURL
-}
-
-func (d *di) GetLog() logger.Logger {
-	return d.Log
-}
-
-func (d *di) GetAPIConf() resource.APIConf {
-	return d.APIConf
-}
-
-func (d *di) GetSMS() sms.InterSMS {
-	return d.SMSConf.GetSMS()
-}
-
-func (d *di) GetJWTConf() *util.JwtConf {
-	return d.JWTConf
-}
-
-func (d *di) GetSMTPConf() util.SendMail {
-	return d.SMTPConf
-}
-
-func (d *di) GetLocation() *time.Location {
-	return d.Location
-}
-
-func (d *di) GetSQLDB() mdb.InterSQLDB {
-	return d.DBconf.GetSQLDB()
-}
-
-func (d *di) GetDB() mdb.InterDB {
-	return d.DBconf.GetDB()
-}
-
-// 初始化設定檔，讀YAML檔
-func GetConf(env string, timezone string) *di {
-
-	const confFileTpl = "conf/%s/config.yml"
-
-	yamlFile, err := ioutil.ReadFile(fmt.Sprintf(confFileTpl, env))
-	if err != nil {
-		panic(err)
-	}
-	myDI := di{}
-	err = yaml.Unmarshal(yamlFile, &myDI)
-	if err != nil {
-		panic(err)
-	}
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		panic(err)
-	}
-
-	myDI.Location = loc
-	myDI.Log.StartLog()
-	myDI.GetSQLDB() //for quickly test DB
-
-	// var queryDate time.Time
-	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
-	// end := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
-	// var result *[]_model.AR
-	// mm := _model.GetARModel.Get
-
-	return &myDI
-}
-
-func initBranch(myDI *di) {
+func initBranch(myDI *resource.DI) {
 	systemM := model.GetSystemModel(myDI)
 	configM := model.GetConfigModel(myDI)
 	branchbyte, err := systemM.GetBranchData()

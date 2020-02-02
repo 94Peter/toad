@@ -12,8 +12,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"dforcepro.com/resource/logger"
 	"github.com/94peter/toad/middle"
+	mlog "github.com/94peter/toad/resource/log"
 )
 
 type APIconf struct {
@@ -56,7 +56,7 @@ func addHandler(conf *APIconf, apiHandlers *[]*APIHandler) {
 }
 
 type AppRes interface {
-	GetLog() logger.Logger
+	GetLog() *mlog.Logger
 	GetLoginURL() string
 	GetSMS() sms.InterSMS
 	GetJWTConf() *util.JwtConf
@@ -75,6 +75,6 @@ func SetDI(c AppRes) {
 	di = c
 }
 
-func getLog() logger.Logger {
+func getLog() *mlog.Logger {
 	return di.GetLog()
 }

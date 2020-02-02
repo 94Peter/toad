@@ -3,8 +3,8 @@ package middle
 import (
 	"net/http"
 
-	"dforcepro.com/resource"
-	"dforcepro.com/resource/logger"
+	"github.com/94peter/toad/resource"
+	mlog "github.com/94peter/toad/resource/log"
 	"github.com/94peter/toad/util"
 )
 
@@ -14,7 +14,7 @@ type middle interface {
 }
 
 type middleRes interface {
-	GetLog() logger.Logger
+	GetLog() *mlog.Logger
 	GetAPIConf() resource.APIConf
 	GetJWTConf() *util.JwtConf
 }
@@ -32,7 +32,7 @@ func SetDI(c middleRes) {
 	di = c
 }
 
-func getLog() logger.Logger {
+func getLog() *mlog.Logger {
 	return di.GetLog()
 }
 

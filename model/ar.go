@@ -502,8 +502,8 @@ func (am *ARModel) CreateHouseGoDuplicate(ID, data string) (err error) {
 	///fmt.Println("fakeId ", fakeId)
 	//fmt.Println("ID ", ID)
 	//fmt.Println("data :", data)
-	data = strings.ReplaceAll(data, " ", "")
-	data = strings.ReplaceAll(data, "\n", "")
+	data = strings.Replace(data, " ", "", -1)
+	data = strings.Replace(data, "\n", "", -1)
 	// ID 不取 "_b" && "_s"
 	sss := fmt.Sprintf(sql, fakeId, ID[0:len(ID)-2], data)
 	//fmt.Println("sss :", sss)

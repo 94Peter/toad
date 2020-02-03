@@ -321,7 +321,7 @@ func (configM *ConfigModel) DeleteConfigBranch(Branch string) (err error) {
 	fmt.Println(id)
 
 	if id == 0 {
-		return errors.New("Invalid operation,DeleteConfigBranch")
+		return errors.New("Invalid operation. ")
 	}
 
 	return nil

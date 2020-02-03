@@ -254,26 +254,12 @@ func (api *ConfigAPI) deleteConfigBranchEndpoint(w http.ResponseWriter, req *htt
 	vars := util.GetPathVars(req, []string{"Branch"})
 	Branch := vars["Branch"].(string)
 
-	iCBranch := inputConfigBranch{}
-	err := json.NewDecoder(req.Body).Decode(&iCBranch)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Invalid JSON format"))
-		return
-	}
-
-	if ok, err := iCBranch.isConfigBranchValid(isUpdate); !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
 	configM := model.GetConfigModel(di)
 
 	_err := configM.DeleteConfigBranch(Branch)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(_err.Error() + ",maybe Saler is not exist or Branch not match"))
+		w.Write([]byte(_err.Error() + ",maybe Branch is not exist"))
 	} else {
 		w.Write([]byte("OK"))
 	}

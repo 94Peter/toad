@@ -154,9 +154,134 @@ func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, CreateDeduct")
 	}
+	deduct.Did = fmt.Sprintf("%d", fakeid)
+	decuctModel.setFeeToCommission(deduct.Did, deduct.ARid)
+
 	return nil
 }
+
+//因為傭金明細只需要一筆有應扣費用，hard code更新。
+func (decuctModel *DeductModel) setFeeToCommission(Did, ARid string, things ...interface{}) (string, error) {
+
+	if ARid == "" {
+		const qspl = `SELECT D.Did, D.arid FROM public.deduct as D Where D.Did = '%s';`
+		db := decuctModel.imr.GetSQLDB()
+		rows, err := db.SQLCommand(fmt.Sprintf(qspl, Did))
+		if err != nil {
+			fmt.Println(err)
+			return "", nil
+		}
+		d := &Deduct{}
+		for rows.Next() {
+			/*null time cannot scan into time.Time */
+			if err := rows.Scan(&d.Did, &d.ARid); err != nil {
+				fmt.Println("err Scan " + err.Error())
+			}
+		}
+		ARid = d.ARid
+
+		for _, params := range things {
+			fmt.Println(params, ":", ARid)
+			return ARid, nil
+		}
+	}
+
+	sql := `Update public.commission set fee = COALESCE((select sum(fee) from public.deduct where arid = $1),0)
+			where rid = (SELECT min(rid) FROM public.commission c where arid = $1)`
+	// if mtype == "date" {
+	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = to_timestamp($1 ,'YYYY-MM-DD hh24:mi:ss') Where did = $2", mtype)
+	// }
+
+	// if mtype == "status" {
+	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = $1 Where did = $2", mtype)
+	// }
+	interdb := decuctModel.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return "", err
+	}
+
+	res, err := sqldb.Exec(sql, ARid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return "", err
+	}
+	fmt.Println(id)
+	if id == 1 {
+		fmt.Println("setFeeToCommission success")
+		decuctModel.updateSRBonusToCommission(ARid)
+	} else if id == 0 {
+		fmt.Println("setFeeToCommission fail : maybe rid not exist")
+	} else {
+		fmt.Println("setFeeToCommission error : something error")
+	}
+	return "", nil
+}
+
+func (decuctModel *DeductModel) updateSRBonusToCommission(ARid string) (string, error) {
+
+	sql := `Update public.commission t1
+	set sr = (t2.amount - t2.fee) * t2.cpercent / 100 , bonus = (t2.amount - t2.fee) * t2.cpercent / 100 * t2.percent /100
+	FROM(
+	SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status , cs.percent
+					FROM public.commission c
+					inner JOIN public.receipt r on r.rid = c.rid				
+					inner join 	(			
+						select cs.branch, cs.sid, cs.percent, cs.identitynum from public.configsaler cs 
+						inner join (
+							select sid, max(zerodate) zerodate from public.configsaler cs 
+							where now() > zerodate
+							group by sid
+						) tmp on tmp.sid = cs.sid and tmp.zerodate = cs.zerodate		
+					)	cs  on cs.sid = c.sid 
+					where c.arid = $1 and fee != 0
+	) as t2 where t1.sid = t2.sid and t1.rid = t2.rid			
+	;`
+	// if mtype == "date" {
+	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = to_timestamp($1 ,'YYYY-MM-DD hh24:mi:ss') Where did = $2", mtype)
+	// }
+
+	// if mtype == "status" {
+	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = $1 Where did = $2", mtype)
+	// }
+	interdb := decuctModel.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return "", err
+	}
+
+	res, err := sqldb.Exec(sql, ARid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return "", err
+	}
+	fmt.Println(id)
+	if id == 1 {
+		fmt.Println("updateSRBonusToCommission success")
+	} else if id == 0 {
+		fmt.Println("updateSRBonusToCommission fail : maybe rid not exist")
+	} else {
+		fmt.Println("updateSRBonusToCommission error : something error")
+	}
+	return "", nil
+
+}
+
 func (decuctModel *DeductModel) DeleteDeduct(ID string) (err error) {
+
+	arid, _ := decuctModel.setFeeToCommission(ID, "", "nothing")
 
 	const sql = `DELETE FROM public.deduct WHERE Did=$1 and  status != '已支付';`
 
@@ -183,23 +308,14 @@ func (decuctModel *DeductModel) DeleteDeduct(ID string) (err error) {
 		return errors.New("Invalid operation, Delete Deduct")
 	}
 
+	decuctModel.setFeeToCommission("", arid)
 	return nil
 }
 
 func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber string) (err error) {
 
-	// const sql = `UPDATE public.deduct
-	// 			SET status=$1
-	// 			WHERE did = $2;`
-
 	sql := fmt.Sprintf("UPDATE public.deduct Set status = $1, date = $2 , checkNumber = $3 Where did = $4")
-	// if mtype == "date" {
-	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = to_timestamp($1 ,'YYYY-MM-DD hh24:mi:ss') Where did = $2", mtype)
-	// }
 
-	// if mtype == "status" {
-	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = $1 Where did = $2", mtype)
-	// }
 	interdb := decuctModel.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
@@ -222,7 +338,7 @@ func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber stri
 	if id == 0 {
 		return errors.New("Invalid operation, UpdateDeduct")
 	}
-
+	decuctModel.setFeeToCommission(Did, "")
 	return nil
 }
 func (decuctModel *DeductModel) UpdateDeductRid(ARid string) (err error) {

@@ -46,6 +46,7 @@ type inputConfigSaler struct {
 	BankAccount string `json:"bankAccount"`
 	Email       string `json:"email"`
 	Phone       string `json:"phone"`
+	Remark      string `json:remark`
 }
 
 type inputConfigParameter struct {
@@ -805,6 +806,7 @@ func (iCSaler *inputConfigSaler) GetConfigSaler() *model.ConfigSaler {
 		BankAccount:    iCSaler.BankAccount,
 		Email:          iCSaler.Email,
 		Phone:          iCSaler.Phone,
+		Remark:         iCSaler.Remark,
 	}
 }
 

@@ -68,6 +68,7 @@ type ConfigSaler struct {
 	BankAccount    string    `json:"bankAccount"`
 	Email          string    `json:"email"`
 	Phone          string    `json:"phone"`
+	Remark         string    `json:"remark"`
 	// excel used
 	Tamount int    `json:"-"`
 	CurDate string `json:"-"`
@@ -458,7 +459,7 @@ func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err erro
 func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 
 	const qspl = `SELECT Csid, sid, sname, branch, zerodate, validdate, title, percent, fpercent,
-				  salary, pay, payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email
+				  salary, pay, payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, remark
 				  FROM public.ConfigSaler where branch like '%s';`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
@@ -477,7 +478,7 @@ func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
 		if err := rows.Scan(&cs.Csid, &cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.ValidDate, &cs.Title, &cs.Percent, &cs.FPercent,
-			&cs.Salary, &cs.Pay, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email); err != nil {
+			&cs.Salary, &cs.Pay, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Remark); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -542,8 +543,8 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 
 	const sql = `INSERT INTO public.configsaler(
 		csid, sid, sname, branch, zerodate, validdate, title, percent, fpercent, salary,
-		pay, payrollbracket, enrollment, association, address, birth, identityNum, bankAccount, email)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`
+		pay, payrollbracket, enrollment, association, address, birth, identityNum, bankAccount, email, remark)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20);`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -553,7 +554,7 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 	fakeId := time.Now().Unix()
 
 	res, err := sqldb.Exec(sql, fakeId, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.ValidDate, cs.Title, cs.Percent, cs.FPercent, cs.Salary,
-		cs.Pay, cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email)
+		cs.Pay, cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Remark)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -607,7 +608,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, csID string) (err
 
 	const sql = `UPDATE public.configsaler
 	SET sid = $14, zerodate=$2, validdate=$3, title=$4, percent=$5, fpercent=$6, salary=$7,
-	pay=$8, payrollbracket=$9, enrollment=$10, association=$11, address=$12, birth=$13, identitynum=$14, bankaccount= $15 , email = $16  ,branch = $17
+	pay=$8, payrollbracket=$9, enrollment=$10, association=$11, address=$12, birth=$13, identitynum=$14, bankaccount= $15 , email = $16  ,branch = $17, remark = $18
 	WHERE csid=$1`
 
 	interdb := configM.imr.GetSQLDB()
@@ -617,7 +618,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, csID string) (err
 	}
 	fmt.Println(csID)
 	res, err := sqldb.Exec(sql, csID, cs.ZeroDate, cs.ValidDate, cs.Title, cs.Percent, cs.FPercent, cs.Salary,
-		cs.Pay, cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch)
+		cs.Pay, cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)

@@ -667,6 +667,7 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 			"Bankaccount character varying(50) DEFAULT '', "+ // 銀行帳戶
 			"Email character varying(50) DEFAULT '', "+ // 信箱
 			"Phone character varying(50) DEFAULT '', "+ // 電話
+			"Remark character varying(50) DEFAULT '', "+ // 備註
 			"PRIMARY KEY (csid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
@@ -694,7 +695,7 @@ func (sdb *sqlDB) CreateCommissionTable() error {
 			"item character varying(50) not NULL, "+
 			"SName character varying(50) , "+
 			//"amount integer not NULL, "+
-			//"fee integer DEFAULT 0, "+
+			"fee integer DEFAULT 0, "+
 			//"percent double precision DEFAULT 0 , "+
 			"CPercent double precision DEFAULT 0 , "+
 			"SR integer DEFAULT 0 ,"+

@@ -170,7 +170,7 @@ func (cm *CModel) GetCommissiontData(start, end, status string) []*Commission {
 	fmt.Println("GetCommissiontData")
 	//if invoiceno is null in Database return ""
 
-	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
+	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
 				FROM public.commission c
 				inner JOIN public.receipt r on r.rid = c.rid
 				where to_timestamp(date_part('epoch',r.date)::int) >= '%s' and to_timestamp(date_part('epoch',r.date)::int) < '%s'::date + '1 month'::interval

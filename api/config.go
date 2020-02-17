@@ -434,6 +434,7 @@ func (api *ConfigAPI) updateConfigParameterEndpoint(w http.ResponseWriter, req *
 func (api *ConfigAPI) getConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	configM := model.GetConfigModel(di)
+
 	// var queryDate time.Time
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	// end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
@@ -443,6 +444,12 @@ func (api *ConfigAPI) getConfigSalerEndpoint(w http.ResponseWriter, req *http.Re
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}
+	year, month, day := time.Now().Date()
+	if day >= 1 {
+		fmt.Println(year, month, day, "啟動WorkValidDate()，更新員工有效日薪水")
+		configM.WorkValidDate()
+	}
+	//text := time.Now().Format("2006-01-02")
 
 	configM.GetConfigSalerData(branch)
 	//data, err := json.Marshal(result)

@@ -194,6 +194,34 @@ func (sdb *sqlDB) CreateHouseGoTable() error {
 	return nil
 }
 
+func (sdb *sqlDB) CreateEventLogTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.eventlog "+
+			"( "+
+			"id character varying(50) not NULL,"+
+			"account character varying(50) not NULL,"+
+			"name character varying(50) not NULL,"+
+			"auth character varying(50) not NULL, "+
+			"msg character varying(50) not NULL, "+
+			"type character varying(50) not NULL, "+
+			"date timestamp(0) without time zone not NULL, "+
+			"PRIMARY KEY (id) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			" ALTER TABLE public.eventlog "+
+			"OWNER to %s; ", sdb.user))
+	//"alter table public.ar alter column ra set default 0;"+
+	//"alter table public.ar alter column balance set default 0;"+
+
+	if err != nil {
+		fmt.Println("CreateEventLogTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateEventLogTable Done")
+	return nil
+}
+
 func (sdb *sqlDB) CreateAccountTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
@@ -790,6 +818,7 @@ func (sdb *sqlDB) InitTable() error {
 		"incomeexpense":   false,
 		"housego":         false,
 		"account":         false,
+		"eventlog":        false,
 	}
 
 	for rows.Next() {
@@ -862,7 +891,9 @@ func (sdb *sqlDB) InitTable() error {
 		case "account":
 			mT["account"] = true
 			break
-
+		case "eventlog":
+			mT["eventlog"] = true
+			break
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
 		}
@@ -935,6 +966,9 @@ func (sdb *sqlDB) InitTable() error {
 				break
 			case "account":
 				err = sdb.CreateAccountTable()
+				break
+			case "eventlog":
+				err = sdb.CreateEventLogTable()
 				break
 
 			default:

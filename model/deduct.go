@@ -341,6 +341,36 @@ func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber stri
 	decuctModel.setFeeToCommission(Did, "")
 	return nil
 }
+
+func (decuctModel *DeductModel) UpdateDeductItem(Did, item string) (err error) {
+
+	sql := fmt.Sprintf("UPDATE public.deduct Set item = $1 Where did = $2")
+
+	interdb := decuctModel.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, item, Did)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+
+	if id == 0 {
+		return errors.New("Invalid operation, UpdateDeductItem")
+	}
+
+	return nil
+}
+
 func (decuctModel *DeductModel) UpdateDeductRid(ARid string) (err error) {
 	const sql = `Update public.deduct 
 				set rid = tmp.ReceiptID

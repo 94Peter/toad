@@ -638,6 +638,80 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, csID string) (err
 	return nil
 }
 
+/**
+TODO::
+*月初啟動，所以時間用now()即可。
+*validdate != '0001-01-01' and validdate < now() 條件
+*因要寫入log，故不採用update from select 語句，採用使用for loop完成
+**/
+func (configM *ConfigModel) WorkValidDate() (err error) {
+
+	const qsql = `SELECT Csid, sid, sname, branch, zerodate, validdate, title, percent, fpercent,
+				  salary, pay, payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, remark
+				  FROM public.ConfigSaler where validdate <= now() and validdate != '0001-01-01';`
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := configM.imr.GetSQLDB()
+
+	rows, err := db.SQLCommand(qsql)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	var cbDataList []*ConfigSaler
+
+	for rows.Next() {
+		var cs ConfigSaler
+
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&cs.Csid, &cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.ValidDate, &cs.Title, &cs.Percent, &cs.FPercent,
+			&cs.Salary, &cs.Pay, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Remark); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		cbDataList = append(cbDataList, &cs)
+	}
+
+	for _, data := range cbDataList {
+		const sql = `UPDATE public.configsaler
+		SET validdate='0001-01-01', percent=$1, fpercent=-1, salary=$2, pay=-1
+		WHERE csid=$3`
+
+		sqldb, err := db.ConnectSQLDB()
+		if err != nil {
+			return err
+		}
+
+		res, err := sqldb.Exec(sql, data.FPercent, data.Pay, data.Csid)
+		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+			return err
+		}
+		fmt.Println(id)
+
+		if id == 0 {
+			return errors.New("Invalid operation, maybe not found the saler")
+		}
+		log := &EventLog{
+			Account: data.Sid,
+			Auth:    data.Title,
+			Name:    data.SName,
+			Msg:     fmt.Sprintf("更新薪資%d,原本為%d", data.Salary, data.Pay),
+			Type:    "update",
+		}
+		logM.CreateEventLog(log)
+	}
+
+	return nil
+}
+
 func (configM *ConfigModel) GetAccountItemData(today, end time.Time) []*AccountItem {
 
 	const qspl = `SELECT AccountItemName, Valid FROM public.AccountItem;`

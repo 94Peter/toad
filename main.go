@@ -6,7 +6,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/94peter/toad/model"
 	"github.com/94peter/toad/resource"
 
 	"github.com/gorilla/mux"
@@ -67,11 +69,48 @@ func main() {
 		mapi.SalaryAPI(true),
 		mapi.SystemAPI(true),
 		mapi.IndexAPI(true),
+		mapi.LogAPI(true),
 	)
+	//init EventLogModel, to record event
+	model.GetEventLogModel(myDI)
+	// configM := model.GetConfigModel(myDI)
+	// configM.WorkValidDate()
 
+	startTimer(myDI)
 	log.Printf("Listening on port %s", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), router))
+
 	// [END setting_port]
+}
+
+//golang 定时器，启动的时候执行一次，以后每天晚上12点执行
+func startTimer(myDI *resource.DI) {
+	const DATE_FORMAT = "2006-01-02"
+	go func() {
+		for {
+
+			configM := model.GetConfigModel(myDI)
+			configM.WorkValidDate()
+			// 计算下一个月初
+			now := time.Now()
+			year, month, _ := now.Date()
+			nextMonth := time.Date(year, month+1, 1, 0, 0, 0, 0, time.Local)
+			fmt.Println("WorkValidDate 距離下次執行時間:", nextMonth.Sub(now))
+
+			t := time.NewTimer(nextMonth.Sub(now))
+			<-t.C
+
+			// 计算下一个凌晨零時
+			// next := now.Add(time.Hour * 24)
+			// next = time.Date(next.Year(), next.Month(), next.Day(), 0, 0, 0, 0, next.Location())
+			// t := time.NewTimer(next.Sub(now))
+			// <-t.C
+
+			// timer1 := time.NewTimer(time.Second * 5)
+			// <-timer1.C
+
+		}
+	}()
 }
 
 // [END main_func]

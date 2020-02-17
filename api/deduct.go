@@ -35,12 +35,18 @@ type inputUpdateDeduct struct {
 	CheckNumber string `json:"checkNumber"` //票號
 }
 
+type inputUpdateDeductItem struct {
+	Item string `json:"item"`
+}
+
 func (api DeductAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/deduct", Next: api.getDeductEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		//&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.deleteDeductEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.updateDeductEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+
+		&APIHandler{Path: "/v1/deduct/item/{ID}", Next: api.updateDeductItemEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 	}
 }
 
@@ -129,6 +135,31 @@ func (api *DeductAPI) updateDeductEndpoint(w http.ResponseWriter, req *http.Requ
 
 }
 
+func (api *DeductAPI) updateDeductItemEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+	vars := util.GetPathVars(req, []string{"ID"})
+	ID := vars["ID"].(string)
+
+	iUD := inputUpdateDeductItem{}
+	err := json.NewDecoder(req.Body).Decode(&iUD)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	DM := model.GetDecuctModel(di)
+
+	_err := DM.UpdateDeductItem(ID, iUD.Item)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error" + _err.Error()))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+
 func (iUD *inputUpdateDeduct) isUpdateDeductValid() (bool, error) {
 	// if !util.IsStrInList(iAR.Permission, permission.All...) {
 	// 	return false, errors.New("permission error")
@@ -186,6 +217,12 @@ func (iDeduct *inputDeduct) GetDeduct() *model.Deduct {
 		Item:        iDeduct.Item,
 		Description: iDeduct.Description,
 		Fee:         iDeduct.Fee,
+	}
+}
+
+func (iDeduct *inputUpdateDeductItem) GetDeduct() *model.Deduct {
+	return &model.Deduct{
+		Item: iDeduct.Item,
 	}
 }
 

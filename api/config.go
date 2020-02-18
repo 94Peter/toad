@@ -755,7 +755,7 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 		return false, errors.New("validDate is not valid, " + err.Error())
 	}
 
-	if iCSaler.Pay < 0 {
+	if iCSaler.Pay < 0 && iCSaler.Pay != -1 {
 		return false, errors.New("pay is not valid")
 	}
 	if iCSaler.Salary < 0 {
@@ -764,7 +764,7 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 	if iCSaler.Percent < 0 {
 		return false, errors.New("percent is not valid")
 	}
-	if iCSaler.FPercent < 0 {
+	if iCSaler.FPercent < 0 && iCSaler.FPercent != -1 {
 		return false, errors.New("fPercent is not valid")
 	}
 	if iCSaler.Title == "" {
@@ -783,9 +783,10 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 		return false, errors.New("identityNum is empty")
 	}
 	iCSaler.Sid = iCSaler.IdentityNum
-	// if iCSaler.Branch == "" {
-	// 	return false, errors.New("branch is empty")
-	// }
+
+	if iCSaler.Branch == "" {
+		return false, errors.New("branch is empty")
+	}
 
 	return true, nil
 }

@@ -35,6 +35,8 @@ func (api CommissionAPI) GetAPIs() *[]*APIHandler {
 		//&APIHandler{Path: "/v1/commission/export", Next: api.exportCommissionEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/commission/{Rid}/{Sid}", Next: api.updateCommissionEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/commission/status/{Rid}/{Sid}", Next: api.updateCommissionStatusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		//更新Bonus使用
+		&APIHandler{Path: "/v1/commission/bonus/{Rid}/{Sid}", Next: api.refreshCommissionBonusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 	}
 }
 
@@ -125,6 +127,32 @@ func (api *CommissionAPI) updateCommissionEndpoint(w http.ResponseWriter, req *h
 
 	cm := model.GetCModel(di)
 	if err := cm.UpdateCommission(iuC.GetCommission(), Rid, Sid); err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	// if err := memberModel.Quit(phone); err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
+
+	w.Write([]byte("ok"))
+}
+
+func (api *CommissionAPI) refreshCommissionBonusEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	queryVar := util.GetQueryValue(req, []string{"type"}, true)
+	vars := util.GetPathVars(req, []string{"Rid", "Sid"})
+	Rid := vars["Rid"].(string)
+	Sid := vars["Sid"].(string)
+	mtype := (*queryVar)["type"].(string)
+
+	fmt.Println("Rid" + Rid + " Sid" + Sid + " type " + mtype)
+
+	cm := model.GetCModel(di)
+	if err := cm.RefreshCommissionBonus(Sid, Rid, mtype); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return

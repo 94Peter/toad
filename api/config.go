@@ -761,15 +761,15 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 	if iCSaler.Percent < 0 {
 		return false, errors.New("percent is not valid")
 	}
-	if iCSaler.ZeroDate != "0001-01-01" {
+	if iCSaler.ValidDate == "0001-01-01" {
 		iCSaler.FPercent = -1
 		iCSaler.Pay = -1
-		// if iCSaler.FPercent < 0 && iCSaler.FPercent != -1 {
-		// 	return false, errors.New("fPercent is not valid")
-		// }
-		// if iCSaler.Pay < 0 && iCSaler.Pay != -1 {
-		// 	return false, errors.New("pay is not valid")
-		// }
+	}
+	if iCSaler.FPercent < 0 && iCSaler.FPercent != -1 {
+		return false, errors.New("fPercent is not valid")
+	}
+	if iCSaler.Pay < 0 && iCSaler.Pay != -1 {
+		return false, errors.New("pay is not valid")
 	}
 	if iCSaler.Title == "" {
 		return false, errors.New("title is empty")

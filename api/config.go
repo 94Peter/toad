@@ -444,11 +444,11 @@ func (api *ConfigAPI) getConfigSalerEndpoint(w http.ResponseWriter, req *http.Re
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}
-	year, month, day := time.Now().Date()
-	if day >= 1 {
-		fmt.Println(year, month, day, "啟動WorkValidDate()，更新員工有效日薪水")
-		configM.WorkValidDate()
-	}
+	// year, month, day := time.Now().Date()
+	// if day >= 1 {
+	// 	fmt.Println(year, month, day, "啟動WorkValidDate()，更新員工有效日薪水")
+	// 	configM.WorkValidDate()
+	// }
 	//text := time.Now().Format("2006-01-02")
 
 	configM.GetConfigSalerData(branch)

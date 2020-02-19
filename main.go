@@ -89,12 +89,15 @@ func startTimer(myDI *resource.DI) {
 	go func() {
 		for {
 
-			configM := model.GetConfigModel(myDI)
-			configM.WorkValidDate()
 			// 计算下一个月初
 			now := time.Now()
-			year, month, _ := now.Date()
+			year, month, day := now.Date()
 			nextMonth := time.Date(year, month+1, 1, 0, 0, 0, 0, time.Local)
+			if day == 1 {
+				fmt.Println("startTimer:", year, month, day)
+				configM := model.GetConfigModel(myDI)
+				configM.WorkValidDate()
+			}
 			fmt.Println("WorkValidDate 距離下次執行時間:", nextMonth.Sub(now))
 
 			t := time.NewTimer(nextMonth.Sub(now))

@@ -745,6 +745,9 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 			return false, errors.New("name is empty")
 		}
 	}
+	if iCSaler.ValidDate == "" {
+		iCSaler.ValidDate = "0001-01-01"
+	}
 
 	_, err := time.ParseInLocation("2006-01-02", iCSaler.ZeroDate, time.Local)
 	if err != nil {

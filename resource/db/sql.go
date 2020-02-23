@@ -675,17 +675,17 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.ConfigSaler "+
 			"( "+
-			"csid character varying(50) ,"+
+			//"csid character varying(50) ,"+
 			"Sid character varying(50) ,"+
 			"Sname character varying(50) ,"+
 			"Branch character varying(50) ,"+
 			"ZeroDate timestamp(0) without time zone not NULL, "+
-			"ValidDate  timestamp(0) without time zone not NULL, "+
+			//"ValidDate  timestamp(0) without time zone not NULL, "+
 			"Title character varying(50) ,"+
 			"Percent double precision DEFAULT 0, "+
-			"FPercent double precision DEFAULT 0, "+
+			//"FPercent double precision DEFAULT 0, "+
 			"Salary integer DEFAULT 0, "+
-			"Pay integer DEFAULT 0, "+ //未來薪資
+			//"Pay integer DEFAULT 0, "+ //未來薪資
 			"PayrollBracket integer DEFAULT 0, "+ //投保金額
 			"Enrollment integer DEFAULT 0, "+ //加保(眷屬人數)
 			"Association integer DEFAULT 0, "+ // 公會
@@ -696,10 +696,40 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 			"Email character varying(50) DEFAULT '', "+ // 信箱
 			"Phone character varying(50) DEFAULT '', "+ // 電話
 			"Remark character varying(50) DEFAULT '', "+ // 備註
-			"PRIMARY KEY (csid) "+
+			"PRIMARY KEY (sid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.ConfigSaler "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateConfigSalerTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateConfigSalerTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateConfigSalaryTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.ConfigSalary "+
+			"( "+
+			"Sid character varying(50) ,"+
+			"ZeroDate character varying(50), "+ // ☆這裡用string★
+			"Sname character varying(50) ,"+
+			"Branch character varying(50) ,"+
+			"Title character varying(50) ,"+
+			"Percent double precision DEFAULT 0, "+
+			"Salary integer DEFAULT 0, "+
+			"PayrollBracket integer DEFAULT 0, "+ //投保金額
+			"Enrollment integer DEFAULT 0, "+ //加保(眷屬人數)
+			"Association integer DEFAULT 0, "+ // 公會
+			"Remark character varying(50) DEFAULT '', "+ // 備註
+			"PRIMARY KEY (sid, ZeroDate) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.ConfigSalary "+
 			"OWNER to %s; ", sdb.user))
 
 	if err != nil {
@@ -809,6 +839,7 @@ func (sdb *sqlDB) InitTable() error {
 		"accountitem":     false,
 		"configbranch":    false,
 		"configsaler":     false,
+		"configsalary":    false,
 		"configparameter": false,
 		"invoice":         false,
 		"armap":           false,
@@ -863,6 +894,9 @@ func (sdb *sqlDB) InitTable() error {
 			break
 		case "configsaler":
 			mT["configsaler"] = true
+			break
+		case "configsalary":
+			mT["configsalary"] = true
 			break
 		case "configparameter":
 			mT["configparameter"] = true
@@ -940,6 +974,10 @@ func (sdb *sqlDB) InitTable() error {
 			case "configsaler":
 				err = sdb.CreateConfigSalerTable()
 				break
+			case "configsalary":
+				err = sdb.CreateConfigSalaryTable()
+				break
+
 			case "configparameter":
 				err = sdb.CreateConfigParameterTable()
 				break

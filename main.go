@@ -73,6 +73,7 @@ func main() {
 	)
 	//init EventLogModel, to record event
 	model.GetEventLogModel(myDI)
+
 	// configM := model.GetConfigModel(myDI)
 	// configM.WorkValidDate()
 

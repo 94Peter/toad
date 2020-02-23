@@ -97,6 +97,10 @@ func (api ConfigAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/config/saler", Next: api.createConfigSalerEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/saler/{csID}", Next: api.updateConfigSalerEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/saler/{csID}", Next: api.deleteConfigSalerEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+
+		&APIHandler{Path: "/v1/config/salary", Next: api.createConfigSalaryEndpoint, Method: "POST", Auth: false, Group: permission.All}, //內建PUT更改
+		&APIHandler{Path: "/v1/config/salary", Next: api.getConfigSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/salary/{id}", Next: api.deleteConfigSalaryEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 	}
 }
 
@@ -462,6 +466,28 @@ func (api *ConfigAPI) getConfigSalerEndpoint(w http.ResponseWriter, req *http.Re
 	w.Write(data)
 }
 
+func (api *ConfigAPI) getConfigSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	configM := model.GetConfigModel(di)
+
+	queryVar := util.GetQueryValue(req, []string{"id"}, true)
+
+	sid := (*queryVar)["id"].(string)
+	if sid == "" || sid == "全部" || strings.ToLower(sid) == "all" {
+		sid = "%"
+	}
+
+	configM.GetConfigSalaryData(sid)
+	//data, err := json.Marshal(result)
+	data, err := configM.Json("ConfigSalary")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+
 func (api *ConfigAPI) checkConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
 
@@ -520,6 +546,36 @@ func (api *ConfigAPI) createConfigSalerEndpoint(w http.ResponseWriter, req *http
 
 }
 
+//借用同樣的結構(inputConfigSaler)建立ConfigSalary結構
+func (api *ConfigAPI) createConfigSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+
+	iCSaler := inputConfigSaler{}
+	err := json.NewDecoder(req.Body).Decode(&iCSaler)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := iCSaler.isConfigSalaryValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	configM := model.GetConfigModel(di)
+
+	_err := configM.CreateConfigSalary(iCSaler.GetConfigSalary())
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error"))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+
 func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"csID"})
@@ -559,6 +615,32 @@ func (api *ConfigAPI) deleteConfigSalerEndpoint(w http.ResponseWriter, req *http
 	configM := model.GetConfigModel(di)
 
 	_err := configM.DeleteConfigSaler(csID)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error:" + _err.Error()))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+
+func (api *ConfigAPI) deleteConfigSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get path from body
+	vars := util.GetPathVars(req, []string{"id"})
+	id := vars["id"].(string)
+
+	queryVar := util.GetQueryValue(req, []string{"zerodate"}, true)
+
+	zerodate := (*queryVar)["zerodate"].(string)
+	if zerodate == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("zerodate is empty"))
+		return
+	}
+
+	configM := model.GetConfigModel(di)
+
+	_err := configM.DeleteConfigSalary(id, zerodate)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
@@ -733,6 +815,48 @@ func (iCSaler *inputConfigSaler) checkConfigSalerVaild() (bool, error) {
 	return true, nil
 }
 
+func (iCSaler *inputConfigSaler) isConfigSalaryValid() (bool, error) {
+
+	_, err := time.ParseInLocation("2006-01-02", iCSaler.ZeroDate, time.Local)
+	if err != nil {
+		return false, errors.New("zeroDate is not valid, " + err.Error())
+	}
+
+	if iCSaler.Salary < 0 {
+		return false, errors.New("salary is not valid")
+	}
+	if iCSaler.Percent < 0 {
+		return false, errors.New("percent is not valid")
+	}
+
+	if iCSaler.Title == "" {
+		return false, errors.New("title is empty")
+	}
+	if iCSaler.PayrollBracket < 0 {
+		return false, errors.New("payrollBracket is not valid")
+	}
+	if iCSaler.Enrollment < 0 {
+		return false, errors.New("enrollment is not valid")
+	}
+	if !(iCSaler.Association == 0 || iCSaler.Association == 1) {
+		return false, errors.New("association is not valid, only 0 or 1")
+	}
+
+	if iCSaler.Sid == "" {
+		return false, errors.New("id(sid) is empty")
+	}
+
+	if iCSaler.SName == "" {
+		return false, errors.New("name is empty")
+	}
+
+	if iCSaler.Branch == "" {
+		return false, errors.New("branch is empty")
+	}
+
+	return true, nil
+}
+
 func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 	// if !util.IsStrInList(iAR.Permission, permission.All...) {
 	// 	return false, errors.New("permission error")
@@ -821,6 +945,23 @@ func (iCSaler *inputConfigSaler) GetConfigSaler() *model.ConfigSaler {
 		BankAccount:    iCSaler.BankAccount,
 		Email:          iCSaler.Email,
 		Phone:          iCSaler.Phone,
+		Remark:         iCSaler.Remark,
+	}
+}
+
+func (iCSaler *inputConfigSaler) GetConfigSalary() *model.ConfigSalary {
+
+	return &model.ConfigSalary{
+		Sid:            iCSaler.Sid,
+		SName:          iCSaler.SName,
+		Salary:         iCSaler.Salary,
+		Percent:        iCSaler.Percent,
+		Title:          iCSaler.Title,
+		ZeroDate:       iCSaler.ZeroDate,
+		Branch:         iCSaler.Branch,
+		PayrollBracket: iCSaler.PayrollBracket,
+		Enrollment:     iCSaler.Enrollment,
+		Association:    iCSaler.Association,
 		Remark:         iCSaler.Remark,
 	}
 }

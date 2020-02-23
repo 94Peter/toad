@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/94peter/gopdf"
+	"github.com/94peter/toad/pdf"
 	"github.com/94peter/toad/resource/db"
 )
 
@@ -52,12 +53,12 @@ func loadTTF(pdf gopdf.GoPdf, ttfName, ttfPathFile, fontstyle string, fontsize i
 }
 
 func (pdfM *PdfModel) Test() []byte {
-	pdf := gopdf.GoPdf{}
+	mpdf := gopdf.GoPdf{}
 	//pdf.Start(gopdf.Config{Unit: "pt", PageSize: gopdf.Rect{W: 595.28, H: 841.89}}) //595.28, 841.89 = A4
-	pdf.Start(gopdf.Config{Unit: "pt", PageSize: gopdf.Rect{W: 841.89, H: 595.28}}) // A4(橫向))
-	pdf.AddPage()
+	mpdf.Start(gopdf.Config{Unit: "pt", PageSize: gopdf.Rect{W: 841.89, H: 595.28}}) // A4(橫向))
+	mpdf.AddPage()
 
-	pdf, err := loadTTF(pdf, "TW-Medium", "conf/dev/TW-Medium.ttf", "", 14)
+	pdf, err := loadTTF(mpdf, "TW-Medium", pdf.TW_Medium_PATH, "", 14)
 	if err != nil {
 		fmt.Println("loadTTF:", err.Error())
 		return nil

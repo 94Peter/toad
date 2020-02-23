@@ -35,6 +35,8 @@ const (
 	B3_W = 1416.313
 	B3_H = 1000.637
 
+	TW_Medium_PATH = "resource/ttf/TW-Medium.ttf"
+
 	NewPdf = true
 	OriPdf = false
 )
@@ -84,7 +86,7 @@ func GetNewPDF(things ...interface{}) *Pdf {
 			UserPass:      []byte("123456")},
 	}) // B4(1000.155, 708.333)
 	pdf.AddPage()
-	err := p.LoadTTF("TW-Medium", "conf/dev/TW-Medium.ttf", "", 14)
+	err := p.LoadTTF("TW-Medium", TW_Medium_PATH, "", 14)
 	if err != nil {
 		fmt.Println("LoadTTF:", err.Error())
 		return nil

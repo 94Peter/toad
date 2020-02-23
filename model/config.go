@@ -74,6 +74,20 @@ type ConfigSaler struct {
 	CurDate string `json:"-"`
 }
 
+type ConfigSalary struct {
+	Sid            string  `json:"sid"`
+	SName          string  `json:"name"`
+	ZeroDate       string  `json:"zeroDate"`
+	Title          string  `json:"title"`
+	Salary         int     `json:"salary"`
+	Percent        float64 `json:"percent"`
+	Branch         string  `json:"branch"`
+	PayrollBracket int     `json:"payrollBracket"` //投保金額
+	Enrollment     int     `json:"enrollment"`     //加保(眷屬人數)
+	Association    int     `json:"association"`    //公會
+	Remark         string  `json:"remark"`
+}
+
 var (
 	configM *ConfigModel
 )
@@ -84,6 +98,7 @@ type ConfigModel struct {
 	ConfigBranchList    []*ConfigBranch
 	ConfigParameterList []*ConfigParameter
 	ConfigSalerList     []*ConfigSaler
+	ConfigSalaryList    []*ConfigSalary
 	AccountItemList     []*AccountItem
 }
 
@@ -181,6 +196,8 @@ func (configM *ConfigModel) Json(config string) ([]byte, error) {
 		return json.Marshal(configM.ConfigParameterList)
 	case "ConfigSaler":
 		return json.Marshal(configM.ConfigSalerList)
+	case "ConfigSalary":
+		return json.Marshal(configM.ConfigSalaryList)
 	case "AccountItem":
 		return json.Marshal(configM.AccountItemList)
 	default:
@@ -633,6 +650,115 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, csID string) (err
 
 	if id == 0 {
 		return errors.New("Invalid operation, maybe not found the saler")
+	}
+
+	return nil
+}
+
+func (configM *ConfigModel) GetConfigSalaryData(sid string) (err error) {
+
+	// const sql = `SELECT A.*
+	// 				FROM public.configsalary A
+	// 				Inner Join (
+	// 					select sid, max(zerodate) zerodate from public.configsalary cs
+	// 					where now() > to_timestamp(zerodate,'YYYY-MM')
+	// 					group by sid
+	// 				) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+	// 			  where branch sid = '%s';`
+	const sql = `SELECT sid, sname, branch, zerodate, title, percent, salary,payrollbracket, enrollment, association,remark
+	  FROM public.configsalary where  sid like '%s' order by zeroDate desc;`
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := configM.imr.GetSQLDB()
+	fmt.Println(fmt.Sprintf(sql, sid))
+	rows, err := db.SQLCommand(fmt.Sprintf(sql, sid))
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	var cbDataList []*ConfigSalary
+
+	for rows.Next() {
+		var cs ConfigSalary
+
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.Title, &cs.Percent,
+			&cs.Salary, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Remark); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		cbDataList = append(cbDataList, &cs)
+	}
+
+	// out, err := json.Marshal(arList)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
+	configM.ConfigSalaryList = cbDataList
+	return nil
+}
+
+func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary) (err error) {
+
+	const sql = `INSERT INTO public.configsalary(
+		sid, sname, branch, zerodate, title, percent, salary, payrollbracket, enrollment, association, remark)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		ON CONFLICT (sid,zerodate) DO UPDATE SET sname = excluded.sname, title = excluded.title, branch = excluded.branch,
+		percent = excluded.percent, salary = excluded.salary, payrollbracket = excluded.payrollbracket,
+		enrollment = excluded.enrollment , association = excluded.association , remark = excluded.remark ;`
+
+	interdb := configM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
+		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Remark)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation, CreateConfigSalary")
+	}
+
+	return nil
+}
+func (configM *ConfigModel) DeleteConfigSalary(sid, zerodate string) (err error) {
+
+	const sql = `DELETE FROM public.configsalary WHERE sid=$1 and zerodate = $2;`
+
+	interdb := configM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, sid, zerodate)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+
+	if id == 0 {
+		return errors.New("Invalid operation, maybe not found the salary of saler ")
 	}
 
 	return nil

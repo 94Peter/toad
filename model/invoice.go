@@ -333,7 +333,7 @@ func (invoiceM *InvoiceModel) CustomizedInvoice(p *pdf.Pdf, Invoice *Invoice) {
 	width := 130.0
 	p.SetPdf_XY(10, -1)
 	fontsize := 14.0
-	err := p.LoadTTF("TW-Medium", "conf/dev/TW-Medium.ttf", "", int(fontsize))
+	err := p.LoadTTF("TW-Medium", pdf.TW_Medium_PATH, "", int(fontsize))
 	if err != nil {
 		fmt.Println("loadTTF:", err.Error())
 	}
@@ -349,7 +349,7 @@ func (invoiceM *InvoiceModel) CustomizedInvoice(p *pdf.Pdf, Invoice *Invoice) {
 	p.NewLine(15)
 
 	fontsize = 8.0
-	err = p.LoadTTF("TW-Medium", "conf/dev/TW-Medium.ttf", "", int(fontsize))
+	err = p.LoadTTF("TW-Medium", pdf.TW_Medium_PATH, "", int(fontsize))
 	if err != nil {
 		fmt.Println("loadTTF:", err.Error())
 	}
@@ -367,7 +367,7 @@ func (invoiceM *InvoiceModel) CustomizedInvoice(p *pdf.Pdf, Invoice *Invoice) {
 	detail_h := 140.0
 	fontsize = 11.0
 	gap := 13.0
-	err = p.LoadTTF("TW-Medium", "conf/dev/TW-Medium.ttf", "", int(fontsize))
+	err = p.LoadTTF("TW-Medium", pdf.TW_Medium_PATH, "", int(fontsize))
 	if err != nil {
 		fmt.Println("loadTTF:", err.Error())
 	}

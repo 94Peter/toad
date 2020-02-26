@@ -25,19 +25,19 @@ type inputAccountItem struct {
 	ItemName string `json:"itemName"`
 }
 type inputConfigSaler struct {
-	Sid            string  `json:"id"`
-	SName          string  `json:"name"`
-	ZeroDate       string  `json:"zeroDate"`
-	ValidDate      string  `json:"validDate"`
-	Title          string  `json:"title"`
-	Salary         int     `json:"salary"`
-	Pay            int     `json:"pay"`
-	Percent        float64 `json:"percent"`
-	FPercent       float64 `json:"fPercent"`
-	Branch         string  `json:"branch"`
-	PayrollBracket int     `json:"payrollBracket"` //投保金額
-	Enrollment     int     `json:"enrollment"`     //加保(眷屬人數)
-	Association    int     `json:"association"`    //公會
+	Sid      string `json:"id"`
+	SName    string `json:"name"`
+	ZeroDate string `json:"zeroDate"`
+	//ValidDate string  `json:"validDate"`
+	Title  string `json:"title"`
+	Salary int    `json:"salary"`
+	//Pay       int     `json:"pay"`
+	Percent float64 `json:"percent"`
+	//FPercent       float64 `json:"fPercent"`
+	Branch         string `json:"branch"`
+	PayrollBracket int    `json:"payrollBracket"` //投保金額
+	Enrollment     int    `json:"enrollment"`     //加保(眷屬人數)
+	Association    int    `json:"association"`    //公會
 	// ZeroDate       time.Time `json:"zeroDate"`
 	// ValidDate      time.Time `json:"validDate"`
 	Address     string `json:"address"`
@@ -95,8 +95,8 @@ func (api ConfigAPI) GetAPIs() *[]*APIHandler {
 
 		&APIHandler{Path: "/v1/config/saler", Next: api.getConfigSalerEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/config/saler", Next: api.createConfigSalerEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/saler/{csID}", Next: api.updateConfigSalerEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/saler/{csID}", Next: api.deleteConfigSalerEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler/{id}", Next: api.updateConfigSalerEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler/{id}", Next: api.deleteConfigSalerEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/config/salary", Next: api.createConfigSalaryEndpoint, Method: "POST", Auth: false, Group: permission.All}, //內建PUT更改
 		&APIHandler{Path: "/v1/config/salary", Next: api.getConfigSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
@@ -578,8 +578,8 @@ func (api *ConfigAPI) createConfigSalaryEndpoint(w http.ResponseWriter, req *htt
 
 func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-	vars := util.GetPathVars(req, []string{"csID"})
-	csID := vars["csID"].(string)
+	vars := util.GetPathVars(req, []string{"id"})
+	id := vars["id"].(string)
 
 	iCSaler := inputConfigSaler{}
 	err := json.NewDecoder(req.Body).Decode(&iCSaler)
@@ -597,7 +597,7 @@ func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.UpdateConfigSaler(iCSaler.GetConfigSaler(), csID)
+	_err := configM.UpdateConfigSaler(iCSaler.GetConfigSaler(), id)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
@@ -609,12 +609,12 @@ func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http
 
 func (api *ConfigAPI) deleteConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-	vars := util.GetPathVars(req, []string{"csID"})
-	csID := vars["csID"].(string)
+	vars := util.GetPathVars(req, []string{"id"})
+	id := vars["id"].(string)
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.DeleteConfigSaler(csID)
+	_err := configM.DeleteConfigSaler(id)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
@@ -869,17 +869,14 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 			return false, errors.New("name is empty")
 		}
 	}
-	if iCSaler.ValidDate == "" {
-		iCSaler.ValidDate = "0001-01-01"
+
+	if iCSaler.ZeroDate == "" {
+		iCSaler.ZeroDate = "0001-01-01"
 	}
 
 	_, err := time.ParseInLocation("2006-01-02", iCSaler.ZeroDate, time.Local)
 	if err != nil {
 		return false, errors.New("zeroDate is not valid, " + err.Error())
-	}
-	_, err = time.ParseInLocation("2006-01-02", iCSaler.ValidDate, time.Local)
-	if err != nil {
-		return false, errors.New("validDate is not valid, " + err.Error())
 	}
 
 	if iCSaler.Salary < 0 {
@@ -888,16 +885,7 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 	if iCSaler.Percent < 0 {
 		return false, errors.New("percent is not valid")
 	}
-	if iCSaler.ValidDate == "0001-01-01" {
-		iCSaler.FPercent = -1
-		iCSaler.Pay = -1
-	}
-	if iCSaler.FPercent < 0 && iCSaler.FPercent != -1 {
-		return false, errors.New("fPercent is not valid")
-	}
-	if iCSaler.Pay < 0 && iCSaler.Pay != -1 {
-		return false, errors.New("pay is not valid")
-	}
+
 	if iCSaler.Title == "" {
 		return false, errors.New("title is empty")
 	}
@@ -924,17 +912,17 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 
 func (iCSaler *inputConfigSaler) GetConfigSaler() *model.ConfigSaler {
 	zero_time, _ := time.ParseInLocation("2006-01-02", iCSaler.ZeroDate, time.Local)
-	valid_time, _ := time.ParseInLocation("2006-01-02", iCSaler.ValidDate, time.Local)
+
 	return &model.ConfigSaler{
-		Sid:            iCSaler.Sid,
-		SName:          iCSaler.SName,
-		Pay:            iCSaler.Pay,
-		Salary:         iCSaler.Salary,
-		Percent:        iCSaler.Percent,
-		Title:          iCSaler.Title,
-		ValidDate:      valid_time,
-		ZeroDate:       zero_time,
-		FPercent:       iCSaler.FPercent,
+		Sid:   iCSaler.Sid,
+		SName: iCSaler.SName,
+		//Pay:            iCSaler.Pay,
+		Salary:  iCSaler.Salary,
+		Percent: iCSaler.Percent,
+		Title:   iCSaler.Title,
+		//ValidDate:      valid_time,
+		ZeroDate: zero_time,
+		//FPercent:       iCSaler.FPercent,
 		Branch:         iCSaler.Branch,
 		PayrollBracket: iCSaler.PayrollBracket,
 		Enrollment:     iCSaler.Enrollment,

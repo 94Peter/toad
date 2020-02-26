@@ -48,27 +48,27 @@ type NullFloat struct {
 	Valid bool // Valid is true if Time is not NULL
 }
 type ConfigSaler struct {
-	Sid            string    `json:"sid"`
-	Csid           string    `json:"csid"`
-	SName          string    `json:"name"`
-	ZeroDate       time.Time `json:"zeroDate"`
-	ValidDate      time.Time `json:"validDate"`
-	Title          string    `json:"title"`
-	Salary         int       `json:"salary"`
-	Pay            int       `json:"pay"`
-	Percent        float64   `json:"percent"`
-	FPercent       float64   `json:"fPercent"`
-	Branch         string    `json:"branch"`
-	PayrollBracket int       `json:"payrollBracket"` //投保金額
-	Enrollment     int       `json:"enrollment"`     //加保(眷屬人數)
-	Association    int       `json:"association"`    //公會
-	Address        string    `json:"address"`
-	Birth          string    `json:"birth"`
-	IdentityNum    string    `json:"identityNum"`
-	BankAccount    string    `json:"bankAccount"`
-	Email          string    `json:"email"`
-	Phone          string    `json:"phone"`
-	Remark         string    `json:"remark"`
+	Sid string `json:"sid"`
+	//Csid     string    `json:"csid"`
+	SName    string    `json:"name"`
+	ZeroDate time.Time `json:"zeroDate"`
+	//ValidDate time.Time `json:"validDate"`
+	Title  string `json:"title"`
+	Salary int    `json:"salary"`
+	//Pay       int       `json:"pay"`
+	Percent float64 `json:"percent"`
+	//FPercent       float64   `json:"fPercent"`
+	Branch         string `json:"branch"`
+	PayrollBracket int    `json:"payrollBracket"` //投保金額
+	Enrollment     int    `json:"enrollment"`     //加保(眷屬人數)
+	Association    int    `json:"association"`    //公會
+	Address        string `json:"address"`
+	Birth          string `json:"birth"`
+	IdentityNum    string `json:"identityNum"`
+	BankAccount    string `json:"bankAccount"`
+	Email          string `json:"email"`
+	Phone          string `json:"phone"`
+	Remark         string `json:"remark"`
 	// excel used
 	Tamount int    `json:"-"`
 	CurDate string `json:"-"`
@@ -475,8 +475,8 @@ func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err erro
 
 func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 
-	const qspl = `SELECT Csid, sid, sname, branch, zerodate, validdate, title, percent, fpercent,
-				  salary, pay, payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, remark
+	const qspl = `SELECT  sid, sname, branch, zerodate,  title, percent, 
+				  salary,  payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, phone , remark
 				  FROM public.ConfigSaler where branch like '%s';`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
@@ -494,8 +494,8 @@ func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&cs.Csid, &cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.ValidDate, &cs.Title, &cs.Percent, &cs.FPercent,
-			&cs.Salary, &cs.Pay, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Remark); err != nil {
+		if err := rows.Scan(&cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.Title, &cs.Percent,
+			&cs.Salary, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Phone, &cs.Remark); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -559,19 +559,18 @@ func (configM *ConfigModel) CheckConfigSaler(identitynum, zeroDate string) (r st
 func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 
 	const sql = `INSERT INTO public.configsaler(
-		csid, sid, sname, branch, zerodate, validdate, title, percent, fpercent, salary,
-		pay, payrollbracket, enrollment, association, address, birth, identityNum, bankAccount, email, remark)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20);`
+		sid, sname, branch, zerodate,  title, percent,  salary,
+		 payrollbracket, enrollment, association, address, birth, identityNum, bankAccount, phone , email, remark)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
 	}
-	fakeId := time.Now().Unix()
 
-	res, err := sqldb.Exec(sql, fakeId, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.ValidDate, cs.Title, cs.Percent, cs.FPercent, cs.Salary,
-		cs.Pay, cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Remark)
+	res, err := sqldb.Exec(sql, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
+		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Phone, cs.Remark)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -587,13 +586,15 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, ConfigSaler")
 	}
+	//新增預設紀錄
 
+	configM.CreateConfigSalary(cs.GetConfigSalary())
 	return nil
 }
 
-func (configM *ConfigModel) DeleteConfigSaler(csid string) (err error) {
+func (configM *ConfigModel) DeleteConfigSaler(sid string) (err error) {
 
-	const sql = `DELETE FROM public.configsaler	WHERE csid=$1 ;`
+	const sql = `DELETE FROM public.configsaler	WHERE sid=$1 ;`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -601,7 +602,7 @@ func (configM *ConfigModel) DeleteConfigSaler(csid string) (err error) {
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, csid)
+	res, err := sqldb.Exec(sql, sid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -617,25 +618,29 @@ func (configM *ConfigModel) DeleteConfigSaler(csid string) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, maybe not found the saler")
 	}
-
+	//成功的話，同時刪除薪資資訊
+	const qsql = `DELETE FROM public.configsalary WHERE sid=$1;`
+	res, err = sqldb.Exec(qsql, sid)
+	id, err = res.RowsAffected()
+	fmt.Println(id)
 	return nil
 }
 
-func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, csID string) (err error) {
+func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err error) {
 
 	const sql = `UPDATE public.configsaler
-	SET sid = $14, zerodate=$2, validdate=$3, title=$4, percent=$5, fpercent=$6, salary=$7,
-	pay=$8, payrollbracket=$9, enrollment=$10, association=$11, address=$12, birth=$13, identitynum=$14, bankaccount= $15 , email = $16  ,branch = $17, remark = $18
-	WHERE csid=$1`
+	SET zerodate=$2,  title=$3, percent=$4, salary=$5,
+	payrollbracket=$6, enrollment=$7, association=$8, address=$9, birth=$10, identitynum=$11, bankaccount= $12 , email = $13  ,branch = $14, remark = $15
+	WHERE sid=$1`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
 	}
-	fmt.Println(csID)
-	res, err := sqldb.Exec(sql, csID, cs.ZeroDate, cs.ValidDate, cs.Title, cs.Percent, cs.FPercent, cs.Salary,
-		cs.Pay, cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark)
+
+	res, err := sqldb.Exec(sql, Sid, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
+		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -732,7 +737,7 @@ func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, CreateConfigSalary")
 	}
-
+	configM.WorkValidDate()
 	return nil
 }
 func (configM *ConfigModel) DeleteConfigSalary(sid, zerodate string) (err error) {
@@ -760,7 +765,7 @@ func (configM *ConfigModel) DeleteConfigSalary(sid, zerodate string) (err error)
 	if id == 0 {
 		return errors.New("Invalid operation, maybe not found the salary of saler ")
 	}
-
+	configM.WorkValidDate()
 	return nil
 }
 
@@ -772,68 +777,35 @@ TODO::
 **/
 func (configM *ConfigModel) WorkValidDate() (err error) {
 
-	const qsql = `SELECT Csid, sid, sname, branch, zerodate, validdate, title, percent, fpercent,
-				  salary, pay, payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, remark
-				  FROM public.ConfigSaler where validdate <= now() and validdate != '0001-01-01';`
+	const sql = `UPDATE public.configsaler cs
+	SET sname=subquery.sname, branch=subquery.branch, zerodate=to_timestamp(subquery.zerodate,'YYYY-MM-DD'), title=subquery.title, percent=subquery.percent, 
+		salary=subquery.salary, payrollbracket=subquery.payrollbracket, enrollment=subquery.enrollment, association=subquery.association, 
+		remark=subquery.remark 	
+	FROM(
+		SELECT A.sid, A.zerodate, A.sname, A.branch, A.title, A.percent, A.salary, A.payrollbracket, A.enrollment, A.association, A.remark
+		FROM public.configsalary A 
+		Inner Join ( 
+			select sid, max(zerodate) zerodate from public.configsalary cs 
+			where now() >= to_timestamp(zerodate,'YYYY-MM') + '1 month'::interval
+			group by sid 
+		) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+	) AS subquery
+	WHERE subquery.sid = cs.sid;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
-
-	rows, err := db.SQLCommand(qsql)
+	sqldb, err := db.ConnectSQLDB()
+	res, err := sqldb.Exec(sql)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return err
 	}
-	var cbDataList []*ConfigSaler
-
-	for rows.Next() {
-		var cs ConfigSaler
-
-		// if err := rows.Scan(&r.ARid, &s); err != nil {
-		// 	fmt.Println("err Scan " + err.Error())
-		// }
-		if err := rows.Scan(&cs.Csid, &cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.ValidDate, &cs.Title, &cs.Percent, &cs.FPercent,
-			&cs.Salary, &cs.Pay, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Remark); err != nil {
-			fmt.Println("err Scan " + err.Error())
-		}
-
-		cbDataList = append(cbDataList, &cs)
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
 	}
-
-	for _, data := range cbDataList {
-		const sql = `UPDATE public.configsaler
-		SET validdate='0001-01-01', percent=$1, fpercent=-1, salary=$2, pay=-1
-		WHERE csid=$3`
-
-		sqldb, err := db.ConnectSQLDB()
-		if err != nil {
-			return err
-		}
-
-		res, err := sqldb.Exec(sql, data.FPercent, data.Pay, data.Csid)
-		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-		id, err := res.RowsAffected()
-		if err != nil {
-			fmt.Println("PG Affecte Wrong: ", err)
-			return err
-		}
-		fmt.Println(id)
-
-		if id == 0 {
-			return errors.New("Invalid operation, maybe not found the saler")
-		}
-		log := &EventLog{
-			Account: data.Sid,
-			Auth:    data.Title,
-			Name:    data.SName,
-			Msg:     fmt.Sprintf("更新薪資%d,原本為%d", data.Salary, data.Pay),
-			Type:    "update",
-		}
-		logM.CreateEventLog(log)
-	}
+	fmt.Println("WorkValidDate:", id)
 
 	return nil
 }
@@ -964,4 +936,21 @@ func (configM *ConfigModel) DeleteAccountItem(ItemName string) (err error) {
 	}
 
 	return nil
+}
+
+func (cs *ConfigSaler) GetConfigSalary() *ConfigSalary {
+
+	return &ConfigSalary{
+		Sid:            cs.Sid,
+		SName:          cs.SName,
+		Salary:         cs.Salary,
+		Percent:        cs.Percent,
+		Title:          cs.Title,
+		ZeroDate:       cs.ZeroDate.Format("2006-01-02"),
+		Branch:         cs.Branch,
+		PayrollBracket: cs.PayrollBracket,
+		Enrollment:     cs.Enrollment,
+		Association:    cs.Association,
+		Remark:         cs.Remark,
+	}
 }

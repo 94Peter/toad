@@ -431,7 +431,57 @@ func (salaryM *SalaryModel) DeleteSalary(ID string) (err error) {
 	return nil
 }
 
+func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
+	// //( (case when cb.sid is not null then ie.managerbonus else 0 end) + ss.tamount )
+	sql := `select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C `
+	// //where ss.bsid = '%s' and ss.sid like '%s'`
+	var Tag = true
+	db := salaryM.imr.GetSQLDB()
+	rows, err := db.SQLCommand(sql)
+	if err != nil {
+		return nil
+	}
+	for rows.Next() {
+		Tag = false
+		break
+	}
+	if Tag {
+		fmt.Println("基礎參數未填")
+		return errors.New("基礎參數未填")
+	}
+	//######
+	Tag = true
+	sql = `select branch , sid  from public.configbranch`
+	rows, err = db.SQLCommand(sql)
+	if err != nil {
+		return nil
+	}
+	var s = ""
+	for rows.Next() {
+		var sid NullString
+		var branch string
+		if err := rows.Scan(&branch, &sid); err != nil {
+			fmt.Println("err Scan " + err.Error())
+			return nil
+		}
+		if !sid.Valid {
+			s += branch + "店長為空。"
+			Tag = true
+		}
+	}
+	if Tag {
+		fmt.Println(s)
+		return errors.New(s)
+	}
+
+	return nil
+}
+
 func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err error) {
+	err = salaryM.isOK_CreateSalary()
+	if err != nil {
+		return err
+	}
 
 	// const sql = `INSERT INTO public.branchsalary
 	// 			(BSid, date, branch, name)
@@ -477,6 +527,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 		fmt.Println("[Insert err] ", err)
 		return err
 	}
+
 	id, err := res.RowsAffected()
 	if err != nil {
 		fmt.Println("PG Affecte Wrong: ", err)

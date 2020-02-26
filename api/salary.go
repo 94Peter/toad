@@ -409,7 +409,7 @@ func (api *SalaryAPI) createBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 	_err := SalaryM.CreateSalary(iBS.GetBranchSalary(), iBS.CList)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error" + _err.Error()))
+		w.Write([]byte("[Error]" + _err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}

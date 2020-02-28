@@ -477,7 +477,7 @@ func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 
 	const qspl = `SELECT  sid, sname, branch, zerodate,  title, percent, 
 				  salary,  payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, phone , remark
-				  FROM public.ConfigSaler where branch like '%s';`
+				  FROM public.ConfigSaler where branch like '%s' order by branch,sid;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
 	fmt.Println(fmt.Sprintf(qspl, branch))

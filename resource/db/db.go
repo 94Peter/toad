@@ -82,6 +82,7 @@ func (dbc *DBConf) GetDB() InterDB {
 }
 
 func (dbc *DBConf) GetSQLDB() InterSQLDB {
+
 	if dbc.sqldb != nil {
 		return dbc.sqldb
 	}

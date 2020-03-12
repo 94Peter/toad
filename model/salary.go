@@ -439,7 +439,7 @@ func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
 	db := salaryM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(sql)
 	if err != nil {
-		return nil
+		return err
 	}
 	for rows.Next() {
 		Tag = false
@@ -450,11 +450,11 @@ func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
 		return errors.New("基礎參數未填")
 	}
 	//######
-	Tag = true
+	Tag = false
 	sql = `select branch , sid  from public.configbranch`
 	rows, err = db.SQLCommand(sql)
 	if err != nil {
-		return nil
+		return err
 	}
 	var s = ""
 	for rows.Next() {
@@ -462,7 +462,7 @@ func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
 		var branch string
 		if err := rows.Scan(&branch, &sid); err != nil {
 			fmt.Println("err Scan " + err.Error())
-			return nil
+			return err
 		}
 		if !sid.Valid {
 			s += branch + "店長為空。"
@@ -480,6 +480,7 @@ func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
 func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err error) {
 	err = salaryM.isOK_CreateSalary()
 	if err != nil {
+		fmt.Println("CreateSalary err:" + err.Error())
 		return err
 	}
 

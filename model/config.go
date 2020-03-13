@@ -560,7 +560,7 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 
 	const sql = `INSERT INTO public.configsaler(
 		sid, sname, branch, zerodate,  title, percent,  salary,
-		 payrollbracket, enrollment, association, address, birth, identityNum, bankAccount, phone , email, remark)
+		 payrollbracket, enrollment, association, address, birth, identityNum, bankAccount,  email, phone, remark)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
 
 	interdb := configM.imr.GetSQLDB()

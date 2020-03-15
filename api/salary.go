@@ -348,7 +348,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		SalaryM.PDF(mExport, pdf.OriPdf)
 		break
 
-	case pdf.SalarCommission:
+	case pdf.SalarCommission: //8
 		for _, element := range exportId.BSidList {
 			SalaryM.GetSalerCommission(element.BSid)
 			SalaryM.PDF(mExport, pdf.OriPdf)

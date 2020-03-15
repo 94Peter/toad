@@ -76,15 +76,21 @@ func GetNewPDF(things ...interface{}) *Pdf {
 	//1000.155, 708.333 = B4 (250 × 353 cm)
 	//1,000.637, 1,416.313 = B3 (353 × 500 cm)
 	pdf := p.myPDF
+	// pdf.Start(gopdf.Config{
+	// 	Unit:     "pt",
+	// 	PageSize: p.pageSize, //gopdf.Rect{W: p.pageSize.W, H: p.pageSize.H},
+	// 	Protection: gopdf.PDFProtectionConfig{
+	// 		UseProtection: true,
+	// 		Permissions:   gopdf.PermissionsPrint | gopdf.PermissionsCopy | gopdf.PermissionsModify,
+	// 		OwnerPass:     []byte("000000"),
+	// 		UserPass:      []byte("123456")},
+	// }) // B4(1000.155, 708.333)
+
 	pdf.Start(gopdf.Config{
 		Unit:     "pt",
 		PageSize: p.pageSize, //gopdf.Rect{W: p.pageSize.W, H: p.pageSize.H},
-		Protection: gopdf.PDFProtectionConfig{
-			UseProtection: true,
-			Permissions:   gopdf.PermissionsPrint | gopdf.PermissionsCopy | gopdf.PermissionsModify,
-			OwnerPass:     []byte("000000"),
-			UserPass:      []byte("123456")},
 	}) // B4(1000.155, 708.333)
+
 	pdf.AddPage()
 	err := p.LoadTTF("TW-Medium", TW_Medium_PATH, "", 14)
 	if err != nil {

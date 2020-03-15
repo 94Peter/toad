@@ -118,7 +118,7 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	//if invoiceno is null in Database return ""
 
 	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100 * cs.percent/100) bonus,
-	r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(r.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) , coalesce(d.item,'')
+	r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) , coalesce(d.item,'')
 	FROM public.commission c
 	inner JOIN public.receipt r on r.rid = c.rid
 	Inner Join (
@@ -133,7 +133,10 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	left join(
 		select rid, checknumber , fee, item from public.deduct
 	) d on d.rid = r.rid
-	where c.bsid = '%s';`
+	left join(
+		select rid,  invoiceno from public.invoice 
+	) iv on r.rid = iv.rid
+	where c.bsid = '%s' order by c.arid asc;` //根據案子分類
 
 	//left JOIN (select sum(fee) fee, count(rid) ,arid from public.deduct group by arid) as tmp on tmp.arid = r.arid
 	db := cm.imr.GetSQLDB()
@@ -145,9 +148,8 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 		return nil
 	}
 
-	fmt.Println("SQLCommand Done")
 	for rows.Next() {
-		fmt.Println("rows.Next ")
+
 		var c Commission
 
 		if err := rows.Scan(&c.Sid, &c.Rid, &c.Date, &c.Item, &c.Amount, &c.Fee, &c.SName, &c.CPercent, &c.SR, &c.Bonus, &c.ARid, &c.Status, &c.Branch, &c.Percent, &c.ReceiveDate, &c.InvoiceNo, &c.Checknumber, &c.Fee, &c.DedectItem); err != nil {
@@ -155,14 +157,14 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 		}
 
 		out2, _ := json.Marshal(c)
-		fmt.Println("c :", string(out2))
+		fmt.Println("exportCommissiontData c :", string(out2))
 
 		cDataList = append(cDataList, &c)
 	}
 
 	cm.cList = cDataList
 	out, _ := json.Marshal(cm.cList)
-	fmt.Println("cm.cList :", string(out))
+	fmt.Println("exportCommissiontData cm.cList :", string(out))
 
 	return cm.cList
 }

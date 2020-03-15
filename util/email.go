@@ -52,7 +52,7 @@ func RunSendMail(smtpHost, smtpPort, smtpPass, smtpUser, to, subject, body, fnam
 	mail = &SendMail{User: smtpUser, Password: smtpPass, Host: smtpHost, Port: smtpPort}
 	message := Message{from: "test@test.com",
 		to:          []string{to},
-		cc:          []string{"a3162858@gmail.com", "ch.focke@gmail.com "}, //East東彥,Peter
+		cc:          []string{"a3162858@gmail.com", "ch.focke@gmail.com", "crgcrg0034@gmail.com"}, //East東彥,Peter
 		bcc:         []string{},
 		subject:     subject,
 		body:        body,

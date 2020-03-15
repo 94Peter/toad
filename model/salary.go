@@ -231,7 +231,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 		pdf.ResizeWidth(table, p.GetTextWidth(e.Text), index)
 	}
 
-	fmt.Println("mtype:", mtype)
+	fmt.Println("SalaryModel mtype:", mtype)
 	switch mtype {
 	case pdf.BranchSalary:
 		if len(salaryM.salerSalaryList) <= 0 {
@@ -282,10 +282,28 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 		}
 		for _, saler := range mailList {
 			fmt.Println("saler:", saler.SName)
+			p := pdf.GetNewPDF()
 			table = pdf.GetDataTable(mtype)
-			data, T_SR, T_Bonus := salaryM.addSalerCommissionInfoTable(table, p, salaryM.CommissionList, saler.Sid)
+			//Header長度重製
+			for index, e := range table.RawData {
+				pdf.ResizeWidth(table, p.GetTextWidth(e.Text), index)
+			}
+			//根據saler.Sid比對所有資料，相同的寫入pdf
+			data, T_SR, T_Bonus, date := salaryM.addSalerCommissionInfoTable(table, p, salaryM.CommissionList, saler.Sid)
 			p.DrawTablePDF(data)
 			p.CustomizedSalerCommission(data, saler.SName, int(T_Bonus), int(T_SR))
+			//fmt.Println("pdf.SalarCommission date:", date, "#", saler.SName)
+			//mailList 有其他店的人
+			if date == "error" {
+				continue
+			}
+			date, _ = util.ADtoROC(date, "file")
+			fname := saler.Branch + "-" + saler.SName + "傭金表" + date
+			p.WriteFile(fname)
+
+			if send == "true" {
+				util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, saler.Email, pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為000000或者您的身分證號碼", fname+".pdf")
+			}
 		}
 		break
 	case pdf.SalerSalary: //7
@@ -320,7 +338,9 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 						if myAccount.Sid == element.Sid {
 							fmt.Println(myAccount, element)
 							fmt.Println(fname)
-							util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, "geassyayaoo3@gmail.com", pdf.ReportToString(mtype), "開啟若有密碼，則為123456", fname+".pdf")
+							util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, myAccount.Email, pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為000000或者您的身分證號碼", fname+".pdf")
+							//util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, "geassyayaoo3@gmail.com", pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為123456", fname+".pdf")
+
 						}
 					}
 				}
@@ -346,7 +366,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 		//p.WriteFile(salaryM.salerSalaryList[0].Branch + "薪資表" + date)
 
 		break
-	case pdf.SR:
+	case pdf.SR: // 6
 		//table = pdf.GetDataTable(mtype)
 		if len(salaryM.CommissionList) > 0 {
 			fmt.Println("SR")
@@ -1367,10 +1387,10 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 	T_Salary, T_Pbonus, T_Abonus, T_Lbonus, T_Total = 0, 0, 0, 0, 0
 	T_SP, T_Tax, T_LaborFee, T_HealthFee, T_Welfare, T_CommercialFee = 0, 0, 0, 0, 0, 0
 	T_TAmount, T_Other = 0, 0
-
+	fmt.Println("addBranchSalaryInfoTable:", len(salaryM.salerSalaryList))
 	for index, element := range salaryM.salerSalaryList {
-		fmt.Println(index)
-		fmt.Println(table.ColumnWidth[index])
+		fmt.Println("addBranchSalaryInfoTable:", index)
+		//fmt.Println("addBranchSalaryInfoTable:", table.ColumnWidth[index])
 		///
 		text := strconv.Itoa(index + 1)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
@@ -1772,15 +1792,18 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 }
 
 func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
-	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch   from salersalary ss
+	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, tmp.mdate  from salersalary ss
 				left join(
 					SELECT c.bsid, c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, 
-					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(r.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
+					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') mdate, COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid		
 					left join(
 						select rid, checknumber , fee, item from public.deduct
 					) d on d.rid = r.rid		
+					left join(
+						select rid,  invoiceno from public.invoice 
+					) iv on r.rid = iv.rid
 				) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 			Inner Join (
 				SELECT A.sid, A.branch, A.percent, A.title
@@ -1790,8 +1813,8 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 						where now() > zerodate
 						group by sid
 					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
-			) cs on cs.sid=ss.sid 
-			where ss.bsid = '%s' order by ss.sid asc;`
+			) cs on cs.sid=ss.sid 			
+			where ss.bsid = '%s' order by mdate, sid asc;`
 
 	// const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, tmp.bonus, tmp.remark from salersalary ss
 	// left join(
@@ -1829,12 +1852,19 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 	fmt.Println("SQLCommand Done")
 	for rows.Next() {
 		var c Commission
-		var Item, Branch, DedectItem NullString
+		var mdate, Item, Branch, DedectItem NullString
 		var Amount, Fee NullInt
 		var CPercent, SR, Bonus NullFloat
-		if err := rows.Scan(&c.Sid, &c.SName, &Item, &Amount, &Fee, &CPercent, &SR, &Bonus, &DedectItem, &Branch); err != nil {
+		if err := rows.Scan(&c.Sid, &c.SName, &Item, &Amount, &Fee, &CPercent, &SR, &Bonus, &DedectItem, &Branch, &mdate); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
+		fmt.Println("mdate:", mdate.Value)
+
+		time, err := time.ParseInLocation("2006-01-02", mdate.Value, time.Local)
+		if err == nil {
+			c.Date = time
+		}
+		fmt.Println("c.Date:", c.Date)
 		c.Item = Item.Value
 		c.Amount = int(Amount.Value)
 		c.Fee = int(Fee.Value)
@@ -1865,12 +1895,15 @@ func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, cs.percent   from salersalary ss
 				inner join(
 					SELECT c.bsid, c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, 
-					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(r.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
+					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid		
 					left join(
 						select rid, checknumber , fee, item from public.deduct
 					) d on d.rid = r.rid		
+					left join(
+						select rid,  invoiceno from public.invoice 
+					) iv on r.rid = iv.rid
 				) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 			Inner Join (
 				SELECT A.sid, A.branch, A.percent, A.title
@@ -2276,15 +2309,16 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 }
 
 func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p *pdf.Pdf, cList []*Commission, sid string) (table_final *pdf.DataTable,
-	T_SR, T_Bonus float64) {
+	T_SR, T_Bonus float64, date string) {
 
 	//text := "fd"
 	//width := mypdf.MeasureTextWidth(text)
 	//table.ColumnLen
 	T_SR, T_Bonus = 0.0, 0.0
-
+	date = "error"
 	for _, element := range cList {
 		if element.Sid == sid {
+			date = element.Date.Format("2006-01-02 15:04:05")
 			///
 			text := element.Item
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
@@ -2743,12 +2777,6 @@ func (salaryM *SalaryModel) getSalerEmail(things ...string) ([]*ConfigSaler, err
 
 		saList = append(saList, &saler)
 	}
-
-	out, err := json.Marshal(saList)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(out))
 
 	return saList, nil
 

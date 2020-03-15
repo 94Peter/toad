@@ -436,7 +436,7 @@ func (p *Pdf) CustomizedSalerCommission(table *DataTable, SName string, T_Bonus,
 	p.FillText(strconv.Itoa(T_Bonus), 12, report.ColorTableLine, alignCenter, valignMiddle, textw, TextHeight)
 	pdfx += textw
 	//p.myPDF.AddPage()
-	p.NewPage()
+	//p.NewPage()
 }
 
 func (p *Pdf) CustomizedAgentSign(table *DataTable, T_Bonus, T_SR float64) (Total_SR, Total_Bonus float64) {

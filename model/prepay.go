@@ -130,7 +130,7 @@ func (prepayM *PrePayModel) PDF() []byte {
 
 	data, Total := prepayM.addInfoTable(table, p, branchList)
 	fmt.Println(" data len", len(data.ColumnWidth))
-	p.CustomizedPrepayTitle(data, "108年6月份內湖店", branchList)
+	p.CustomizedPrepayTitle(data, "代支費用", branchList)
 	data.RawData = data.RawData[4:]
 	p.DrawTablePDF(data)
 	p.CustomizedPrepay(data, Total)

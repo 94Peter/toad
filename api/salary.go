@@ -349,10 +349,21 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		break
 
 	case pdf.SalarCommission: //8
+		SalaryM.SetSMTPConf(di.GetSMTPConf())
 		for _, element := range exportId.BSidList {
 			SalaryM.GetSalerCommission(element.BSid)
-			SalaryM.PDF(mExport, pdf.OriPdf)
+			//SalaryM.PDF(mExport, pdf.OriPdf)
+			SalaryM.PDF(mExport, pdf.NewPdf, send)
 		}
+		//寄送郵件的話，不輸出檔案哦~
+		if send == "true" {
+			util.DeleteAllFile()
+			w.Write([]byte("OK"))
+			return
+		}
+		util.CompressZip("download")
+		ReceiveFile(w, req, "download.zip")
+		util.DeleteAllFile()
 		break
 	case pdf.SR: //6
 		for _, element := range exportId.BSidList {

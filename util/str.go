@@ -66,10 +66,14 @@ func IntToFixStrLen(val int, length int) (string, error) {
 // 西元轉中華民國
 func ADtoROC(adStr, format string) (TW_Date string, err error) {
 	TWyear, err := strconv.Atoi(adStr[0:4])
-	fmt.Println(TWyear)
+	fmt.Println("ADtoROC:", adStr)
 	TWyear = TWyear - 1911
 	TWmonth, err := strconv.Atoi(adStr[5:7])
 	TWday := 1
+	if TWyear < 0 {
+		err = errors.New("錯誤時間adStr")
+		return "", err
+	}
 	if len(adStr) > 7 {
 		TWday, err = strconv.Atoi(adStr[8:10])
 	}
@@ -79,7 +83,8 @@ func ADtoROC(adStr, format string) (TW_Date string, err error) {
 		TW_Date = fmt.Sprintf("%d年%d月%d日", TWyear, TWmonth, TWday)
 		break
 	case "file":
-		TW_Date = fmt.Sprintf("%d%d", TWyear, TWmonth)
+		TW_Date = fmt.Sprintf("%d%02d", TWyear, TWmonth)
+		fmt.Println("ADtoROC TW_Date:", TW_Date)
 		break
 	case "invoice":
 		if TWmonth%2 == 0 {

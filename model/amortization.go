@@ -163,7 +163,7 @@ func (amorM *AmortizationModel) PDF() []byte {
 
 	data, T_Month, T_Has, T_not := amorM.addAmorInfoTable(table, p)
 	//data, _, _, _ := amorM.addAmorInfoTable(table, p)
-	p.CustomizedAmortizationTitle(data, "108年6月份內湖店設立成本攤提表")
+	p.CustomizedAmortizationTitle(data, "成本攤提表")
 	p.DrawTablePDF(data)
 	p.CustomizedAmortization(data, T_Month, T_Has, T_not)
 	return p.GetBytesPdf()

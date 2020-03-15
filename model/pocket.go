@@ -95,7 +95,7 @@ func (pocketM *PocketModel) PDF() []byte {
 	data, T_Income, T_Fee, T_Balance := pocketM.addInfoTable(table, p)
 	//data, _, _, _ := amorM.addAmorInfoTable(table, p)
 
-	p.CustomizedPocketTitle(data, "108年6月份內湖店設")
+	p.CustomizedPocketTitle(data, "零用金")
 	p.DrawTablePDF(data)
 	p.CustomizedPocket(data, T_Income, T_Fee, T_Balance)
 	return p.GetBytesPdf()

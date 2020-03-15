@@ -1996,11 +1996,13 @@ func (salaryM *SalaryModel) ExportIncomeTaxReturn(bsID string) {
 	}
 
 	if date == "" {
+		fmt.Println("no data here")
 		return
 	}
 	//藉由日期區間查詢
-	year := date[0:3]
+	year := date[0:4]
 	rows, err = db.SQLCommand(fmt.Sprintf(qsql, year+"-01-01", date+"-01", branch))
+	fmt.Println(fmt.Sprintf(qsql, year+"-01-01", date+"-01", branch))
 	if err != nil {
 		fmt.Println(err)
 		return

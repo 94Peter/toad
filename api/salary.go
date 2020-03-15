@@ -290,8 +290,8 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		}
 		SalaryM.EXCEL(mExport)
 
-		ex.SaveFile("薪轉明細表")
-		ReceiveFile(w, req, "薪轉明細表.xlsx")
+		ex.SaveFile("年度所得申報")
+		ReceiveFile(w, req, "年度所得申報.xlsx")
 		util.DeleteAllFile()
 		return
 	case pdf.Commission: //4

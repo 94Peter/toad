@@ -35,7 +35,8 @@ type inputConfigSaler struct {
 	Percent float64 `json:"percent"`
 	//FPercent       float64 `json:"fPercent"`
 	Branch         string `json:"branch"`
-	PayrollBracket int    `json:"payrollBracket"` //投保金額
+	PayrollBracket int    `json:"payrollBracket"` //健保投保金額
+	InsuredAmount  int    `json:"insuredAmount"`  //勞保投保金額
 	Enrollment     int    `json:"enrollment"`     //加保(眷屬人數)
 	Association    int    `json:"association"`    //公會
 	// ZeroDate       time.Time `json:"zeroDate"`
@@ -835,6 +836,11 @@ func (iCSaler *inputConfigSaler) isConfigSalaryValid() (bool, error) {
 	if iCSaler.PayrollBracket < 0 {
 		return false, errors.New("payrollBracket is not valid")
 	}
+
+	if iCSaler.InsuredAmount < 0 {
+		return false, errors.New("insuredAmount is not valid")
+	}
+
 	if iCSaler.Enrollment < 0 {
 		return false, errors.New("enrollment is not valid")
 	}
@@ -892,6 +898,11 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 	if iCSaler.PayrollBracket < 0 {
 		return false, errors.New("payrollBracket is not valid")
 	}
+
+	if iCSaler.InsuredAmount < 0 {
+		return false, errors.New("insuredAmount is not valid")
+	}
+
 	if iCSaler.Enrollment < 0 {
 		return false, errors.New("enrollment is not valid")
 	}
@@ -925,6 +936,7 @@ func (iCSaler *inputConfigSaler) GetConfigSaler() *model.ConfigSaler {
 		//FPercent:       iCSaler.FPercent,
 		Branch:         iCSaler.Branch,
 		PayrollBracket: iCSaler.PayrollBracket,
+		InsuredAmount:  iCSaler.InsuredAmount,
 		Enrollment:     iCSaler.Enrollment,
 		Association:    iCSaler.Association,
 		Address:        iCSaler.Address,
@@ -948,6 +960,7 @@ func (iCSaler *inputConfigSaler) GetConfigSalary() *model.ConfigSalary {
 		ZeroDate:       iCSaler.ZeroDate,
 		Branch:         iCSaler.Branch,
 		PayrollBracket: iCSaler.PayrollBracket,
+		InsuredAmount:  iCSaler.InsuredAmount,
 		Enrollment:     iCSaler.Enrollment,
 		Association:    iCSaler.Association,
 		Remark:         iCSaler.Remark,

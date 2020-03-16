@@ -686,7 +686,8 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 			//"FPercent double precision DEFAULT 0, "+
 			"Salary integer DEFAULT 0, "+
 			//"Pay integer DEFAULT 0, "+ //未來薪資
-			"PayrollBracket integer DEFAULT 0, "+ //投保金額
+			"PayrollBracket integer DEFAULT 0, "+ //健保 投保金額
+			"InsuredAmount integer DEFAULT 0, "+ //勞保 投保金額
 			"Enrollment integer DEFAULT 0, "+ //加保(眷屬人數)
 			"Association integer DEFAULT 0, "+ // 公會
 			"Address character varying(50) DEFAULT '', "+ // 地址
@@ -722,7 +723,8 @@ func (sdb *sqlDB) CreateConfigSalaryTable() error {
 			"Title character varying(50) ,"+
 			"Percent double precision DEFAULT 0, "+
 			"Salary integer DEFAULT 0, "+
-			"PayrollBracket integer DEFAULT 0, "+ //投保金額
+			"PayrollBracket integer DEFAULT 0, "+ //健保 投保金額
+			"InsuredAmount integer DEFAULT 0, "+ //勞保 投保金額
 			"Enrollment integer DEFAULT 0, "+ //加保(眷屬人數)
 			"Association integer DEFAULT 0, "+ // 公會
 			"Remark character varying(50) DEFAULT '', "+ // 備註

@@ -60,6 +60,7 @@ type ConfigSaler struct {
 	//FPercent       float64   `json:"fPercent"`
 	Branch         string `json:"branch"`
 	PayrollBracket int    `json:"payrollBracket"` //投保金額
+	InsuredAmount  int    `json:"insuredAmount"`  //勞保投保金額
 	Enrollment     int    `json:"enrollment"`     //加保(眷屬人數)
 	Association    int    `json:"association"`    //公會
 	Address        string `json:"address"`
@@ -83,6 +84,7 @@ type ConfigSalary struct {
 	Percent        float64 `json:"percent"`
 	Branch         string  `json:"branch"`
 	PayrollBracket int     `json:"payrollBracket"` //投保金額
+	InsuredAmount  int     `json:"insuredAmount"`  //勞保投保金額
 	Enrollment     int     `json:"enrollment"`     //加保(眷屬人數)
 	Association    int     `json:"association"`    //公會
 	Remark         string  `json:"remark"`
@@ -476,11 +478,11 @@ func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err erro
 func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 
 	const qspl = `SELECT  sid, sname, branch, zerodate,  title, percent, 
-				  salary,  payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, phone , remark
+				  salary, insuredamount,  payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, phone , remark
 				  FROM public.ConfigSaler where branch like '%s' order by branch,sid;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
-	fmt.Println(fmt.Sprintf(qspl, branch))
+
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch))
 	if err != nil {
 		fmt.Println(err)
@@ -495,7 +497,7 @@ func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
 		if err := rows.Scan(&cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.Title, &cs.Percent,
-			&cs.Salary, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Phone, &cs.Remark); err != nil {
+			&cs.Salary, &cs.InsuredAmount, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Phone, &cs.Remark); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -559,9 +561,9 @@ func (configM *ConfigModel) CheckConfigSaler(identitynum, zeroDate string) (r st
 func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 
 	const sql = `INSERT INTO public.configsaler(
-		sid, sname, branch, zerodate,  title, percent,  salary,
+		sid, sname, branch, zerodate,  title, percent,  salary, insuredamount,
 		 payrollbracket, enrollment, association, address, birth, identityNum, bankAccount,  email, phone, remark)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -569,7 +571,7 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
+	res, err := sqldb.Exec(sql, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary, cs.InsuredAmount,
 		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Phone, cs.Remark)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -630,7 +632,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err 
 
 	const sql = `UPDATE public.configsaler
 	SET zerodate=$2,  title=$3, percent=$4, salary=$5,
-	payrollbracket=$6, enrollment=$7, association=$8, address=$9, birth=$10, identitynum=$11, bankaccount= $12 , email = $13  ,branch = $14, remark = $15
+	payrollbracket=$6, enrollment=$7, association=$8, address=$9, birth=$10, identitynum=$11, bankaccount= $12 , email = $13  ,branch = $14, remark = $15 , insuredamount=$16
 	WHERE sid=$1`
 
 	interdb := configM.imr.GetSQLDB()
@@ -640,7 +642,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err 
 	}
 
 	res, err := sqldb.Exec(sql, Sid, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
-		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark)
+		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark, cs.InsuredAmount)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -670,11 +672,11 @@ func (configM *ConfigModel) GetConfigSalaryData(sid string) (err error) {
 	// 					group by sid
 	// 				) B on A.sid=B.sid and A.zeroDate = B.zeroDate
 	// 			  where branch sid = '%s';`
-	const sql = `SELECT sid, sname, branch, zerodate, title, percent, salary,payrollbracket, enrollment, association,remark
+	const sql = `SELECT sid, sname, branch, zerodate, title, percent, salary, payrollbracket, insuredamount, enrollment, association,remark
 	  FROM public.configsalary where  sid like '%s' order by zeroDate desc;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
-	fmt.Println(fmt.Sprintf(sql, sid))
+
 	rows, err := db.SQLCommand(fmt.Sprintf(sql, sid))
 	if err != nil {
 		fmt.Println(err)
@@ -689,7 +691,7 @@ func (configM *ConfigModel) GetConfigSalaryData(sid string) (err error) {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
 		if err := rows.Scan(&cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.Title, &cs.Percent,
-			&cs.Salary, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Remark); err != nil {
+			&cs.Salary, &cs.PayrollBracket, &cs.InsuredAmount, &cs.Enrollment, &cs.Association, &cs.Remark); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -708,10 +710,10 @@ func (configM *ConfigModel) GetConfigSalaryData(sid string) (err error) {
 func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary) (err error) {
 
 	const sql = `INSERT INTO public.configsalary(
-		sid, sname, branch, zerodate, title, percent, salary, payrollbracket, enrollment, association, remark)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		sid, sname, branch, zerodate, title, percent, salary, payrollbracket, insuredamount, enrollment, association, remark)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		ON CONFLICT (sid,zerodate) DO UPDATE SET sname = excluded.sname, title = excluded.title, branch = excluded.branch,
-		percent = excluded.percent, salary = excluded.salary, payrollbracket = excluded.payrollbracket,
+		percent = excluded.percent, salary = excluded.salary, payrollbracket = excluded.payrollbracket, insuredamount = excluded.insuredamount,
 		enrollment = excluded.enrollment , association = excluded.association , remark = excluded.remark ;`
 
 	interdb := configM.imr.GetSQLDB()
@@ -721,7 +723,7 @@ func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary) (err error) {
 	}
 
 	res, err := sqldb.Exec(sql, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
-		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Remark)
+		cs.PayrollBracket, cs.InsuredAmount, cs.Enrollment, cs.Association, cs.Remark)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -779,10 +781,10 @@ func (configM *ConfigModel) WorkValidDate() (err error) {
 
 	const sql = `UPDATE public.configsaler cs
 	SET sname=subquery.sname, branch=subquery.branch, zerodate=to_timestamp(subquery.zerodate,'YYYY-MM-DD'), title=subquery.title, percent=subquery.percent, 
-		salary=subquery.salary, payrollbracket=subquery.payrollbracket, enrollment=subquery.enrollment, association=subquery.association, 
+		salary=subquery.salary, payrollbracket=subquery.payrollbracket,  insuredamount=subquery.insuredamount, enrollment=subquery.enrollment, association=subquery.association, 
 		remark=subquery.remark 	
 	FROM(
-		SELECT A.sid, A.zerodate, A.sname, A.branch, A.title, A.percent, A.salary, A.payrollbracket, A.enrollment, A.association, A.remark
+		SELECT A.sid, A.zerodate, A.sname, A.branch, A.title, A.percent, A.salary, A.payrollbracket, A.enrollment, A.association, A.remark , A.insuredamount
 		FROM public.configsalary A 
 		Inner Join ( 
 			select sid, max(zerodate) zerodate from public.configsalary cs 
@@ -949,6 +951,7 @@ func (cs *ConfigSaler) GetConfigSalary() *ConfigSalary {
 		ZeroDate:       cs.ZeroDate.Format("2006-01-02"),
 		Branch:         cs.Branch,
 		PayrollBracket: cs.PayrollBracket,
+		InsuredAmount:  cs.InsuredAmount,
 		Enrollment:     cs.Enrollment,
 		Association:    cs.Association,
 		Remark:         cs.Remark,

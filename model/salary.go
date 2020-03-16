@@ -621,7 +621,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	SELECT BS.bsid, A.sid, COALESCE(C.dateID, $1) dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0) Pbonus, 
 	COALESCE(A.Salary+  C.Pbonus,A.Salary) total, A.PayrollBracket*CP.LI*0.2/100 LaborFee,A.PayrollBracket*CP.nhi*0.3/100 HealthFee,
 	COALESCE(A.Salary+  C.Pbonus,A.Salary)*0.01 Welfare, COALESCE(A.Salary+  C.Pbonus,A.Salary)*cb.commercialFee/100 commercialFee,
-	(COALESCE(A.Salary+  C.Pbonus,A.Salary)*0.98 -  A.PayrollBracket*(CP.LI*0.2+CP.nhi*0.3)/100 ) Tamount,
+	(COALESCE(A.Salary+  C.Pbonus,A.Salary)*0.99 -  A.PayrollBracket*(CP.LI*0.2+CP.nhi*0.3)/100 ) Tamount,
 	$3 ,
 	(CASE WHEN A.salary = 0 and A.association = 1 then 0 
 		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  C.Pbonus,A.Salary) * cp.nhi2nd / 100 

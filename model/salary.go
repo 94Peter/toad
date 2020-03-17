@@ -497,6 +497,13 @@ func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
 	return nil
 }
 
+/**
+*確認是否可以建立薪資
+*建立分店總表[根據幾家分店，建立基本bsid]
+*針對傭金綁定bsid
+*計算並建立業務薪資
+*更新分店總表數值
+**/
 func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err error) {
 	err = salaryM.isOK_CreateSalary()
 	if err != nil {
@@ -578,57 +585,32 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 		//return css_err
 	}
 
-	// const bppsql = `INSERT INTO public.branchprepay
-	// (ppid, branch, cost)
-	// VALUES ($1, $2, $3)
-	// ;`
-
-	// i := 0
-	// for range salerlist {
-	// 	if salerlist[i].Bid == "testBid" {
-	// 		break
-	// 	}
-	// 	i++
-	// }
-	// i := 0
-	// for range prepay.PrePay {
-
-	// 	bppres, err := sqldb.Exec(bppsql, fakeId, prepay.PrePay[i].Branch, prepay.PrePay[i].Cost)
-	// 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 		return err
-	// 	}
-
-	// 	bppid, err := bppres.RowsAffected()
-	// 	if err != nil {
-	// 		fmt.Println("PG Affecte Wrong: ", err)
-	// 		return err
-	// 	}
-	// 	if bppid == 0 {
-	// 		return errors.New("Invalid operation, CreateBranchPrepay")
-	// 	}
-	// 	i++
-	// }
-
 	return nil
 }
 
 func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err error) {
 
 	const sql = `INSERT INTO public.salersalary
-	(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, tamount, year, sp)
+	(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
 	SELECT BS.bsid, A.sid, COALESCE(C.dateID, $1) dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0) Pbonus, 
-	COALESCE(A.Salary+  C.Pbonus,A.Salary) total, A.PayrollBracket*CP.LI*0.2/100 LaborFee,A.PayrollBracket*CP.nhi*0.3/100 HealthFee,
-	COALESCE(A.Salary+  C.Pbonus,A.Salary)*0.01 Welfare, COALESCE(A.Salary+  C.Pbonus,A.Salary)*cb.commercialFee/100 commercialFee,
-	(COALESCE(A.Salary+  C.Pbonus,A.Salary)*0.99 -  A.PayrollBracket*(CP.LI*0.2+CP.nhi*0.3)/100 ) Tamount,
+	COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0), A.Salary) total, A.InsuredAmount*CP.LI*0.2/100 LaborFee,A.PayrollBracket*CP.nhi*0.3/100 HealthFee,
+	COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0), A.Salary)*0.01 Welfare, COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)*cb.commercialFee/100 commercialFee,
 	$3 ,
 	(CASE WHEN A.salary = 0 and A.association = 1 then 0 
-		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  C.Pbonus,A.Salary) * cp.nhi2nd / 100 
+	 	WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0) ,A.Salary)) <= CP.mmw then 0	 	
+		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary) * cp.nhi2nd / 100 	 	
 		else
-			( CASE WHEN ((COALESCE(A.Salary+  C.Pbonus,A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  C.Pbonus,A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+			( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
 		end
-	   ) sp
+	   ) sp ,
+	 (COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)* (0.99 - cb.commercialFee/100) -  A.InsuredAmount*CP.LI*0.2/100 - A.PayrollBracket*CP.nhi*0.3/100 ) - 
+	 (CASE WHEN A.salary = 0 and A.association = 1 then 0 
+	 	WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0) ,A.Salary)) <= CP.mmw then 0	 	
+		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary) * cp.nhi2nd / 100 	 	
+		else
+			( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+		end
+	   ) Tamount
 	FROM public.ConfigSaler A
 	Inner Join ( 
 		select sid, max(zerodate) zerodate from public.configsaler cs 
@@ -647,7 +629,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 			select  max(date) date from public.ConfigParameter 
 		) A on A.date = C.date limit 1
 	) CP
-	left join public.branchsalary BS on BS.branch = A.Branch and BS.date = $1
+	left join public.branchsalary BS on BS.branch = A.Branch and BS.date = '2020-01'
 	left join (
 		select sum(bonus) bonus , bsid , sid from public.commission c
 		group by bsid , sid
@@ -1105,12 +1087,6 @@ func (salaryM *SalaryModel) ExportNHISalaryData(bsID string) []*NHISalary {
 		salaryM.NHISalaryList = append(salaryM.NHISalaryList, &nhi)
 	}
 
-	// out, err := json.Marshal(arList)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(string(out))
-
 	return salaryM.NHISalaryList
 }
 
@@ -1179,7 +1155,8 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid string) 
 				SET lbonus= $1, abonus= $2, total= salary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
 				laborfee = ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END),
 				healthfee = ( Case When $6 >= 30 then subquery.healthfee else 0 END),
-				tamount = salary + pbonus + $1 - $2 - $3 - $4 - welfare - commercialFee - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
+				sp = $9 , welfare = $10 ,
+				tamount = salary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - commercialFee - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
 				FROM(
 					Select (A.payrollbracket * CP.li * 0.2 / 100) laborfee, (A.payrollbracket * CP.nhi * 0.2 / 100) healthfee FROM public.ConfigSaler A 
 					Inner Join ( 
@@ -1203,7 +1180,7 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid string) 
 	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	res, err := sqldb.Exec(sql, ss.Lbonus, ss.Abonus, ss.Tax, ss.Other, ss.Description, ss.Workday, ss.Sid, bsid)
+	res, err := sqldb.Exec(sql, ss.Lbonus, ss.Abonus, ss.Tax, ss.Other, ss.Description, ss.Workday, ss.Sid, bsid, ss.SP, ss.Welfare)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Update err] ", err)
@@ -1841,7 +1818,7 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 	db := cm.imr.GetSQLDB()
 
 	cDataList := []*Commission{}
-	salerList := []*SystemAccount{}
+	//salerList := []*SystemAccount{}
 
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, bsID))
 	if err != nil {
@@ -1882,10 +1859,10 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 		//salerList = nil
 	}
 
-	out, _ := json.Marshal(salerList)
-	fmt.Println("salerList :", string(out))
-	out, _ = json.Marshal(cDataList)
-	fmt.Println("cDataList :", string(out))
+	// out, _ := json.Marshal(salerList)
+	// fmt.Println("salerList :", string(out))
+	// out, _ = json.Marshal(cDataList)
+	// fmt.Println("cDataList :", string(out))
 	//salaryM.SystemAccountList = salerList
 	salaryM.CommissionList = cDataList
 	return
@@ -2018,8 +1995,8 @@ func (salaryM *SalaryModel) ExportIncomeTaxReturn(bsID string) {
 		configM.ConfigSalerList = append(configM.ConfigSalerList, &cs)
 	}
 
-	out, _ := json.Marshal(configM.ConfigSalerList)
-	fmt.Println("cDataList :", string(out))
+	// out, _ := json.Marshal(configM.ConfigSalerList)
+	// fmt.Println("cDataList :", string(out))
 
 	return
 }

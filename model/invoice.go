@@ -338,14 +338,14 @@ func (invoiceM *InvoiceModel) CustomizedInvoice(p *pdf.Pdf, Invoice *Invoice) {
 		fmt.Println("loadTTF:", err.Error())
 	}
 
-	p.FillText("台 灣 房 屋", fontsize, report.ColorTableLine, alignCenter, valignMiddle, width, pdf.TextHeight)
+	p.FillText("台 灣 房 屋", fontsize, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, width, pdf.TextHeight)
 	p.NewLine(15)
-	p.FillText("電子發票證明聯", fontsize, report.ColorTableLine, alignCenter, valignMiddle, width, pdf.TextHeight)
+	p.FillText("電子發票證明聯", fontsize, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, width, pdf.TextHeight)
 	TWDate, _ := util.ADtoROC(Invoice.Date, "invoice")
 	p.NewLine(15)
-	p.FillText(TWDate, fontsize, report.ColorTableLine, alignCenter, valignMiddle, width, pdf.TextHeight)
+	p.FillText(TWDate, fontsize, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, width, pdf.TextHeight)
 	p.NewLine(15)
-	p.FillText(Invoice.InvoiceNo, fontsize, report.ColorTableLine, alignCenter, valignMiddle, width, pdf.TextHeight)
+	p.FillText(Invoice.InvoiceNo, fontsize, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, width, pdf.TextHeight)
 	p.NewLine(15)
 
 	fontsize = 8.0
@@ -353,14 +353,14 @@ func (invoiceM *InvoiceModel) CustomizedInvoice(p *pdf.Pdf, Invoice *Invoice) {
 	if err != nil {
 		fmt.Println("loadTTF:", err.Error())
 	}
-	p.FillText(Invoice.Date, fontsize, report.ColorTableLine, alignLeft, valignMiddle, width, pdf.TextHeight)
+	p.FillText(Invoice.Date, fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, width, pdf.TextHeight)
 	p.NewLine(10)
-	p.FillText("隨機碼"+Invoice.RandNum, fontsize, report.ColorTableLine, alignLeft, valignMiddle, width, pdf.TextHeight)
-	p.FillText("總計"+strconv.Itoa(Invoice.TotalAmount), fontsize, report.ColorTableLine, alignRight, valignMiddle, width, pdf.TextHeight)
+	p.FillText("隨機碼"+Invoice.RandNum, fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, width, pdf.TextHeight)
+	p.FillText("總計"+strconv.Itoa(Invoice.TotalAmount), fontsize, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, width, pdf.TextHeight)
 	p.NewLine(10)
-	p.FillText("賣方:"+Invoice.SellerID, fontsize, report.ColorTableLine, alignLeft, valignMiddle, width, pdf.TextHeight)
+	p.FillText("賣方:"+Invoice.SellerID, fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, width, pdf.TextHeight)
 	if Invoice.BuyerID != "" {
-		p.FillText("買方"+Invoice.BuyerID, fontsize, report.ColorTableLine, alignRight, valignMiddle, width, pdf.TextHeight)
+		p.FillText("買方"+Invoice.BuyerID, fontsize, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, width, pdf.TextHeight)
 	}
 	p.NewLine(120)
 	detail_w := 220.0
@@ -376,41 +376,41 @@ func (invoiceM *InvoiceModel) CustomizedInvoice(p *pdf.Pdf, Invoice *Invoice) {
 	p.NewLine(gap)
 	detail_w = 200.0
 	p.SetPdf_XY(25, -1)
-	p.FillText("營業人統編:"+storeID, fontsize, report.ColorTableLine, alignLeft, valignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("營業人統編:"+storeID, fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
 	p.NewLine(gap)
 	p.SetPdf_XY(25, -1)
-	p.FillText("測試", fontsize, report.ColorTableLine, alignLeft, valignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("測試", fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
 	p.NewLine(gap)
 	p.SetPdf_XY(25, -1)
-	p.FillText("02-XXXXYYYY", fontsize, report.ColorTableLine, alignLeft, valignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("02-XXXXYYYY", fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
 	p.NewLine(gap + 10)
 	//
 	p.SetPdf_XY(25, -1)
-	p.FillText("商品名稱", fontsize, report.ColorTableLine, alignLeft, valignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("商品名稱", fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
 	p.NewLine(gap)
 	//
 	detail_w = 125
 	p.SetPdf_XY(75, -1)
-	p.FillText("單價", fontsize, report.ColorTableLine, alignLeft, valignMiddle, detail_w, pdf.TextHeight)
-	p.FillText("訂購量", fontsize, report.ColorTableLine, alignCenter, valignMiddle, detail_w, pdf.TextHeight)
-	p.FillText("小計", fontsize, report.ColorTableLine, alignRight, valignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("單價", fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("訂購量", fontsize, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("小計", fontsize, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, detail_w, pdf.TextHeight)
 	p.NewLine(gap)
 	//
 	p.SetPdf_XY(25, -1)
-	p.FillText("服務費", fontsize, report.ColorTableLine, alignLeft, valignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("服務費", fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
 	p.NewLine(gap)
 	//
 	amount := strconv.Itoa(Invoice.TotalAmount)
 	p.SetPdf_XY(75, -1)
-	p.FillText(amount, fontsize, report.ColorTableLine, alignLeft, valignMiddle, detail_w, pdf.TextHeight)
-	p.FillText("1", fontsize, report.ColorTableLine, alignCenter, valignMiddle, detail_w, pdf.TextHeight)
+	p.FillText(amount, fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
+	p.FillText("1", fontsize, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, detail_w, pdf.TextHeight)
 	sp := message.NewPrinter(language.English)
 	amount = sp.Sprintf("%sTX", amount)
-	p.FillText(amount, fontsize, report.ColorTableLine, alignRight, valignMiddle, detail_w, pdf.TextHeight)
+	p.FillText(amount, fontsize, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, detail_w, pdf.TextHeight)
 	p.NewLine(gap)
 	p.SetPdf_XY(25, -1)
-	p.FillText("銷售額", fontsize, report.ColorTableLine, alignLeft, valignMiddle, detail_w, pdf.TextHeight)
-	p.FillText(fmt.Sprintf("%.f", round(float64(Invoice.TotalAmount)/1.05, 1)), fontsize, report.ColorTableLine, alignRight, valignMiddle, detail_w+50, pdf.TextHeight)
+	p.FillText("銷售額", fontsize, report.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
+	p.FillText(fmt.Sprintf("%.f", round(float64(Invoice.TotalAmount)/1.05, 1)), fontsize, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, detail_w+50, pdf.TextHeight)
 
 }
 func (invoiceM *InvoiceModel) GetInvoicePDF(rid string, p *pdf.Pdf) {

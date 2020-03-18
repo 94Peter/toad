@@ -181,8 +181,7 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 	*balance equal ar.amount - COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA
 	*but I do with r.Balance = r.Amount - r.RA
 	 */
-	const qspl = `SELECT ARid, Date, cNo, CaseName, Type, Name, Amount, Fee, RA, Balance, Sales	FROM public.AR;`
-	//const qspl = `SELECT arid,sales	FROM public.ar;`
+
 	db := am.imr.GetSQLDB()
 	//fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
@@ -325,6 +324,44 @@ func (am *ARModel) Json(mtype string) ([]byte, error) {
 		break
 	}
 	return nil, nil
+}
+
+func (am *ARModel) UpdateAccountReceivable(amount int, ID string) (err error) {
+	fmt.Println("UpdateAccountReceivable")
+	const sql = `Update public.ar t1
+					set	amount = $1
+				FROM (
+					SELECT ar.arid, ar.amount, sum(r.amount)
+					FROM public.ar ar
+					LEFT JOIN public.receipt r ON ar.arid = r.arid
+					where ar.arid = $2
+					group by ar.arid
+					HAVING sum(r.amount)<= $1
+				)as t2 
+				where t1.arid = $2;`
+
+	interdb := am.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	fmt.Println("sqldb Exec " + sql)
+	res, err := sqldb.Exec(sql, amount, ID)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	if id <= 0 {
+		return errors.New("[ERROR]: Maybe id is not found or amount is not allowed. (amount should be greater then sum of receive amount)")
+	}
+	return nil
 }
 
 func (am *ARModel) DeleteAccountReceivable(ID string) (err error) {

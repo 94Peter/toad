@@ -297,17 +297,17 @@ func (cm *CModel) PDF(isNew bool) {
 		BranchName = cm.cList[0].Branch
 	}
 	p.DrawRectangle(textw, pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText(BranchName, 12, report.ColorTableLine, alignCenter, valignMiddle, textw, pdf.TextHeight)
+	p.FillText(BranchName, 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, textw, pdf.TextHeight)
 
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(tabel.ColumnWidth[5]+tabel.ColumnWidth[6], pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText("合計金額", 12, report.ColorTableLine, alignCenter, valignMiddle, tabel.ColumnWidth[5]+tabel.ColumnWidth[6], pdf.TextHeight)
+	p.FillText("合計金額", 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, tabel.ColumnWidth[5]+tabel.ColumnWidth[6], pdf.TextHeight)
 	p.SetPdf_XY(pdfx+tabel.ColumnWidth[5]+tabel.ColumnWidth[6], -1)
 	p.DrawRectangle(tabel.ColumnWidth[7], pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText(fmt.Sprintf("%.f", SR), 12, report.ColorTableLine, alignCenter, valignMiddle, tabel.ColumnWidth[7], pdf.TextHeight)
+	p.FillText(fmt.Sprintf("%.f", SR), 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, tabel.ColumnWidth[7], pdf.TextHeight)
 	p.SetPdf_XY(pdfx+tabel.ColumnWidth[5]+tabel.ColumnWidth[6]+tabel.ColumnWidth[7], -1)
 	p.DrawRectangle(tabel.ColumnWidth[8], pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText(fmt.Sprintf("%.f", Bonus), 12, report.ColorTableLine, alignCenter, valignMiddle, tabel.ColumnWidth[8], pdf.TextHeight)
+	p.FillText(fmt.Sprintf("%.f", Bonus), 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, tabel.ColumnWidth[8], pdf.TextHeight)
 
 	p.NewLine(25)
 	p.NewLine(25) //空一行

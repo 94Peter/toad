@@ -35,6 +35,10 @@ type inputAR struct {
 	Sales []*model.MAPSaler `json:"sales"`
 }
 
+type inputUpdateAR struct {
+	Amount int `json:"amount"`
+}
+
 type inputhouseGoAR struct {
 	ARid     int       `json:"id"`
 	Date     time.Time `json:"completionDate"` //成交日期
@@ -74,6 +78,8 @@ func (api ARAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/receivable", Next: api.getAccountReceivableEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/receivable", Next: api.createAccountReceivableEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/receivable/{ID}", Next: api.deleteAccountReceivableEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable/{ID}", Next: api.updateAccountReceivableEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+
 		&APIHandler{Path: "/v1/receipt", Next: api.createReceiptEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: false, Group: permission.All},
 
@@ -97,6 +103,42 @@ func (api *ARAPI) deleteAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 	am := model.GetARModel(di)
 	if err := am.DeleteAccountReceivable(ID); err != nil {
 		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	// if err := memberModel.Quit(phone); err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
+
+	w.Write([]byte("ok"))
+}
+
+func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	vars := util.GetPathVars(req, []string{"ID"})
+	ID := vars["ID"].(string)
+
+	iUAR := inputUpdateAR{}
+	err := json.NewDecoder(req.Body).Decode(&iUAR)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := iUAR.isARValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	am := model.GetARModel(di)
+
+	if err := am.UpdateAccountReceivable(iUAR.Amount, ID); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -456,6 +498,14 @@ func (irt *inputReceipt) isReceiptValid() (bool, error) {
 	// 	//未來的成交案 => 不成立
 	// 	return false, errors.New("Date is not valid")
 	// }
+
+	return true, nil
+}
+
+func (iUAR *inputUpdateAR) isARValid() (bool, error) {
+	if iUAR.Amount < 0 {
+		return false, errors.New("amount is not vaild")
+	}
 
 	return true, nil
 }

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/94peter/toad/excel"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
 	"dforcepro.com/report"
 	"github.com/94peter/toad/pdf"
@@ -1369,6 +1371,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		fmt.Println("addBranchSalaryInfoTable:", index)
 		//fmt.Println("addBranchSalaryInfoTable:", table.ColumnWidth[index])
 		///
+		pr := message.NewPrinter(language.English)
+
 		text := strconv.Itoa(index + 1)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 		var vs = &pdf.TableStyle{
@@ -1388,7 +1392,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		table.RawData = append(table.RawData, vs)
 		//底薪
 		T_Salary += element.Salary
-		text = strconv.Itoa(element.Salary)
+		//text = strconv.Itoa(element.Salary)
+		text = pr.Sprintf("%d", T_Salary)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,

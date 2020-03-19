@@ -670,7 +670,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 		fmt.Println("CreateSalerSalary, no create anyone ")
 		return errors.New("CreateSalerSalary, not found any commission")
 	}
-	return
+
 	//綁定更改BSid
 	ucias_err := salaryM.UpdateCommissionBSidAndStatus(bs, cid)
 	if ucias_err != nil {

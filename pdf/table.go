@@ -14,9 +14,11 @@ type DataTable struct {
 }
 
 type TableStyle struct {
-	Text  string
-	Bg    report.Color
-	Front report.Color
+	Text   string
+	Bg     report.Color
+	Front  report.Color
+	Align  int
+	Valign int
 }
 
 type ReportType int32

@@ -1358,6 +1358,7 @@ func (salaryM *SalaryModel) LockBranchSalary(bsid, lock string) (err error) {
 	return nil
 }
 
+//加入pdf資料 type=1
 func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pdf.Pdf) (table_final *pdf.DataTable,
 	T_Salary, T_Pbonus, T_Abonus, T_Lbonus, T_Total, T_SP, T_Tax, T_LaborFee, T_HealthFee, T_Welfare, T_CommercialFee, T_TAmount, T_Other int) {
 
@@ -1367,11 +1368,10 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 	T_Salary, T_Pbonus, T_Abonus, T_Lbonus, T_Total = 0, 0, 0, 0, 0
 	T_SP, T_Tax, T_LaborFee, T_HealthFee, T_Welfare, T_CommercialFee = 0, 0, 0, 0, 0, 0
 	T_TAmount, T_Other = 0, 0
-	fmt.Println("addBranchSalaryInfoTable:", len(salaryM.salerSalaryList))
+
 	for index, element := range salaryM.salerSalaryList {
-		fmt.Println("addBranchSalaryInfoTable:", index)
 		//fmt.Println("addBranchSalaryInfoTable:", table.ColumnWidth[index])
-		///
+		//建立千分位
 		pr := message.NewPrinter(language.English)
 
 		text := strconv.Itoa(index + 1)
@@ -1400,126 +1400,149 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//績效
 		T_Pbonus += element.Pbonus
-		text = strconv.Itoa(element.Pbonus)
+		//text = strconv.Itoa(element.Pbonus)
+		text = pr.Sprintf("%d", element.Pbonus)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//領導
 		T_Lbonus += element.Lbonus
-		text = strconv.Itoa(element.Lbonus)
+		//text = strconv.Itoa(element.Lbonus)
+		text = pr.Sprintf("%d", element.Lbonus)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Abonus += element.Abonus
-		text = strconv.Itoa(element.Abonus)
+		//text = strconv.Itoa(element.Abonus)
+		text = pr.Sprintf("%d", element.Abonus)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Total += element.Total
-		text = strconv.Itoa(element.Total)
+		//text = strconv.Itoa(element.Total)
+		text = pr.Sprintf("%d", element.Total)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
+			Bg:    If(true, report.ColorBlack, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_SP += element.SP
-		text = strconv.Itoa(element.SP)
+		//text = strconv.Itoa(element.SP)
+		text = pr.Sprintf("%d", element.SP)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 7)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Tax += element.Tax
-		text = strconv.Itoa(element.Tax)
+		//text = strconv.Itoa(element.Tax)
+		text = pr.Sprintf("%d", element.Tax)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 8)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_LaborFee += element.LaborFee
-		text = strconv.Itoa(element.LaborFee)
+		//text = strconv.Itoa(element.LaborFee)
+		text = pr.Sprintf("%d", element.LaborFee)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 9)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_HealthFee += element.HealthFee
-		text = strconv.Itoa(element.HealthFee)
+		//text = strconv.Itoa(element.HealthFee)
+		text = pr.Sprintf("%d", element.HealthFee)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 10)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Welfare += element.Welfare
+		text = pr.Sprintf("%d", element.LaborFee)
 		text = strconv.Itoa(element.Welfare)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 11)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_CommercialFee += +element.CommercialFee
-		text = strconv.Itoa(element.CommercialFee)
+		text = pr.Sprintf("%d", element.CommercialFee)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 12)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
+
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Other += element.Other
-		text = strconv.Itoa(element.Other)
+		text = pr.Sprintf("%d", element.Other)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 13)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_TAmount += element.TAmount
-		text = strconv.Itoa(element.TAmount)
+		text = pr.Sprintf("%d", element.TAmount)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 14)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
@@ -1529,6 +1552,7 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 	}
@@ -2453,6 +2477,8 @@ func (salaryM *SalaryModel) addSRInfoTable(table *pdf.DataTable, p *pdf.Pdf) (ta
 	table_final = table
 	return
 }
+
+//3
 func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (table_final *pdf.DataTable,
 	T_PayrollBracket, T_Salary, T_Pbonus, T_Bonus, T_Total, T_Balance, T_PTSP,
 	T_PD, T_FourBouns, T_SP, T_FourSP, T_Tax, T_SPB int) {
@@ -2463,10 +2489,14 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 	T_PTSP, T_PD, T_FourBouns, T_SP, T_FourSP, T_Tax, T_SPB = 0, 0, 0, 0, 0, 0, 0
 
 	Branch := ""
+	//
+	pr := message.NewPrinter(language.English)
 
+	//
 	for _, element := range salaryM.NHISalaryList {
 
 		if element.Branch != Branch {
+
 			Branch = element.Branch
 			pdf.ResizeWidth(table, p.GetTextWidth(Branch), 0)
 			vs := &pdf.TableStyle{
@@ -2495,42 +2525,46 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		table.RawData = append(table.RawData, vs)
 		//
 		T_PayrollBracket += element.PayrollBracket
-		text = strconv.Itoa(element.PayrollBracket)
+		text = pr.Sprintf("%d", element.PayrollBracket)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Salary += element.Salary
-		text = strconv.Itoa(element.Salary)
+		text = pr.Sprintf("%d", element.Salary)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Pbonus += element.Pbonus
-		text = strconv.Itoa(element.Pbonus)
+		text = pr.Sprintf("%d", element.Pbonus)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Bonus += element.Bonus
-		text = strconv.Itoa(element.Bonus)
+		text = pr.Sprintf("%d", element.Bonus)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//兼職
@@ -2540,96 +2574,106 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Total += element.Total
-		text = strconv.Itoa(element.Total)
+		text = pr.Sprintf("%d", element.Total)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Balance += element.SalaryBalance
-		text = strconv.Itoa(element.SalaryBalance)
+		text = pr.Sprintf("%d", element.SalaryBalance)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 7)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_PD += element.PD
-		text = strconv.Itoa(element.PD)
+		text = pr.Sprintf("%d", element.PD)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 8)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_FourBouns += element.FourBouns
-		text = strconv.Itoa(element.FourBouns)
+		text = pr.Sprintf("%d", element.FourBouns)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 9)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//補充保費薪資差額 4倍-薪資差額
 		T_SPB += element.FourBouns - element.SalaryBalance
-		text = strconv.Itoa(element.FourBouns - element.SalaryBalance)
+		text = pr.Sprintf("%d", element.FourBouns-element.SalaryBalance)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 10)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_FourSP += element.FourSP
-		text = strconv.Itoa(element.FourSP)
+		text = pr.Sprintf("%d", element.FourSP)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 11)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_FourSP += element.FourSP
-		text = strconv.Itoa(element.FourSP)
+		text = pr.Sprintf("%d", element.FourSP)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 12)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_PTSP += element.PTSP
-		text = strconv.Itoa(element.PTSP)
+		text = pr.Sprintf("%d", element.PTSP)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 13)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
 		T_Tax += int(float64(element.Total) * 0.05)
-		text = strconv.Itoa(int(float64(element.Total) * 0.05))
+		text = pr.Sprintf("%d", (int(float64(element.Total) * 0.05)))
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 14)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//

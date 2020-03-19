@@ -670,21 +670,22 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 		fmt.Println("CreateSalerSalary, no create anyone ")
 		return errors.New("CreateSalerSalary, not found any commission")
 	}
-
+	return
+	//綁定更改BSid
+	ucias_err := salaryM.UpdateCommissionBSidAndStatus(bs, cid)
+	if ucias_err != nil {
+		return nil
+		//return ucias_err
+	}
+	//綁定更改BSid後才可建立紅利表
 	cieErr := salaryM.CreateIncomeExpense(bs)
 	if cieErr != nil {
 		return nil
 		//return css_err
 	}
 
-	ucias_err := salaryM.CreateNHISalary(year)
-	if ucias_err != nil {
-		return nil
-		//return ucias_err
-	}
-
-	ucias_err = salaryM.UpdateCommissionBSidAndStatus(bs, cid)
-	if ucias_err != nil {
+	ucnhi_err := salaryM.CreateNHISalary(year)
+	if ucnhi_err != nil {
 		return nil
 		//return ucias_err
 	}
@@ -831,7 +832,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 		fmt.Println("PG Affecte Wrong: ", err)
 		return err
 	}
-	fmt.Println("CreateIncomEexpense:", id)
+	fmt.Println("CreateIncomEexpense:", id, " bs.Date:", bs.Date)
 
 	if id == 0 {
 		fmt.Println("CreateIncomEexpense, no create anyone ")

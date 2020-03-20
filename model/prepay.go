@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -338,79 +337,39 @@ func (prepayM *PrePayModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf, branc
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		Total[0] += element.Fee
-		text = strconv.Itoa(element.Fee)
+		text = pr.Sprintf("%d", element.Fee)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 3)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
-		fmt.Println("s")
 		index := 4
 		for k := 0; k < len(branch); k++ {
+			f := true
 			text = "-"
 			for _, Prepay := range element.PrePay {
 				if Prepay.Branch == branch[k] {
-					text = strconv.Itoa(Prepay.Cost)
+					text = pr.Sprintf("%d", Prepay.Cost)
 					Total[k+1] += Prepay.Cost
+					f = false
 				}
 			}
-			fmt.Println("k", k, " branch:", branch[k], " T len", len(tabel.ColumnWidth), " text:", text)
+
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), index+k)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: If(f, pdf.AlignCenter, pdf.AlignRight).(int),
 			}
 			tabel.RawData = append(tabel.RawData, vs)
 		}
-		// text = strconv.Itoa(element.Income)
-		// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
-		// vs = &pdf.TableStyle{
-		// 	Text:  text,
-		// 	Bg:    report.ColorWhite,
-		// 	Front: report.ColorTableLine,
-		// }
-		// tabel.RawData = append(tabel.RawData, vs)
-		// //
-		// T_Fee += element.Fee
-		// text = strconv.Itoa(element.Fee)
-		// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 5)
-		// vs = &pdf.TableStyle{
-		// 	Text:  text,
-		// 	Bg:    report.ColorWhite,
-		// 	Front: report.ColorTableLine,
-		// }
-		// tabel.RawData = append(tabel.RawData, vs)
 
 	}
-
-	// text := "總計金額"
-	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
-	// vs := &pdf.TableStyle{
-	// 	Text:  text,
-	// 	Bg:    report.ColorWhite,
-	// 	Front: report.ColorTableLine,
-	// }
-	// tabel.RawData = append(tabel.RawData, vs)
-	// text = strconv.Itoa(T_SR)
-	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
-	// vs = &pdf.TableStyle{
-	// 	Text:  text,
-	// 	Bg:    report.ColorWhite,
-	// 	Front: report.ColorTableLine,
-	// }
-	// tabel.RawData = append(tabel.RawData, vs)
-	// text = strconv.Itoa(T_Bonus)
-	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
-	// vs = &pdf.TableStyle{
-	// 	Text:  text,
-	// 	Bg:    report.ColorWhite,
-	// 	Front: report.ColorTableLine,
-	// }
-	// tabel.RawData = append(tabel.RawData, vs)
 
 	tabel_final = tabel
 	return

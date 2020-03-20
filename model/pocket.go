@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"dforcepro.com/report"
@@ -88,7 +87,7 @@ func (pocketM *PocketModel) Json() ([]byte, error) {
 }
 
 func (pocketM *PocketModel) PDF() []byte {
-	p := pdf.GetNewPDF()
+	p := pdf.GetNewPDF(pdf.PageSizeA4)
 
 	table := pdf.GetDataTable(pdf.Pocket)
 
@@ -392,60 +391,38 @@ func (pocketM *PocketModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf) (tabe
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		T_Income += element.Income
-		text = strconv.Itoa(element.Income)
+		text = pr.Sprintf("%d", element.Income)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		T_Fee += element.Fee
-		text = strconv.Itoa(element.Fee)
+		text = pr.Sprintf("%d", element.Fee)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 5)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		T_Balance = element.Balance
-		text = strconv.Itoa(element.Balance)
+		text = pr.Sprintf("%d", element.Balance)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 6)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 	}
-
-	// text := "總計金額"
-	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
-	// vs := &pdf.TableStyle{
-	// 	Text:  text,
-	// 	Bg:    report.ColorWhite,
-	// 	Front: report.ColorTableLine,
-	// }
-	// tabel.RawData = append(tabel.RawData, vs)
-	// text = strconv.Itoa(T_SR)
-	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
-	// vs = &pdf.TableStyle{
-	// 	Text:  text,
-	// 	Bg:    report.ColorWhite,
-	// 	Front: report.ColorTableLine,
-	// }
-	// tabel.RawData = append(tabel.RawData, vs)
-	// text = strconv.Itoa(T_Bonus)
-	// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
-	// vs = &pdf.TableStyle{
-	// 	Text:  text,
-	// 	Bg:    report.ColorWhite,
-	// 	Front: report.ColorTableLine,
-	// }
-	// tabel.RawData = append(tabel.RawData, vs)
 
 	tabel_final = tabel
 	return

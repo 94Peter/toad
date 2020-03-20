@@ -304,10 +304,10 @@ func (cm *CModel) PDF(isNew bool) {
 	p.FillText("合計金額", 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, tabel.ColumnWidth[5]+tabel.ColumnWidth[6], pdf.TextHeight)
 	p.SetPdf_XY(pdfx+tabel.ColumnWidth[5]+tabel.ColumnWidth[6], -1)
 	p.DrawRectangle(tabel.ColumnWidth[7], pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText(fmt.Sprintf("%.f", SR), 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, tabel.ColumnWidth[7], pdf.TextHeight)
+	p.FillText(pr.Sprintf("%.f", SR), 12, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, tabel.ColumnWidth[7], pdf.TextHeight)
 	p.SetPdf_XY(pdfx+tabel.ColumnWidth[5]+tabel.ColumnWidth[6]+tabel.ColumnWidth[7], -1)
 	p.DrawRectangle(tabel.ColumnWidth[8], pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText(fmt.Sprintf("%.f", Bonus), 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, tabel.ColumnWidth[8], pdf.TextHeight)
+	p.FillText(pr.Sprintf("%.f", Bonus), 12, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, tabel.ColumnWidth[8], pdf.TextHeight)
 
 	p.NewLine(25)
 	p.NewLine(25) //空一行
@@ -574,21 +574,24 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			}
 			tabel.RawData = append(tabel.RawData, vs)
 			//
-			text = strconv.Itoa(element.Amount)
+
+			text = pr.Sprintf("%d", element.Amount)
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 3)
 			vs = &pdf.TableStyle{
 				Text:  strconv.Itoa(element.Amount),
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
 			//
-			text = strconv.Itoa(element.Fee)
+			text = pr.Sprintf("%d", element.Fee)
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
 				Text:  strconv.Itoa(element.Fee),
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
 		}
@@ -612,22 +615,26 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		TotalSR += element.SR
-		text = fmt.Sprintf("%.f", element.SR)
+		text = pr.Sprintf("%.f", element.SR)
+		//text = fmt.Sprintf("%.f", element.SR)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 7)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		TotalBouns += element.Bonus
-		text = fmt.Sprintf("%.f", element.Bonus)
+		text = pr.Sprintf("%.f", element.Bonus)
+		//text = fmt.Sprintf("%.f", element.Bonus)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 8)
 		vs = &pdf.TableStyle{
 			Text:  fmt.Sprintf("%.f", element.Bonus),
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//備註 => dedeuct的Item

@@ -261,12 +261,13 @@ func (amorM *AmortizationModel) addAmorInfoTable(tabel *pdf.DataTable, p *pdf.Pd
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
-		text = strconv.Itoa(element.Gaincost)
+		text = pr.Sprintf("%d", element.Gaincost)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -280,32 +281,35 @@ func (amorM *AmortizationModel) addAmorInfoTable(tabel *pdf.DataTable, p *pdf.Pd
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		T_Month += element.MonthlyAmortizationAmount
-		text = strconv.Itoa(element.MonthlyAmortizationAmount)
+		text = pr.Sprintf("%d", element.MonthlyAmortizationAmount)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		T_Has += element.Hasamortizationamount
-		text = strconv.Itoa(element.Hasamortizationamount)
+		text = pr.Sprintf("%d", element.Hasamortizationamount)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 5)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
 		T_Not += element.Notamortizationamount
-		text = strconv.Itoa(element.Notamortizationamount)
+		text = pr.Sprintf("%d", element.Notamortizationamount)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 6)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 	}

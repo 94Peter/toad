@@ -3,7 +3,6 @@ package pdf
 import (
 	"fmt"
 	"os"
-	"strconv"
 
 	"dforcepro.com/report"
 	"github.com/94peter/gopdf"
@@ -440,12 +439,12 @@ func (p *Pdf) CustomizedSalerCommission(table *DataTable, SName string, T_Bonus,
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(strconv.Itoa(T_SR), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(pr.Sprintf("%d", T_SR), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(strconv.Itoa(T_Bonus), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(pr.Sprintf("%d", T_Bonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//p.myPDF.AddPage()
 	//p.NewPage()
@@ -478,17 +477,17 @@ func (p *Pdf) CustomizedAgentSign(table *DataTable, T_Bonus, T_SR float64) (Tota
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
 	//p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	text := fmt.Sprintf("%.1f", T_SR)
+	text := pr.Sprintf("%.f", T_SR)
 	Total_SR += T_SR
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(text, 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
-	text = fmt.Sprintf("%.1f", T_Bonus)
+	text = pr.Sprintf("%.f", T_Bonus)
 	Total_Bonus += T_Bonus
 	//p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(text, 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 	//p.myPDF.AddPage()
@@ -526,17 +525,17 @@ func (p *Pdf) CustomizedAmortization(table *DataTable, T_Month, T_Has, T_not int
 	textw = table.ColumnWidth[4]
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(strconv.Itoa(T_Month), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(pr.Sprintf("%d", T_Month), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(strconv.Itoa(T_Has), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(pr.Sprintf("%d", T_Has), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(strconv.Itoa(T_not), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(pr.Sprintf("%d", T_not), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 }
@@ -544,18 +543,6 @@ func (p *Pdf) CustomizedAmortization(table *DataTable, T_Month, T_Has, T_not int
 func (p *Pdf) CustomizedPrepayTitle(table *DataTable, title string, branch []string) {
 	fmt.Println("CustomizedPrepayTitle")
 
-	// header := []*TableStyle{}
-	// for i := 0; i < len(branch); i++ {
-	// 	var vs = &TableStyle{
-	// 		Text:  branch[i],
-	// 		Bg:    report.ColorWhite,
-	// 		Front: report.ColorTableLine,
-	// 	}
-	// 	header = append(header, vs)
-	// }
-
-	// Text Title here
-	//init PDFX is 10
 	pdf := p.myPDF
 	pdfx := 10.0
 	textw := 0.0
@@ -599,19 +586,6 @@ func (p *Pdf) CustomizedPrepayTitle(table *DataTable, title string, branch []str
 func (p *Pdf) CustomizedPrepay(table *DataTable, Total []int) {
 	fmt.Println("CustomizedPrepay")
 
-	// header := []*TableStyle{}
-	// for i := 0; i < len(branch); i++ {
-	// 	var vs = &TableStyle{
-	// 		Text:  branch[i],
-	// 		Bg:    report.ColorWhite,
-	// 		Front: report.ColorTableLine,
-	// 	}
-	// 	header = append(header, vs)
-	// }
-
-	// Text Title here
-	//init PDFX is 10
-
 	pdfx := 10.0
 	textw := 0.0
 	for i := 0; i < 3; i++ {
@@ -627,7 +601,7 @@ func (p *Pdf) CustomizedPrepay(table *DataTable, Total []int) {
 		p.SetPdf_XY(pdfx, -1)
 		textw = table.ColumnWidth[i+3]
 		p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-		p.FillText(strconv.Itoa(Total[i]), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+		p.FillText(pr.Sprintf("%d", Total[i]), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 		pdfx += textw
 	}
 
@@ -661,17 +635,17 @@ func (p *Pdf) CustomizedPocket(table *DataTable, T_Income, T_Fee, T_Balance int)
 	textw = table.ColumnWidth[4]
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(strconv.Itoa(T_Income), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(pr.Sprintf("%d", T_Income), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(strconv.Itoa(T_Fee), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(pr.Sprintf("%d", T_Fee), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(strconv.Itoa(T_Balance), 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.FillText(pr.Sprintf("%d", T_Balance), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 }

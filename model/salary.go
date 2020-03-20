@@ -123,6 +123,7 @@ type Cid struct {
 
 var (
 	salaryM *SalaryModel
+	pr      = message.NewPrinter(language.English)
 )
 
 type SalaryModel struct {
@@ -248,23 +249,6 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 		p.WriteFile(salaryM.salerSalaryList[0].Branch + "薪資表" + date)
 		break
 	case pdf.AgentSign: //5
-		//var total_SR, total_Bonus = 0.0, 0.0
-		// for _, saler := range salaryM.SystemAccountList {
-		// 	table.RawData = table.RawData[:table.ColumnLen]
-		// 	fmt.Println("saler:", saler.Name)
-		// 	data, T_SR, T_Bonus := salaryM.addAgentSignInfoTable(table, p, salaryM.CommissionList, saler.Account)
-		// 	//data.RawData = data.RawData[data.ColumnLen:]
-		// 	fmt.Println("DrawTablePDF")
-		// 	if len(table.RawData) > 0 && len(table.RawData) != table.ColumnLen {
-		// 		p.DrawTablePDF(data)
-		// 	}
-		// 	fmt.Println("CustomizedAgentSign")
-		// 	SR, Bonus := p.CustomizedAgentSign(data, saler.Name, T_Bonus, T_SR)
-		// 	total_SR += SR
-		// 	total_Bonus += Bonus
-
-		// 	fmt.Println("clear Header")
-		// }
 		data, T_SR, T_Bonus := salaryM.addAgentSignInfoTable(table, p)
 		//data.RawData = data.RawData[data.ColumnLen:]
 		fmt.Println("DrawTablePDF")
@@ -338,8 +322,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 
 					for _, myAccount := range mailList {
 						if myAccount.Sid == element.Sid {
-							fmt.Println(myAccount, element)
-							fmt.Println(fname)
+							fmt.Println(fname, " ", myAccount, element)
 							util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, myAccount.Email, pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為000000或者您的身分證號碼", fname+".pdf")
 							//util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, "geassyayaoo3@gmail.com", pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為123456", fname+".pdf")
 
@@ -347,25 +330,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 					}
 				}
 			}
-
 		}
-		//
-
-		// for _, salerSalary := range salaryM.salerSalaryList {
-		// 	for _, element := range systemM.systemAccountList {
-		// 		if element.Account == salerSalary.Sid {
-		// 			fmt.Println(element, salerSalary)
-		// 			util.RunSendMail(smtpConf.Host, smtpConf.Port, smtpConf.Password, smtpConf.User, "geassyayaoo3@gmail.com", "subject", body, fname)
-		// 		}
-		// 	}
-		// }
-		// body := "testbody"
-		// fname := "hello.pdf"
-		// //conf := di.GetSMTPConf()
-		// fmt.Println(smtpConf)
-
-		//date, _ := util.ADtoROC(salaryM.salerSalaryList[0].Date, "file")
-		//p.WriteFile(salaryM.salerSalaryList[0].Branch + "薪資表" + date)
 
 		break
 	case pdf.SR: // 6
@@ -377,7 +342,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 			p.NewLine(25)
 		}
 		break
-	case pdf.NHI:
+	case pdf.NHI: //3
 		//table = pdf.GetDataTable(mtype)
 		if len(salaryM.NHISalaryList) > 0 {
 			fmt.Println("NHI")
@@ -1562,11 +1527,6 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 
 func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf.Pdf, index int, element *SalerSalary) (table_final *pdf.DataTable) {
 
-	//text := "fd"
-	//width := mypdf.MeasureTextWidth(text)
-	//table.ColumnLen
-
-	//for index, element := range salaryM.salerSalaryList {
 	fmt.Println(index)
 
 	///
@@ -1589,132 +1549,145 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	table.RawData = append(table.RawData, vs)
 	//底薪
 
-	text = strconv.Itoa(element.Salary)
+	text = pr.Sprintf("%d", element.Salary)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    report.ColorWhite,
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//績效
-	text = strconv.Itoa(element.Pbonus)
+	text = pr.Sprintf("%d", element.Pbonus)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    report.ColorWhite,
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//領導
-
-	text = strconv.Itoa(element.Lbonus)
+	text = pr.Sprintf("%d", element.Lbonus)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    report.ColorWhite,
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.Abonus)
+	text = pr.Sprintf("%d", element.Abonus)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    report.ColorWhite,
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.Total)
+	text = pr.Sprintf("%d", element.Total)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.SP)
+	text = pr.Sprintf("%d", element.SP)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 7)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.Tax)
+	text = pr.Sprintf("%d", element.Tax)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 8)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.LaborFee)
+	text = pr.Sprintf("%d", element.LaborFee)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 9)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.HealthFee)
+	text = pr.Sprintf("%d", element.HealthFee)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 10)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.Welfare)
+	text = pr.Sprintf("%d", element.Welfare)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 11)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.CommercialFee)
+	text = pr.Sprintf("%d", element.CommercialFee)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 12)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.Other)
+	text = pr.Sprintf("%d", element.Other)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 13)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
 
-	text = strconv.Itoa(element.TAmount)
+	text = pr.Sprintf("%d", element.TAmount)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 14)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
+
 	table.RawData = append(table.RawData, vs)
 	//
 	text = element.Description
@@ -2101,8 +2074,6 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				table.RawData = append(table.RawData, vs)
 				table.RawData = append(table.RawData, vs)
 
-				//
-				fmt.Println("element.SName:", element.SName, "element.Sid:", element.SName, "   sid:", sid)
 				text = sname
 				pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 				vs = &pdf.TableStyle{
@@ -2121,21 +2092,23 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				}
 				table.RawData = append(table.RawData, vs)
 				//
-				text = fmt.Sprintf("%.1f", tmp_SR)
+				text = pr.Sprintf("%d", int(tmp_SR))
 				pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 				vs = &pdf.TableStyle{
 					Text:  text,
 					Bg:    report.ColorWhite,
 					Front: report.ColorTableLine,
+					Align: pdf.AlignRight,
 				}
 				table.RawData = append(table.RawData, vs)
 				//
-				text = fmt.Sprintf("%.1f", tmp_Bonus)
+				text = pr.Sprintf("%d", int(tmp_Bonus))
 				pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 				vs = &pdf.TableStyle{
 					Text:  text,
 					Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 					Front: report.ColorTableLine,
+					Align: pdf.AlignRight,
 				}
 				table.RawData = append(table.RawData, vs)
 				//
@@ -2164,21 +2137,23 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			text = strconv.Itoa(element.Amount)
+			text = pr.Sprintf("%d", element.Amount)
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//應扣
-			text = strconv.Itoa(element.Fee)
+			text = pr.Sprintf("%d", element.Fee)
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2193,7 +2168,7 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			text = fmt.Sprintf("%.f%s", element.CPercent, "%")
+			text = pr.Sprintf("%.f%s", element.CPercent, "%")
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
 				Text:  text,
@@ -2204,23 +2179,25 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			//
 			T_SR += element.SR
 			tmp_SR += element.SR
-			text = fmt.Sprintf("%.1f", element.SR)
+			text = pr.Sprintf("%d", int(element.SR))
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
 			T_Bonus += element.Bonus
 			tmp_Bonus += element.Bonus
-			text = fmt.Sprintf("%.1f", element.Bonus)
+			text = pr.Sprintf("%d", int(element.Bonus))
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2284,21 +2261,23 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			text = fmt.Sprintf("%.1f", tmp_SR)
+			text = pr.Sprintf("%d", int(tmp_SR))
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			text = fmt.Sprintf("%.1f", tmp_Bonus)
+			text = pr.Sprintf("%d", int(tmp_Bonus))
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2338,21 +2317,23 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			text = strconv.Itoa(element.Amount)
+			text = pr.Sprintf("%d", element.Amount)
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//應扣
-			text = strconv.Itoa(element.Fee)
+			text = pr.Sprintf("%d", element.Fee)
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2376,22 +2357,24 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			table.RawData = append(table.RawData, vs)
 			//
 			T_SR += element.SR
-			text = fmt.Sprintf("%.f", element.SR)
+			text = pr.Sprintf("%d", int(element.SR))
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
 			T_Bonus += element.Bonus
-			text = fmt.Sprintf("%.f", element.Bonus)
+			text = pr.Sprintf("%d", int(element.Bonus))
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 			vs = &pdf.TableStyle{
 				Text:  text,
 				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 				Front: report.ColorTableLine,
+				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2429,22 +2412,24 @@ func (salaryM *SalaryModel) addSRInfoTable(table *pdf.DataTable, p *pdf.Pdf) (ta
 		table.RawData = append(table.RawData, vs)
 		//SR
 		T_SR += int(element.SR)
-		text = fmt.Sprintf("%.f", element.SR)
+		text = pr.Sprintf("%d", int(element.SR))
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 		//績效
 		T_Bonus += int(element.Bonus)
-		text = fmt.Sprintf("%.f", element.Bonus)
+		text = pr.Sprintf("%d", int(element.Bonus))
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,
 			Bg:    report.ColorWhite,
 			Front: report.ColorTableLine,
+			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
 	}
@@ -2457,21 +2442,24 @@ func (salaryM *SalaryModel) addSRInfoTable(table *pdf.DataTable, p *pdf.Pdf) (ta
 		Front: report.ColorTableLine,
 	}
 	table.RawData = append(table.RawData, vs)
-	text = strconv.Itoa(T_SR)
+	text = pr.Sprintf("%d", T_SR)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    report.ColorWhite,
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
-	text = strconv.Itoa(T_Bonus)
+	text = pr.Sprintf("%d", T_Bonus)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 	vs = &pdf.TableStyle{
 		Text:  text,
 		Bg:    report.ColorWhite,
 		Front: report.ColorTableLine,
+		Align: pdf.AlignRight,
 	}
+
 	table.RawData = append(table.RawData, vs)
 
 	table_final = table
@@ -2483,16 +2471,11 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 	T_PayrollBracket, T_Salary, T_Pbonus, T_Bonus, T_Total, T_Balance, T_PTSP,
 	T_PD, T_FourBouns, T_SP, T_FourSP, T_Tax, T_SPB int) {
 
-	fmt.Println("table.ColumnWidth[index]", len(table.ColumnWidth))
-
 	T_PayrollBracket, T_Salary, T_Pbonus, T_Bonus, T_Total, T_Balance = 0, 0, 0, 0, 0, 0
 	T_PTSP, T_PD, T_FourBouns, T_SP, T_FourSP, T_Tax, T_SPB = 0, 0, 0, 0, 0, 0, 0
 
 	Branch := ""
-	//
-	pr := message.NewPrinter(language.English)
 
-	//
 	for _, element := range salaryM.NHISalaryList {
 
 		if element.Branch != Branch {

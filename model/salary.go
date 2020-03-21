@@ -559,25 +559,25 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 
 	const sql = `INSERT INTO public.salersalary
 	(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
-	SELECT BS.bsid, A.sid, COALESCE(C.dateID, $1) dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0) Pbonus, 
-	COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0), A.Salary) total, A.InsuredAmount*CP.LI*0.2/100 LaborFee,A.PayrollBracket*CP.nhi*0.3/100 HealthFee,
-	COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0), A.Salary)*0.01 Welfare, COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)*cb.commercialFee/100 commercialFee,
+	SELECT BS.bsid, A.sid, COALESCE(C.dateID, $1) dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0) Pbonus, 
+	COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary) total, A.InsuredAmount*CP.LI*0.2/100 LaborFee,A.PayrollBracket*CP.nhi*0.3/100 HealthFee,
+	COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01 Welfare, COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)*cb.commercialFee/100 commercialFee,
 	$3 ,
 	(CASE WHEN A.salary = 0 and A.association = 1 then 0 
-	 	WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0) ,A.Salary)) <= CP.mmw then 0	 	
-		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary) * cp.nhi2nd / 100 	 	
-		else
-			( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
-		end
-	   ) sp ,
-	 (COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)* (0.99 - cb.commercialFee/100) -  A.InsuredAmount*CP.LI*0.2/100 - A.PayrollBracket*CP.nhi*0.3/100 ) - 
-	 (CASE WHEN A.salary = 0 and A.association = 1 then 0 
-	 	WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0) ,A.Salary)) <= CP.mmw then 0	 	
-		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary) * cp.nhi2nd / 100 	 	
-		else
-			( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0)+ COALESCE(extra.bonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
-		end
-	   ) Tamount
+		WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0	 	
+	   WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) * cp.nhi2nd / 100 	 	
+	   else
+		   ( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+	   end
+	  ) sp ,
+	(COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)* (0.99 - cb.commercialFee/100) -  A.InsuredAmount*CP.LI*0.2/100 - A.PayrollBracket*CP.nhi*0.3/100 ) - 
+	(CASE WHEN A.salary = 0 and A.association = 1 then 0 
+		WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0	 	
+	   WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) * cp.nhi2nd / 100 	 	
+	   else
+		   ( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+	   end
+	  ) Tamount
 	FROM public.ConfigSaler A
 	Inner Join ( 
 		select sid, max(zerodate) zerodate from public.configsaler cs 
@@ -596,18 +596,18 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 			select  max(date) date from public.ConfigParameter 
 		) A on A.date = C.date limit 1
 	) CP
-	left join public.branchsalary BS on BS.branch = A.Branch and BS.date = '2020-01'
-	left join (
-		select sum(bonus) bonus , bsid , sid from public.commission c
-		group by bsid , sid
-	) extra on extra.bsid = BS.bsid and A.sid = extra.sid
+	left join public.branchsalary BS on BS.branch = A.Branch and BS.date = $1
+	
 	left join(
 		select branch , commercialFee from public.configbranch 
 	) CB on CB.branch = A.branch
 	where BS.bsid is not null
 	ON CONFLICT (bsid,sid,date,branch) DO Nothing;	
 	`
-
+	/*left join (
+		select sum(bonus) bonus , bsid , sid from public.commission c
+		group by bsid , sid
+	) extra on extra.bsid = BS.bsid and A.sid = extra.sid*/
 	year := bs.Date[0:4]
 	fmt.Println(year)
 
@@ -2792,4 +2792,102 @@ func (salaryM *SalaryModel) getSalerEmail(things ...string) ([]*ConfigSaler, err
 
 	return saList, nil
 
+}
+
+//更新薪資表
+func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
+	salaryM.RefreshCommissionBonusbyBsid(Bsid)
+	const sql = `UPDATE public.salersalary t
+				SET total= subquery.salary + subquery.pbonus + lbonus - abonus ,
+				laborfee = ( Case When workday >= 30 then subquery.laborfee else subquery.laborfee * workday / 30 END),
+				healthfee = ( Case When workday >= 30 then subquery.healthfee else 0 END) ,
+				sp = subquery.sp,
+				tamount = subquery.salary + subquery.pbonus + lbonus - abonus - tax - other - subquery.sp - welfare - commercialFee - ( Case When workday >= 30 then subquery.laborfee else subquery.laborfee * workday / 30 END) - ( Case When workday >= 30 then subquery.healthfee else 0 END)
+				FROM(
+					Select A.Sid, A.salary, A.association, COALESCE(extra.bonus,0) pbonus, A.payrollbracket , (A.payrollbracket * CP.li * 0.2 / 100) laborfee, (A.payrollbracket * CP.nhi * 0.2 / 100) healthfee ,	 CP.* , 
+					(CASE WHEN A.salary = 0 and A.association = 1 then 0 
+					WHEN (COALESCE(A.Salary + COALESCE(extra.bonus,0) ,A.Salary)) <= CP.mmw then 0	 	
+					WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(extra.bonus,0) ,A.Salary) * cp.nhi2nd / 100 	 	
+					else
+						( CASE WHEN ((COALESCE(A.Salary+  COALESCE(extra.bonus,0) ,A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(extra.bonus,0) ,A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+					end
+				) sp
+					FROM public.ConfigSaler A 
+					Inner Join ( 
+						select sid, max(zerodate) zerodate from public.configsaler cs 
+						where now() > zerodate -- and Sid = $7
+						group by sid 
+					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+					cross join ( 
+						select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
+						inner join(
+							select  max(date) date from public.ConfigParameter 
+						) A on A.date = C.date limit 1
+					) CP
+					left join (
+						select sum(bonus) bonus , bsid , sid from public.commission c
+						group by bsid , sid
+					) extra on extra.bsid = $1 and A.sid = extra.sid
+					left join(
+						select branch , commercialFee from public.configbranch 
+					) CB on CB.branch = A.branch
+				) as subquery
+				WHERE t.bsid = $1;`
+	interdb := salaryM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
+
+	res, err := sqldb.Exec(sql, Bsid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+	}
+	fmt.Println(fmt.Sprintf("更新bsid[%s] %d資料", Bsid, id))
+	if id > 0 {
+		return nil
+	} else {
+		return errors.New("not found bsid:" + Bsid)
+	}
+}
+
+//更新傭金byBsid
+func (salaryM *SalaryModel) RefreshCommissionBonusbyBsid(Bsid string) (err error) {
+
+	const sql = `Update public.commission t1
+					set sr = (t2.amount - t2.fee) * t2.cpercent / 100 , bonus = (t2.amount - t2.fee) * t2.cpercent / 100 * t2.percent /100
+				FROM(
+				SELECT c.bsid, c.sid, c.rid, r.amount, c.fee , c.cpercent, c.sr, c.bonus,  cs.percent
+								FROM public.commission c
+								inner JOIN public.receipt r on r.rid = c.rid				
+								inner join 	(			
+									select cs.sid, cs.percent from public.configsaler cs 
+									inner join (
+										select sid, max(zerodate) zerodate from public.configsaler cs 
+										where now() > zerodate
+										group by sid
+									) tmp on tmp.sid = cs.sid and tmp.zerodate = cs.zerodate		
+								)	cs  on cs.sid = c.sid
+								WHERE c.bsid = $1
+				) as t2 where t1.sid = t2.sid and t1.rid = t2.rid`
+	interdb := salaryM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = sqldb.Exec(sql, Bsid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("RefreshCommissionBonusbyBsid:", err)
+		return err
+	}
+
+	return nil
 }

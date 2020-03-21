@@ -81,6 +81,7 @@ func (api SalaryAPI) GetAPIs() *[]*APIHandler {
 
 		&APIHandler{Path: "/v1/salary/detail/{bsID}", Next: api.getSalerSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/salary/detail/{bsID}", Next: api.updateSalerSalaryEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/salary/detail/refresh/{bsID}", Next: api.refreshSalerSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/NHIsalary/{bsID}", Next: api.getNHISalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
 
@@ -194,6 +195,23 @@ func (api *SalaryAPI) getSalerSalaryEndpoint(w http.ResponseWriter, req *http.Re
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+}
+
+func (api *SalaryAPI) refreshSalerSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	SalaryM := model.GetSalaryModel(di)
+	vars := util.GetPathVars(req, []string{"bsID"})
+	bsID := vars["bsID"].(string)
+	fmt.Println(bsID)
+	err := SalaryM.ReFreshSalerSalary(bsID)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Write([]byte("ok"))
 }
 
 func (api *SalaryAPI) getManagerBonusEndpoint(w http.ResponseWriter, req *http.Request) {

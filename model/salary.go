@@ -636,12 +636,9 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 		return errors.New("CreateSalerSalary, not found any commission")
 	}
 
-	//綁定更改BSid
-	ucias_err := salaryM.UpdateCommissionBSidAndStatus(bs, cid)
-	if ucias_err != nil {
-		return nil
-		//return ucias_err
-	}
+	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
+	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid)
+
 	//綁定更改BSid後才可建立紅利表
 	cieErr := salaryM.CreateIncomeExpense(bs)
 	if cieErr != nil {
@@ -842,7 +839,8 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 	fmt.Println(id)
 
 	if id == 0 {
-		return errors.New("UpdateCommissionBSidAndStatus, not found any commission")
+		fmt.Println("UpdateCommissionBSidAndStatus, not found any commission")
+		//return errors.New("UpdateCommissionBSidAndStatus, not found any commission")
 	}
 
 	return nil
@@ -1256,8 +1254,8 @@ func (salaryM *SalaryModel) UpdateManagerByManagerBonus(bsid string) (err error)
 		) A on A.date = C.date limit 1
 	) CP
 	where ss.bsid = $1
-) as subquery
-WHERE salersalary.bsid = $1 and salersalary.sid = subquery.sid`
+	) as subquery
+	WHERE salersalary.bsid = $1 and salersalary.sid = subquery.sid`
 
 	interdb := salaryM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -2850,11 +2848,21 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 		fmt.Println("PG Affecte Wrong: ", err)
 	}
 	fmt.Println(fmt.Sprintf("更新bsid[%s] %d資料", Bsid, id))
-	if id > 0 {
-		return nil
-	} else {
+	if id <= 0 {
 		return errors.New("not found bsid:" + Bsid)
 	}
+	//TODO:: 紅利店長表更新
+	salaryM.UpdateManagerByManagerBonus(Bsid)
+	//TODO:: 二代健保表更新
+	salaryM.RefreshNHISalary(Bsid)
+	//TODO:: 總表更新
+	_err := salaryM.UpdateBranchSalaryTotal()
+	if _err != nil {
+		return nil
+		//return css_err
+	}
+
+	return nil
 }
 
 //更新傭金byBsid
@@ -2887,6 +2895,71 @@ func (salaryM *SalaryModel) RefreshCommissionBonusbyBsid(Bsid string) (err error
 	if err != nil {
 		fmt.Println("RefreshCommissionBonusbyBsid:", err)
 		return err
+	}
+
+	return nil
+}
+
+//更新二代健保表
+func (salaryM *SalaryModel) RefreshNHISalary(bsid string) (err error) {
+
+	const sql = `INSERT INTO public.nhisalary
+	(sid, bsid, sname, payrollbracket, salary, pbonus, bonus, total, salarybalance, pd, fourbouns, sp, foursp, ptsp)
+SELECT  SS.sid, SS.BSid, SS.Sname, CS.PayrollBracket, SS.Salary, SS.Pbonus, (SS.Lbonus + ie.managerbonus - SS.abonus) bonus, 
+	(SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) Total ,
+	( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) SalaryBalance,
+	sum( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) PD ,
+	(CS.PayrollBracket * 4) FourBouns, 0 SP,
+	(CASE WHEN sum(SS.Total - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) - (CS.PayrollBracket * 4) > 0 then (SS.Total - CS.PayrollBracket) *CP.nhi2nd /100  ELSE 0 END ) FourSP, 
+	(CASE WHEN CS.association = 0 and CS.PayrollBracket <=0 then SS.Total*CP.nhi2nd ELSE 0 END ) PTSP  
+	FROM public.salersalary SS
+		Inner Join (
+			select A.Sid, A.PayrollBracket, A.association  FROM public.ConfigSaler A 
+			Inner Join ( 
+				select sid, max(zerodate) zerodate from public.configsaler cs 
+				where now() > zerodate
+				group by sid 
+			) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+		) CS on SS.sid = CS.sid
+		cross join (
+			select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
+			inner join(
+				select  max(date) date from public.ConfigParameter 
+			) A on A.date = C.date limit 1
+		) CP
+		inner join (
+			Select bsid , managerbonus from public.incomeexpense 
+		) ie on ie.bsid = ss.bsid
+		inner join (
+			Select bsid , lock from public.BranchSalary 
+		) bs on bs.bsid = ss.bsid		
+	WHERE SS.bsid =  $1  and bs.lock = '未完成'
+    ON CONFLICT (bsid,sid) DO UPDATE SET sname = excluded.sname, payrollbracket= excluded.payrollbracket,
+		salary= excluded.salary, pbonus= excluded.pbonus, bonus= excluded.bonus, total= excluded.total , salarybalance= excluded.salarybalance,
+		pd= excluded.pd, fourbouns= excluded.fourbouns, sp= excluded.sp, foursp= excluded.foursp, ptsp=excluded.ptsp ;`
+
+	interdb := salaryM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	//fmt.Println("BSID:" + bs.BSid)
+	//fmt.Println(bs.Date)
+	res, err := sqldb.Exec(sql, bsid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("[Insert err] ", err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println("RefreshNHISalary:", id)
+
+	if id == 0 {
+		fmt.Println("RefreshNHISalary, not found any salary ")
 	}
 
 	return nil

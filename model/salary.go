@@ -2801,7 +2801,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 				healthfee = ( Case When workday >= 30 then subquery.healthfee else 0 END) ,
 				sp = subquery.sp,
 				tamount = subquery.salary + subquery.pbonus + lbonus - abonus - tax - other - subquery.sp - welfare - commercialFee - ( Case When workday >= 30 then subquery.laborfee else subquery.laborfee * workday / 30 END) - ( Case When workday >= 30 then subquery.healthfee else 0 END)
-				FROM(
+				FROM (
 					Select A.Sid, A.salary, A.association, COALESCE(extra.bonus,0) pbonus, A.payrollbracket , (A.payrollbracket * CP.li * 0.2 / 100) laborfee, (A.payrollbracket * CP.nhi * 0.2 / 100) healthfee ,	 CP.* , 
 					(CASE WHEN A.salary = 0 and A.association = 1 then 0 
 					WHEN (COALESCE(A.Salary + COALESCE(extra.bonus,0) ,A.Salary)) <= CP.mmw then 0	 	
@@ -2809,7 +2809,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 					else
 						( CASE WHEN ((COALESCE(A.Salary+  COALESCE(extra.bonus,0) ,A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(extra.bonus,0) ,A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
 					end
-				) sp
+					) sp
 					FROM public.ConfigSaler A 
 					Inner Join ( 
 						select sid, max(zerodate) zerodate from public.configsaler cs 
@@ -2830,7 +2830,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 						select branch , commercialFee from public.configbranch 
 					) CB on CB.branch = A.branch
 				) as subquery
-				WHERE t.bsid = $1;`
+				WHERE t.bsid = $1 and t.sid = subquery.sid;`
 	interdb := salaryM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
@@ -2905,7 +2905,7 @@ func (salaryM *SalaryModel) RefreshNHISalary(bsid string) (err error) {
 
 	const sql = `INSERT INTO public.nhisalary
 	(sid, bsid, sname, payrollbracket, salary, pbonus, bonus, total, salarybalance, pd, fourbouns, sp, foursp, ptsp)
-SELECT  SS.sid, SS.BSid, SS.Sname, CS.PayrollBracket, SS.Salary, SS.Pbonus, (SS.Lbonus + ie.managerbonus - SS.abonus) bonus, 
+	SELECT  SS.sid, SS.BSid, SS.Sname, CS.PayrollBracket, SS.Salary, SS.Pbonus, (SS.Lbonus + ie.managerbonus - SS.abonus) bonus, 
 	(SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) Total ,
 	( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) SalaryBalance,
 	sum( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) PD ,

@@ -639,7 +639,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
 	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid)
 
-	//綁定更改BSid後才可建立紅利表
+	//綁定更改BSid後才可建立紅利表，預設使用5%成本(年終提撥)
 	cieErr := salaryM.CreateIncomeExpense(bs)
 	if cieErr != nil {
 		return nil
@@ -725,8 +725,8 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	subtable.commercialfee, subtable.PreTax , ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) BusinessIncomeTax, 
 	subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) AfterTax , 
 	(subtable.pretaxTotal)  lastloss ,  
-	( CASE WHEN (subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal + subtable.PreTax ) + 0 > 0 then 
-	            (subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal + subtable.PreTax ) + 0
+	( CASE WHEN (subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal) + 0 > 0 then 
+				(subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) + (subtable.pretaxTotal) + 0) * 0.2
 	  else 0 end
 	) managerbonus  , subtable.annualratio
 	FROM vals as v
@@ -770,6 +770,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	left join(
 		Select sum(pretax) OVER (partition by branch Order by Date asc) pretaxTotal , branch , Date qq , IE.bsid FROM public.incomeexpense IE
 		inner join public.BranchSalary BS on  IE.bsid = BS.bsid
+		where date >  $1
 	) incomeexpense on incomeexpense.bsid = BS.bsid 	
 	where date = $1
 	) subtable
@@ -1215,14 +1216,14 @@ func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid stri
 	return nil
 }
 
+//[專門]針對因為更改紅利表，所以更新店長的薪資
 func (salaryM *SalaryModel) UpdateManagerByManagerBonus(bsid string) (err error) {
-
+	//welfare = subquery.Total * 0.01,
 	const sql = `UPDATE public.salersalary salersalary
 	SET total= subquery.Total , 
-		sp = subquery.sp ,
-		welfare = subquery.Total * 0.01,
+		sp = subquery.sp ,		
 		commercialfee = subquery.Total * subquery.CommercialFee / 100 ,
-		tamount = subquery.Total - subquery.sp - subquery.tax - subquery.laborfee - subquery.healthfee - subquery.Total * 0.01 - subquery.Total * subquery.CommercialFee / 100 - subquery.other		
+		tamount = subquery.Total - subquery.sp - subquery.tax - subquery.laborfee - subquery.healthfee - subquery.welfare - subquery.Total * subquery.CommercialFee / 100 - subquery.other		
 	FROM(
 	SELECT ss.sid, ss.bsid, ss.sname, ss.date, ss.branch, ss.salary, ss.pbonus, ss.lbonus, ss.abonus, 
 	 ss.salary + ss.pbonus + ss.lbonus - ss.abonus + (case when cb.sid is not null then ie.managerbonus else 0 end)	Total, 
@@ -1232,7 +1233,7 @@ func (salaryM *SalaryModel) UpdateManagerByManagerBonus(bsid string) (err error)
 			( CASE WHEN ((COALESCE(ss.Salary+  ss.Pbonus, ss.Salary)) - 4 * cs.PayrollBracket) > 0 then ((COALESCE(ss.Salary+  ss.Pbonus,ss.Salary)) - 4 * cs.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
 		end
 	) sp,
-	ss.tax, ss.laborfee, ss.healthfee, ss.welfare, cb.CommercialFee, ss.other, tamount,
+	ss.tax, ss.laborfee, ss.healthfee, ss.welfare, cb.CommercialFee, ss.other, 
 	COALESCE(ss.description,''), ss.workday , bs.lock,
 	(case when cb.sid is not null then ie.managerbonus else 0 end) managerbonus
 	FROM public.salersalary ss 
@@ -2858,6 +2859,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 	//TODO:: 總表更新
 	_err := salaryM.UpdateBranchSalaryTotal()
 	if _err != nil {
+		fmt.Println(_err)
 		return nil
 		//return css_err
 	}

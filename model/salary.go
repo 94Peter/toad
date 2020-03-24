@@ -2803,7 +2803,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 				sp = subquery.sp,
 				tamount = subquery.salary + subquery.pbonus + lbonus - abonus - tax - other - subquery.sp - welfare - commercialFee - ( Case When workday >= 30 then subquery.laborfee else subquery.laborfee * workday / 30 END) - ( Case When workday >= 30 then subquery.healthfee else 0 END)
 				FROM (
-					Select A.Sid, A.salary, A.association, COALESCE(extra.bonus,0) pbonus, A.payrollbracket , (A.payrollbracket * CP.li * 0.2 / 100) laborfee, (A.payrollbracket * CP.nhi * 0.2 / 100) healthfee ,	 CP.* , 
+					Select A.Sid, A.salary, A.association, COALESCE(extra.bonus,0) pbonus, A.payrollbracket , (A.insuredamount * CP.li * 0.2 / 100) laborfee, (A.payrollbracket * CP.nhi * 0.3 / 100) healthfee ,	 CP.* , 
 					(CASE WHEN A.salary = 0 and A.association = 1 then 0 
 					WHEN (COALESCE(A.Salary + COALESCE(extra.bonus,0) ,A.Salary)) <= CP.mmw then 0	 	
 					WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(extra.bonus,0) ,A.Salary) * cp.nhi2nd / 100 	 	

@@ -3,7 +3,6 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/94peter/toad/resource/db"
 )
@@ -86,11 +85,13 @@ func (indexM *IndexModel) GetInfoData() *Info {
 	db := indexM.imr.GetSQLDB()
 	//fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
-	t := time.Now()
+	//t := time.Now()
+	//curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
 	// formatted := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
 	// 	t.Year(), t.Month(), t.Day(),
 	// 	t.Hour(), t.Minute(), t.Second())
-	curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
+	//curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
+	curDate := fmt.Sprintf("2020-01-01")
 	fmt.Println(curDate)
 
 	rows, err := db.SQLCommand(fmt.Sprintf(sql, curDate, curDate))
@@ -112,19 +113,16 @@ func (indexM *IndexModel) GetInfoData() *Info {
 		}
 
 		info.Receivable = Amount - RA
-		// err := json.Unmarshal([]byte(col_sales), &r.Sales)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// }
 
 		data = &info
 	}
 
-	// out, err := json.Marshal(arList)
+	// out, err := json.Marshal(data)
 	// if err != nil {
 	// 	panic(err)
 	// }
 	// fmt.Println(string(out))
+
 	indexM.info = data
 	return indexM.info
 
@@ -135,21 +133,21 @@ func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
 	//(subtable.pretaxTotal + subtable.PreTax )  lastloss ,   應該不包含這期虧損
 	const sql = `WITH  vals  AS (VALUES ( 'none' ) )
 	SELECT subtable.branch , sum(subtable.Pbonus), sum(subtable.LBonus) , sum(subtable.salary), sum(subtable.prepay), sum(subtable.pocket) , 
-		sum(subtable.thisMonthAmor) , sum(subtable.sr), sum(subtable.annualbonus), sum(subtable.salesamounts) , sum(subtable.businesstax) , sum(subtable.agentsign) , sum(subtable.rent),
-		sum(subtable.commercialfee), sum(subtable.PreTax) , sum( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) BusinessIncomeTax, 
-		sum( subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) ) AfterTax , 
+		sum(subtable.thisMonthAmor) Amor, sum(subtable.sr) SR, sum(subtable.annualbonus)::int annualbonus, sum(subtable.salesamounts)::int , sum(subtable.businesstax)::int , sum(subtable.agentsign) , sum(subtable.rent),
+		sum(subtable.commercialfee) commercialfee, sum(subtable.PreTax)::int PreTax, sum( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )::int BusinessIncomeTax, 
+		sum( subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) )::int AfterTax , 
 		sum(subtable.pretaxTotal)  lastloss ,  
 		sum( CASE WHEN (subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal + subtable.PreTax ) + 0 > 0 then 
 					(subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal + subtable.PreTax ) + 0
 		  else 0 end
-		) managerbonus 
+		)::int managerbonus 
 		FROM vals as v
 		cross join (
 		SELECT incomeexpense.branch , COALESCE(incomeexpense.pretaxTotal ,0) pretaxTotal , BS.Bsid,BonusTable.PBonus , BonusTable.LBonus , BonusTable.Salary , COALESCE(prepayTable.prepay,0) prepay , COALESCE(pocketTable.pocket,0) pocket , COALESCE(amorTable.thisMonthAmor,0) thisMonthAmor,
 		COALESCE(commissionTable.SR,0) SR, COALESCE(commissionTable.SR / 1.05 ,0) salesamounts , COALESCE(commissionTable.SR - commissionTable.SR / 1.05 ,0) businesstax, configTable.agentsign, configTable.rent, configTable.commercialfee, 
 		( COALESCE(commissionTable.SR,0)/1.05  - COALESCE(amorTable.thisMonthAmor,0) - configTable.agentsign - configTable.rent - COALESCE(pocketTable.pocket,0) - COALESCE(prepayTable.prepay,0) - BonusTable.PBonus - 
 		BonusTable.Salary - BonusTable.LBonus - COALESCE(commissionTable.SR,0) * 0.05 - configTable.commercialfee - 0  ) PreTax ,
-		COALESCE(commissionTable.SR * configTable.annualratio ,0) Annualbonus , configTable.annualratio
+		COALESCE(commissionTable.SR * configTable.annualratio / 100 ,0) Annualbonus , configTable.annualratio
 		FROM public.branchsalary  BS
 		inner join (
 		  SELECT sum(BonusTable.pbonus) PBonus , sum(BonusTable.lbonus) LBonus, sum(BonusTable.Salary) Salary, bsid  FROM public.SalerSalary BonusTable group by bsid
@@ -157,12 +155,12 @@ func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
 		left join (
 			SELECT sum(cost) prepay , branch FROM public.prepay PP 
 			inner join public.BranchPrePay BPP on PP.ppid = BPP.ppid 	
-			where to_char(date ,'YYYY-MM') = '2019-10'
+			where to_char(date ,'YYYY-MM') = '%s'
 			group by branch
 		) prepayTable on prepayTable.branch = BS.branch
 		left join(
 			SELECT sum(fee) pocket , branch FROM public.Pocket 		
-			where circleid = '2019-10'
+			where circleid = '%s'
 			group by branch
 		) pocketTable on pocketTable.branch = BS.branch
 		left join(
@@ -170,7 +168,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
 			inner join (
 				SELECT amorid, date, cost FROM public.amormap
 			) amormap on amormap.amorid = amor.amorid
-			where isover = 0 and to_char(amor.date,'yyyy-MM') = '2019-10'
+			where isover = 0 and to_char(amor.date,'yyyy-MM') = '%s'
 			group by to_char(amor.date,'yyyy-MM') , amor.branch		
 		) amorTable on amorTable.branch = BS.branch
 		left join(
@@ -185,14 +183,18 @@ func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
 			Select sum(pretax) OVER (partition by branch Order by Date asc) pretaxTotal , branch , Date qq , IE.bsid FROM public.incomeexpense IE
 			inner join public.BranchSalary BS on  IE.bsid = BS.bsid
 		) incomeexpense on incomeexpense.bsid = BS.bsid 	
-		where date = '2019-10'
+		where date = '%s'
 		) subtable
 	where branch = '%s'
 	group by subtable.branch
 	`
 
+	//t := time.Now()
+	//curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
+	curDate := fmt.Sprintf("2020-01")
+
 	db := indexM.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(sql, branch))
+	rows, err := db.SQLCommand(fmt.Sprintf(sql, curDate, curDate, curDate, curDate, branch))
 	if err != nil {
 		return nil
 	}

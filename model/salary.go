@@ -735,7 +735,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	COALESCE(commissionTable.SR,0) SR, COALESCE(commissionTable.SR / 1.05 ,0) salesamounts , COALESCE(commissionTable.SR - commissionTable.SR / 1.05 ,0) businesstax, configTable.agentsign, configTable.rent, configTable.commercialfee, 
 	( COALESCE(commissionTable.SR,0)/1.05  - COALESCE(amorTable.thisMonthAmor,0) - configTable.agentsign - configTable.rent - COALESCE(pocketTable.pocket,0) - COALESCE(prepayTable.prepay,0) - BonusTable.PBonus - 
 	BonusTable.Salary - BonusTable.LBonus - COALESCE(commissionTable.SR,0) * 0.05 - configTable.commercialfee - 0  ) PreTax ,
-	COALESCE(commissionTable.SR * configTable.annualratio ,0) Annualbonus , configTable.annualratio
+	COALESCE(commissionTable.SR * configTable.annualratio / 100 ,0) Annualbonus , configTable.annualratio
 	FROM public.branchsalary  BS
 	inner join (
 	  SELECT sum(BonusTable.pbonus) PBonus , sum(BonusTable.lbonus) LBonus, sum(BonusTable.Salary) Salary, bsid  FROM public.SalerSalary BonusTable group by bsid
@@ -1170,6 +1170,7 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid string) 
 
 func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid string) (err error) {
 
+	//annualBonus 是上筆算好的，sr * $4 / 100是用新的AnnualRatio算出新的annualBonus
 	const sql = `UPDATE public.incomeExpense
 	SET salerfee = $2 , earnadjust = $3::integer , pretax = (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) , annualratio = $4 , annualBonus = sr * $4 / 100 ,
 	businessincometax = (CASE WHEN (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) * 0.2 > 0 then (pretax + salerFee - $2 + annualBonus - sr * $4 / 100) * 0.2 else 0 end ),

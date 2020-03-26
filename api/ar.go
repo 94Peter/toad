@@ -36,7 +36,8 @@ type inputAR struct {
 }
 
 type inputUpdateAR struct {
-	Amount int `json:"amount"`
+	Amount    int               `json:"amount"`
+	SalerList []*model.MAPSaler `json:"salerList"`
 }
 
 type inputhouseGoAR struct {
@@ -129,6 +130,12 @@ func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 		return
 	}
 
+	out, err := json.Marshal(iUAR)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(out))
+
 	if ok, err := iUAR.isARValid(); !ok {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
@@ -137,7 +144,7 @@ func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 
 	am := model.GetARModel(di)
 
-	if err := am.UpdateAccountReceivable(iUAR.Amount, ID); err != nil {
+	if err := am.UpdateAccountReceivable(iUAR.Amount, ID, iUAR.SalerList); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return

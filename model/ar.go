@@ -326,7 +326,7 @@ func (am *ARModel) Json(mtype string) ([]byte, error) {
 	return nil, nil
 }
 
-func (am *ARModel) UpdateAccountReceivable(amount int, ID string) (err error) {
+func (am *ARModel) UpdateAccountReceivable(amount int, ID string, salerList []*MAPSaler) (err error) {
 	fmt.Println("UpdateAccountReceivable")
 	const sql = `Update public.ar t1
 					set	amount = $1
@@ -345,7 +345,7 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID string) (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Println("sqldb Exec " + sql)
+	//fmt.Println("sqldb Exec " + sql)
 	res, err := sqldb.Exec(sql, amount, ID)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -361,6 +361,85 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID string) (err error) {
 	if id <= 0 {
 		return errors.New("[ERROR]: Maybe id is not found or amount is not allowed. (amount should be greater then sum of receive amount)")
 	}
+	//連動更改ARMAP TABLE的數值
+	am.UpdateAccountReceivableSalerProportion(salerList, ID)
+	return nil
+}
+
+func (am *ARModel) UpdateAccountReceivableSalerProportion(salerList []*MAPSaler, ID string) (err error) {
+	fmt.Println("UpdateAccountReceivable")
+	const sql = `Update public.armap set proportion = $1				
+				where arid = $2 and sid = $3`
+
+	interdb := am.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	for _, element := range salerList {
+		// element is the element from someSlice for where we are
+		res, err := sqldb.Exec(sql, element.Percent, ID, element.Sid)
+		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		if err != nil {
+			fmt.Println("ARMAP ", err)
+			return err
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+			return err
+		}
+		fmt.Println(id)
+	}
+
+	return nil
+}
+
+func (am *ARModel) RefreshCommissionBonus(Sid, Rid, mtype string) (err error) {
+	if strings.ToLower(mtype) == "all" {
+		Rid = "%"
+	}
+
+	const sql = `Update public.commission t1
+					set sr = (t2.amount - t2.fee) * t2.cpercent / 100 , bonus = (t2.amount - t2.fee) * t2.cpercent / 100 * t2.percent /100
+				FROM(
+				SELECT c.bsid, c.sid, c.rid, r.amount, c.fee , c.cpercent, c.sr, c.bonus,  cs.percent
+								FROM public.commission c
+								inner JOIN public.receipt r on r.rid = c.rid				
+								inner join 	(			
+									select cs.sid, cs.percent from public.configsaler cs 
+									inner join (
+										select sid, max(zerodate) zerodate from public.configsaler cs 
+										where now() > zerodate
+										group by sid
+									) tmp on tmp.sid = cs.sid and tmp.zerodate = cs.zerodate		
+								)	cs  on cs.sid = c.sid
+								WHERE c.bsid is null
+				) as t2 where t1.sid = t2.sid and t1.rid = t2.rid and t1.sid = $1 and t1.rid like $2`
+	interdb := cm.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, Sid, Rid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+
+	if id >= 1 {
+		fmt.Println("RefreshCommissionBonus success")
+	} else {
+		fmt.Println("RefreshCommissionBonus error : something error")
+	}
+
 	return nil
 }
 

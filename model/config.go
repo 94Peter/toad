@@ -588,8 +588,7 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, ConfigSaler")
 	}
-	//新增預設紀錄
-
+	//連動薪水 新增預設紀錄
 	configM.CreateConfigSalary(cs.GetConfigSalary())
 	return nil
 }
@@ -630,9 +629,13 @@ func (configM *ConfigModel) DeleteConfigSaler(sid string) (err error) {
 
 func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err error) {
 
+	// const sql = `UPDATE public.configsaler
+	// SET zerodate=$2,  title=$3, percent=$4, salary=$5,
+	// payrollbracket=$6, enrollment=$7, association=$8, address=$9, birth=$10, identitynum=$11, bankaccount= $12 , email = $13  ,branch = $14, remark = $15 , insuredamount=$16
+	// WHERE sid=$1`
+
 	const sql = `UPDATE public.configsaler
-	SET zerodate=$2,  title=$3, percent=$4, salary=$5,
-	payrollbracket=$6, enrollment=$7, association=$8, address=$9, birth=$10, identitynum=$11, bankaccount= $12 , email = $13  ,branch = $14, remark = $15 , insuredamount=$16
+	SET	address=$2, birth=$3, bankaccount= $4 , email = $5
 	WHERE sid=$1`
 
 	interdb := configM.imr.GetSQLDB()
@@ -641,9 +644,10 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err 
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, Sid, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
-		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark, cs.InsuredAmount)
-	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	// res, err := sqldb.Exec(sql, Sid, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
+	// 	cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark, cs.InsuredAmount)
+	res, err := sqldb.Exec(sql, Sid, cs.Address, cs.Birth, cs.BankAccount, cs.Email)
+
 	if err != nil {
 		fmt.Println(err)
 		return err

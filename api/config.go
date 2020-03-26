@@ -590,11 +590,11 @@ func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http
 		return
 	}
 
-	if ok, err := iCSaler.isConfigSalerValid(isUpdate); !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	// if ok, err := iCSaler.isConfigSalerValid(isUpdate); !ok {
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
 
 	configM := model.GetConfigModel(di)
 

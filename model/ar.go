@@ -363,6 +363,9 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID string, salerList []*M
 	}
 	//連動更改ARMAP TABLE的數值
 	am.UpdateAccountReceivableSalerProportion(salerList, ID)
+	//連動更改傭金明細TABLE的數值
+	am.RefreshCommissionBonus(ID)
+
 	return nil
 }
 
@@ -389,40 +392,31 @@ func (am *ARModel) UpdateAccountReceivableSalerProportion(salerList []*MAPSaler,
 			fmt.Println("PG Affecte Wrong: ", err)
 			return err
 		}
-		fmt.Println(id)
+		fmt.Println("UpdateAccountReceivableSalerProportion:", id)
 	}
 
 	return nil
 }
 
-func (am *ARModel) RefreshCommissionBonus(Sid, Rid, mtype string) (err error) {
-	if strings.ToLower(mtype) == "all" {
-		Rid = "%"
-	}
+func (am *ARModel) RefreshCommissionBonus(ID string) (err error) {
 
 	const sql = `Update public.commission t1
-					set sr = (t2.amount - t2.fee) * t2.cpercent / 100 , bonus = (t2.amount - t2.fee) * t2.cpercent / 100 * t2.percent /100
-				FROM(
-				SELECT c.bsid, c.sid, c.rid, r.amount, c.fee , c.cpercent, c.sr, c.bonus,  cs.percent
-								FROM public.commission c
-								inner JOIN public.receipt r on r.rid = c.rid				
-								inner join 	(			
-									select cs.sid, cs.percent from public.configsaler cs 
-									inner join (
-										select sid, max(zerodate) zerodate from public.configsaler cs 
-										where now() > zerodate
-										group by sid
-									) tmp on tmp.sid = cs.sid and tmp.zerodate = cs.zerodate		
-								)	cs  on cs.sid = c.sid
-								WHERE c.bsid is null
-				) as t2 where t1.sid = t2.sid and t1.rid = t2.rid and t1.sid = $1 and t1.rid like $2`
-	interdb := cm.imr.GetSQLDB()
+					set cpercent = t2.proportion, sr= (t2.amount - t2.fee)*t2.proportion/100, bonus= (t2.amount - t2.fee)*t2.proportion/100*t2.percent /100
+				FROM(	
+					SELECT  map.proportion , c.bsid, c.sid, c.rid, r.amount, c.fee , c.sr, c.bonus,  cs.percent
+						FROM public.commission c
+						inner JOIN public.receipt r on r.rid = c.rid 			
+						inner join public.configsaler cs on cs.sid = c.sid
+						inner join public.armap map on map.sid = c.sid  and map.arid = r.arid and map.arid = $1
+						WHERE c.bsid is null
+				) as t2 where t1.sid = t2.sid and t1.rid = t2.rid `
+	interdb := am.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, Sid, Rid)
+	res, err := sqldb.Exec(sql, ID)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)

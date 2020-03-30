@@ -69,6 +69,7 @@ type ConfigSaler struct {
 	BankAccount    string `json:"bankAccount"`
 	Email          string `json:"email"`
 	Phone          string `json:"phone"`
+	Code           string `json:"code"` //員工代號
 	Remark         string `json:"remark"`
 	// excel used
 	Tamount int    `json:"-"`
@@ -478,8 +479,9 @@ func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err erro
 func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 
 	const qspl = `SELECT  sid, sname, branch, zerodate,  title, percent, 
-				  salary, insuredamount,  payrollbracket, enrollment, association, address, birth, identityNum , bankAccount , email, phone , remark
-				  FROM public.ConfigSaler where branch like '%s' order by branch,sid;`
+				  salary, insuredamount,  payrollbracket, enrollment, association, address, birth, identityNum , 
+				  bankAccount , email, phone , remark , code
+				  FROM public.ConfigSaler where branch like '%s' order by branch,code;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDB()
 
@@ -497,7 +499,8 @@ func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
 		if err := rows.Scan(&cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.Title, &cs.Percent,
-			&cs.Salary, &cs.InsuredAmount, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address, &cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Phone, &cs.Remark); err != nil {
+			&cs.Salary, &cs.InsuredAmount, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address,
+			&cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Phone, &cs.Remark, &cs.Code); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -562,8 +565,8 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 
 	const sql = `INSERT INTO public.configsaler(
 		sid, sname, branch, zerodate,  title, percent,  salary, insuredamount,
-		 payrollbracket, enrollment, association, address, birth, identityNum, bankAccount,  email, phone, remark)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`
+		 payrollbracket, enrollment, association, address, birth, identityNum, bankAccount,  email, phone, remark, code)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`
 
 	interdb := configM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -572,7 +575,7 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 	}
 
 	res, err := sqldb.Exec(sql, cs.Sid, cs.SName, cs.Branch, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary, cs.InsuredAmount,
-		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Phone, cs.Remark)
+		cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Phone, cs.Remark, cs.Code)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -635,7 +638,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err 
 	// WHERE sid=$1`
 
 	const sql = `UPDATE public.configsaler
-	SET	address=$2, birth=$3, bankaccount= $4 , email = $5
+	SET	address=$2, birth=$3, bankaccount= $4 , email = $5 , code =$6
 	WHERE sid=$1`
 
 	interdb := configM.imr.GetSQLDB()
@@ -646,7 +649,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err 
 
 	// res, err := sqldb.Exec(sql, Sid, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
 	// 	cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark, cs.InsuredAmount)
-	res, err := sqldb.Exec(sql, Sid, cs.Address, cs.Birth, cs.BankAccount, cs.Email)
+	res, err := sqldb.Exec(sql, Sid, cs.Address, cs.Birth, cs.BankAccount, cs.Email, cs.Code)
 
 	if err != nil {
 		fmt.Println(err)

@@ -33,6 +33,7 @@ type inputUpdateDeduct struct {
 	Date        string `json:"date"`
 	Status      string `json:"status"`
 	CheckNumber string `json:"checkNumber"` //票號
+	Fee         int    `json:"fee"`
 }
 
 type inputUpdateDeductItem struct {
@@ -45,6 +46,7 @@ func (api DeductAPI) GetAPIs() *[]*APIHandler {
 		//&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.deleteDeductEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.updateDeductEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/deductFee/{ID}", Next: api.updateDeductFeeEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/deduct/item/{ID}", Next: api.updateDeductItemEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 	}
@@ -129,6 +131,37 @@ func (api *DeductAPI) updateDeductEndpoint(w http.ResponseWriter, req *http.Requ
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error" + _err.Error()))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+
+func (api *DeductAPI) updateDeductFeeEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+	vars := util.GetPathVars(req, []string{"ID"})
+	ID := vars["ID"].(string)
+
+	iUD := inputUpdateDeduct{}
+	err := json.NewDecoder(req.Body).Decode(&iUD)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if iUD.Fee < 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Fee is not vaild"))
+		return
+	}
+
+	DM := model.GetDecuctModel(di)
+
+	_err := DM.UpdateDeductFee(ID, iUD.Fee)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("[Error] " + _err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -361,11 +362,52 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID string, salerList []*M
 	if id <= 0 {
 		return errors.New("[ERROR]: Maybe id is not found or amount is not allowed. (amount should be greater then sum of receive amount)")
 	}
+	//刪除ARMAP 重建
+	am.DeleteARMAP(ID)
+	am.SaveARMAP(salerList, ID, sqldb)
 	//連動更改ARMAP TABLE的數值
-	am.UpdateAccountReceivableSalerProportion(salerList, ID)
+	//am.UpdateAccountReceivableSalerProportion(salerList, ID)
+
 	//連動更改傭金明細TABLE的數值
 	am.RefreshCommissionBonus(ID)
 
+	return nil
+}
+
+func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
+	const mapSql = `INSERT INTO public.ARMAP(
+		ARid, Sid, proportion , SName )
+		VALUES ($1, $2, $3, $4);`
+	count := 0
+	for _, element := range salerList {
+		// element is the element from someSlice for where we are
+		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName)
+		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		if err != nil {
+			fmt.Println("SaveARMAP ", err)
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+		}
+		count += int(id)
+	}
+	fmt.Println("SaveARMAP:", count)
+}
+
+//;
+
+func (am *ARModel) DeleteARMAP(ID string) (err error) {
+	fmt.Println("UpdateAccountReceivable")
+	const sql = `delete from public.armap where arid = $1`
+
+	interdb := am.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = sqldb.Exec(sql, ID)
 	return nil
 }
 

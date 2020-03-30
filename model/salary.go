@@ -161,7 +161,7 @@ func (salaryM *SalaryModel) SetSMTPConf(conf util.SendMail) {
 func (salaryM *SalaryModel) GetBranchSalaryData(date string) []*BranchSalary {
 
 	const spl = `SELECT bsid, to_timestamp(bsid::int), branch, name, total, lock FROM public.branchsalary
-				where date Like '%s';`
+				where date Like '%s' order by bsid;`
 
 	db := salaryM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(spl, date))
@@ -897,7 +897,8 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 				inner join public.branchsalary bs on bs.bsid = ss.bsid
 				left join public.incomeexpense ie on ie.bsid = ss.bsid
 				left join  public.configbranch cb on cb.branch = ss.branch and ss.sid = cb.sid
-				where ss.bsid = '%s' `
+				inner join  public.configsaler cs on cs.sid = ss.sid
+				where ss.bsid = '%s' order by cs.code`
 	//where ss.bsid = '%s' and ss.sid like '%s'`
 
 	db := salaryM.imr.GetSQLDB()
@@ -919,31 +920,18 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 		ssDataList = append(ssDataList, &ss)
 	}
 
-	out, err := json.Marshal(ssDataList)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(out))
+	// out, err := json.Marshal(ssDataList)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
 	salaryM.salerSalaryList = ssDataList
 
 	if len(salaryM.salerSalaryList) > 0 {
 		ss := salaryM.salerSalaryList[0]
 		strtime, _ := util.ADtoROC(ss.Date, "file")
 		salaryM.FnamePdf = ss.Branch + "薪資表" + strtime
-		// systemM.GetAccountData(salaryM.salerSalaryList[0].Branch)
 
-		// for _, salerSalary := range salaryM.salerSalaryList {
-		// 	for _, element := range systemM.systemAccountList {
-		// 		if element.Account == salerSalary.Sid {
-		// 			fmt.Println(element, salerSalary)
-		// 			util.RunSendMail(smtpConf.Host, smtpConf.Port, smtpConf.Password, smtpConf.User, "geassyayaoo3@gmail.com", "subject", body, fname)
-		// 		}
-		// 	}
-		// }
-		// body := "testbody"
-		// fname := "hello.pdf"
-		// //conf := di.GetSMTPConf()
-		// fmt.Println(smtpConf)
 	}
 
 	return salaryM.salerSalaryList
@@ -983,9 +971,10 @@ func (salaryM *SalaryModel) GetNHISalaryData(bsID string) []*NHISalary {
 	const spl = `SELECT nhi.sid, nhi.bsid, nhi.sname, nhi.payrollbracket, nhi.salary, nhi.pbonus, nhi.bonus, nhi.total, nhi.pd, nhi.salarybalance, nhi.fourbouns, ss.sp, nhi.foursp, nhi.ptsp
 				FROM public.nhisalary nhi
 				inner join (
-					select bsid, sp from public.salersalary 
-				) ss on ss.bsid = nhi.bsid
-				where nhi.bsid = '%s'`
+					select bsid, sid, sp from public.salersalary 
+				) ss on ss.bsid = nhi.bsid and ss.sid = nhi.sid
+				inner join  public.configsaler cs on cs.sid = ss.sid				
+				where nhi.bsid = '%s' order by cs.code`
 
 	db := salaryM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(spl, bsID))
@@ -1025,15 +1014,10 @@ func (salaryM *SalaryModel) ExportNHISalaryData(bsID string) []*NHISalary {
 					select sid, bsid, sp ,description from public.salersalary 
 				) ss on ss.bsid = nhi.bsid and ss.sid = nhi.sid
 				inner join(
-					SELECT A.sid, A.sname, A.branch, A.percent, A.title
-					FROM public.ConfigSaler A 
-					Inner Join ( 
-						select sid, max(zerodate) zerodate from public.configsaler cs 
-						where now() > zerodate
-						group by sid 
-					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+					SELECT A.sid, A.sname, A.branch, A.percent, A.title, A.code
+					FROM public.ConfigSaler A 					
 				) cs on cs.sid = nhi.sid
-				where nhi.bsid = '%s'`
+				where nhi.bsid = '%s' order by cs.code`
 
 	db := salaryM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(spl, bsID))
@@ -1703,6 +1687,7 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	return
 }
 
+//code排序失敗!!
 func (salaryM *SalaryModel) ExportSR(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname ,  coalesce(sum(tmp.SR),0)  ,coalesce( sum( tmp.SR * cs.percent/100)  , 0 ) bonus , cs.branch , ss.date
 	from salersalary ss
@@ -1715,16 +1700,11 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 			) d on d.rid = r.rid		
 		) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 	Inner Join (
-		SELECT A.sid, A.branch, A.percent
-			FROM public.ConfigSaler A
-			Inner Join (
-				select sid, max(zerodate) zerodate from public.configsaler cs
-				where now() > zerodate
-				group by sid
-			) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+		SELECT A.sid, A.branch, A.percent, A.code
+			FROM public.ConfigSaler A			
 	) cs on cs.sid=ss.sid 
 	where ss.bsid = '%s'
-	group by ss.sid , ss.sname , cs.branch , ss.date`
+	group by cs.branch , cs.code , ss.date, ss.sid, ss.sname`
 
 	db := cm.imr.GetSQLDB()
 
@@ -1786,15 +1766,10 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 					) iv on r.rid = iv.rid
 				) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 			Inner Join (
-				SELECT A.sid, A.branch, A.percent, A.title
-					FROM public.ConfigSaler A
-					Inner Join (
-						select sid, max(zerodate) zerodate from public.configsaler cs
-						where now() > zerodate
-						group by sid
-					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+				SELECT A.sid, A.branch, A.percent, A.title,A.code
+					FROM public.ConfigSaler A					
 			) cs on cs.sid=ss.sid 			
-			where ss.bsid = '%s' order by mdate, sid asc;`
+			where ss.bsid = '%s' order by code,mdate, sid asc;`
 
 	// const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, tmp.bonus, tmp.remark from salersalary ss
 	// left join(
@@ -1886,15 +1861,10 @@ func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 					) iv on r.rid = iv.rid
 				) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 			Inner Join (
-				SELECT A.sid, A.branch, A.percent, A.title
-					FROM public.ConfigSaler A
-					Inner Join (
-						select sid, max(zerodate) zerodate from public.configsaler cs
-						where now() > zerodate
-						group by sid
-					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+				SELECT A.sid, A.branch, A.percent, A.title, A.code
+					FROM public.ConfigSaler A					
 			) cs on cs.sid=ss.sid 
-			where ss.bsid = '%s' order by ss.sid asc;`
+			where ss.bsid = '%s' order by cs.code, ss.sid asc;`
 
 	db := cm.imr.GetSQLDB()
 
@@ -1944,16 +1914,11 @@ func (salaryM *SalaryModel) ExportIncomeTaxReturn(bsID string) {
 
 	const qsql = `SELECT ss.sid, ss.sname , cs.identitynum, cs.address, ss.total,  cs.branch, ss.date from salersalary ss			
 				Inner Join (
-					SELECT A.sid, A.branch, A.identitynum, A.address , A.bankaccount
-						FROM public.ConfigSaler A
-						Inner Join (
-							select sid, max(zerodate) zerodate from public.configsaler cs
-							where now() > zerodate
-							group by sid
-						) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+					SELECT A.sid, A.branch, A.identitynum, A.address , A.bankaccount, A.code
+						FROM public.ConfigSaler A						
 				) cs on cs.sid=ss.sid 
 				where ss.date||'-01' >= '%s' and ss.date||'-01' <= '%s' and ss.branch = '%s'	
-				order by ss.sid asc;`
+				order by cs.code, ss.sid asc;`
 
 	db := cm.imr.GetSQLDB()
 
@@ -2007,16 +1972,12 @@ func (salaryM *SalaryModel) ExportIncomeTaxReturn(bsID string) {
 func (salaryM *SalaryModel) ExportPayrollTransfer(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname , cs.identitynum, cs.bankaccount, ss.tamount,  cs.branch   from salersalary ss			
 			Inner Join (
-				SELECT A.sid, A.branch, A.identitynum, A.title , A.bankaccount
+				SELECT A.sid, A.branch, A.identitynum, A.title , A.bankaccount, A.code
 					FROM public.ConfigSaler A
-					Inner Join (
-						select sid, max(zerodate) zerodate from public.configsaler cs
-						where now() > zerodate
-						group by sid
-					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+					
 			) cs on cs.sid=ss.sid 
 			where ss.bsid = '%s'
-			order by ss.sid asc;`
+			order by cs.code, ss.sid asc;`
 
 	db := cm.imr.GetSQLDB()
 

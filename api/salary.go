@@ -290,7 +290,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 	cm := model.GetConfigModel(di) // 會使用到system model函式，預防崩潰，所以要初始化
 	pdf.GetNewPDF()                // to renew (不然會沿用到prepay pocket amor的pdf )
 	switch mExport {
-	case excel.PayrollTransfer:
+	case excel.PayrollTransfer: //2
 		ex := excel.GetNewExcel()
 		cm.ConfigSalerList = []*model.ConfigSaler{}
 		for _, element := range exportId.BSidList {
@@ -302,7 +302,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		ReceiveFile(w, req, "薪轉明細表.xlsx")
 		util.DeleteAllFile()
 		return
-	case excel.IncomeTaxReturn:
+	case excel.IncomeTaxReturn: //9
 		ex := excel.GetNewExcel()
 		cm.ConfigSalerList = []*model.ConfigSaler{}
 		for _, element := range exportId.BSidList {

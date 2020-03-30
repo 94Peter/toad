@@ -55,10 +55,18 @@ func (prepayM *PrePayModel) GetPrePayData(startDate, endDate string) []*PrePay {
 					   where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval)) ;`
 
 	db := prepayM.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(PrePayspl, startDate+"-01", endDate+"-01"))
+	sqldb, err := db.ConnectSQLDB()
+
+	rows, err := sqldb.Query(fmt.Sprintf(PrePayspl, startDate+"-01", endDate+"-01"))
 	if err != nil {
 		return nil
 	}
+
+	// rows, err := db.SQLCommand(fmt.Sprintf(PrePayspl, startDate+"-01", endDate+"-01"))
+	// if err != nil {
+	// 	return nil
+	// }
+
 	var prepayDataList []*PrePay
 
 	for rows.Next() {
@@ -71,7 +79,8 @@ func (prepayM *PrePayModel) GetPrePayData(startDate, endDate string) []*PrePay {
 
 		BranchPrePayspl := `SELECT branch, cost FROM public.BranchPrePay where PPid ='` + prepay.PPid + `';`
 		//fmt.Println(BranchPrePayspl)
-		bpprows, err := db.SQLCommand(fmt.Sprintf(BranchPrePayspl))
+		bpprows, err := sqldb.Query(fmt.Sprintf(BranchPrePayspl))
+		//bpprows, err := db.SQLCommand(fmt.Sprintf(BranchPrePayspl))
 		if err != nil {
 			return nil
 		}

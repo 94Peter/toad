@@ -63,7 +63,7 @@ func GetNewPDF(things ...interface{}) *Pdf {
 		myPDFPage = it.(gopdf.Rect)
 	}
 
-	fmt.Println(p)
+	//fmt.Println(p)
 
 	p = &Pdf{
 		myPDF: &gopdf.GoPdf{},
@@ -101,8 +101,6 @@ func GetNewPDF(things ...interface{}) *Pdf {
 	}
 	pdf.SetFont("TW-Medium", "", 10)
 
-	fmt.Println("Coming GetNewPDF Coming GetNewPDF Coming GetNewPDF Coming GetNewPDF AddPage AddPage AddPage AddPage")
-
 	return p
 }
 
@@ -111,7 +109,7 @@ func GetOriPDF() *Pdf {
 		fmt.Println("Direct P return")
 		return p
 	}
-	fmt.Println("GetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDFGetNewPDF")
+
 	return GetNewPDF()
 }
 

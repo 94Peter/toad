@@ -230,7 +230,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 
 	//Header長度重製
 	for index, e := range table.RawData {
-		fmt.Println(e)
+		//fmt.Println(e)
 		pdf.ResizeWidth(table, p.GetTextWidth(e.Text), index)
 	}
 
@@ -302,7 +302,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 				table := pdf.GetDataTable(mtype)
 				//Header長度重製
 				for index, e := range table.RawData {
-					fmt.Println(e)
+					//fmt.Println(e)
 					pdf.ResizeWidth(table, p.GetTextWidth(e.Text), index)
 				}
 
@@ -1687,7 +1687,6 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	return
 }
 
-//code排序失敗!!
 func (salaryM *SalaryModel) ExportSR(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname ,  coalesce(sum(tmp.SR),0)  ,coalesce( sum( tmp.SR * cs.percent/100)  , 0 ) bonus , cs.branch , ss.date
 	from salersalary ss
@@ -1704,12 +1703,13 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 			FROM public.ConfigSaler A			
 	) cs on cs.sid=ss.sid 
 	where ss.bsid = '%s'
-	group by cs.branch , cs.code , ss.date, ss.sid, ss.sname`
+	group by cs.branch , ss.date, ss.sid, ss.sname , cs.code
+	order by cs.code `
 
 	db := cm.imr.GetSQLDB()
 
 	cDataList := []*Commission{}
-	salerList := []*SystemAccount{}
+	//salerList := []*SystemAccount{}
 
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, bsID))
 	if err != nil {
@@ -1737,14 +1737,15 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 		date, _ = util.ADtoROC(date, "file")
 		salaryM.FnamePdf = cDataList[0].Branch + "實績分配表" + date
 
-	} else {
-		salerList = nil
 	}
+	// else {
+	// 	salerList = nil
+	// }
 
-	out, _ := json.Marshal(salerList)
-	fmt.Println("salerList :", string(out))
-	out, _ = json.Marshal(cDataList)
-	fmt.Println("cDataList :", string(out))
+	// out, _ := json.Marshal(salerList)
+	// fmt.Println("salerList :", string(out))
+	// out, _ = json.Marshal(cDataList)
+	// fmt.Println("cDataList :", string(out))
 	//salaryM.SystemAccountList = salerList
 	salaryM.CommissionList = cDataList
 	return

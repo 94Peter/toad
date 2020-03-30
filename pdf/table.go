@@ -88,8 +88,7 @@ func GetDataTable(mtype int) *DataTable {
 	//fmt.Println("header:", header)
 	//fmt.Println("header:", len(header))
 	initWidth := []float64{}
-	for _, e := range header {
-		fmt.Println(e)
+	for i := 0; i < len(header); i++ {
 		initWidth = append(initWidth, TextWidth)
 	}
 	DataTable.ColumnWidth = initWidth

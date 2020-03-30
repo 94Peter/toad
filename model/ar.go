@@ -177,7 +177,7 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 		"   " +
 		"FROM public.ar ar	" +
 		"where ar.arid like '" + index + "' OR ar.cno like '" + index + "' OR ar.casename like '" + index + "' OR ar.type like '" + index + "' OR ar.name like '" + index + "' " +
-		"group by ar.arid;"
+		"group by ar.arid order by ar.date desc;"
 	/*
 	*balance equal ar.amount - COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA
 	*but I do with r.Balance = r.Amount - r.RA

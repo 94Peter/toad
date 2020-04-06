@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-const PdfDir = "MyPdf/"
+//windows --> C:\Users\Oswin\AppData\Local\Packages\CanonicalGroupLimited.Ubuntu16.04onWindows_79rhkp1fndgsc\LocalState\rootfs\tmp
+const PdfDir = "/tmp/MyPdf/"
 
 func CompressZip(fname string) {
 

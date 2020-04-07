@@ -1343,7 +1343,7 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		//底薪
 		T_Salary += element.Salary
 		//text = strconv.Itoa(element.Salary)
-		text = pr.Sprintf("%d", T_Salary)
+		text = pr.Sprintf("%d", element.Salary)
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,

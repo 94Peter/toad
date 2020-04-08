@@ -678,7 +678,7 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 			//"csid character varying(50) ,"+
 			"Sid character varying(50) ,"+
 			"Sname character varying(50) ,"+
-			"Code character varying(50) DEFAULT '',"+ //員工代號
+			"Code integer DEFAULT 200,"+ //員工代號
 			"Branch character varying(50) ,"+
 			"ZeroDate timestamp(0) without time zone not NULL, "+
 			//"ValidDate  timestamp(0) without time zone not NULL, "+

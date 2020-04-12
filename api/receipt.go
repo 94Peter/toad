@@ -74,20 +74,23 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 	if end == "" {
 		end = "2200-01-01"
 	}
-	_, err := time.ParseInLocation("2006-01-02", begin, time.Local)
+	b, err := time.ParseInLocation("2006-01-02", begin, time.Local)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("begin date is not valid, %s", err.Error())))
 		return
 	}
-	_, err = time.ParseInLocation("2006-01-02", end, time.Local)
+	fmt.Println(b)
+	fmt.Println(b.UTC())
+	fmt.Println(b.Unix())
+	e, err := time.ParseInLocation("2006-01-02", end, time.Local)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("end date is not valid, %s", err.Error())))
 		return
 	}
 
-	rm.GetReceiptData(begin, end)
+	rm.GetReceiptData(b, e)
 	//data, err := json.Marshal(result)
 	data, err := rm.Json()
 	if err != nil {

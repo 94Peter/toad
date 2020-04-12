@@ -542,7 +542,7 @@ func (am *ARModel) DeleteHouseGo(ID string) (err error) {
 
 func (am *ARModel) CreateAccountReceivable(receivable *AR, json string) (err error) {
 	fmt.Println("CreateAccountReceivable")
-	//to_timestamp
+
 	const sql = `INSERT INTO public.ar(
 		ARid, Date, CNo, CaseName, Type, Name, Amount)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)

@@ -169,14 +169,15 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	return cm.cList
 }
 
-func (cm *CModel) GetCommissiontData(start, end, status string) []*Commission {
+func (cm *CModel) GetCommissiontData(start, end time.Time, status string) []*Commission {
 	fmt.Println("GetCommissiontData")
 	//if invoiceno is null in Database return ""
+	// where to_timestamp(date_part('epoch',r.date)::int) >= '%s' and to_timestamp(date_part('epoch',r.date)::int) < '%s'::date + '1 month'::interval
 
 	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
 				FROM public.commission c
 				inner JOIN public.receipt r on r.rid = c.rid
-				where to_timestamp(date_part('epoch',r.date)::int) >= '%s' and to_timestamp(date_part('epoch',r.date)::int) < '%s'::date + '1 month'::interval
+				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d'
 				and c.status like '%s';`
 
 	// const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - d.fee)* c.cpercent/100) sr, ( (r.amount - d.fee)* c.cpercent/100 * cs.percent/100) bonus,
@@ -200,7 +201,7 @@ func (cm *CModel) GetCommissiontData(start, end, status string) []*Commission {
 
 	//left JOIN (select sum(fee) fee, count(rid) ,arid from public.deduct group by arid) as tmp on tmp.arid = r.arid
 	db := cm.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start, end, status))
+	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
 	if err != nil {
 		fmt.Println(err)
 		return nil

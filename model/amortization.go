@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,14 +49,17 @@ func GetAmortizationModel(imr interModelRes) *AmortizationModel {
 	return amorM
 }
 
-func (amorM *AmortizationModel) GetAmortizationData(beginDate, endDate, branch string) []*Amortization {
+func (amorM *AmortizationModel) GetAmortizationData(beginDate, endDate time.Time, branch string) []*Amortization {
 
 	const qspl = `SELECT amorid, branch, Date, itemname, gaincost, amortizationyearlimit, monthlyamortizationamount, firstamortizationamount, hasamortizationamount, notamortizationamount, isover
 				FROM public.amortization
-				where branch like '%s' and (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))  ;`
+				where branch like '%s' and 
+				extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) <= '%d'
+				order by Date;`
+	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := amorM.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch, beginDate+"-01", endDate+"-01"))
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch, beginDate.Unix(), endDate.Unix()))
 	if err != nil {
 		return nil
 	}
@@ -133,7 +137,7 @@ func (amorM *AmortizationModel) CreateAmortization(amor *Amortization) (err erro
 	}
 
 	fakeId := time.Now().Unix()
-
+	amor.AmorId = fmt.Sprintf("%d", fakeId)
 	res, err := sqldb.Exec(sql, fakeId, amor.Branch, amor.Date, amor.Itemname, amor.Gaincost, amor.AmortizationYearLimit, amor.MonthlyAmortizationAmount, amor.FirstAmortizationAmount)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -150,9 +154,9 @@ func (amorM *AmortizationModel) CreateAmortization(amor *Amortization) (err erro
 	if id == 0 {
 		return errors.New("Invalid operation, CreateAmortization")
 	}
-
-	amorM.CreateAmorMap()
-	amorM.UpdateAmortizationData()
+	amorM.InsertFirstAmortizationData(amor, sqldb)
+	amorM.CreateAmorMap(sqldb)
+	amorM.UpdateAmortizationData(sqldb)
 
 	return nil
 }
@@ -169,25 +173,26 @@ func (amorM *AmortizationModel) PDF() []byte {
 	return p.GetBytesPdf()
 }
 
-func (amorM *AmortizationModel) CreateAmorMap() (err error) {
+func (amorM *AmortizationModel) CreateAmorMap(sqldb *sql.DB) (err error) {
 
-	const sql = `INSERT INTO public.amormap
+	const sql = `INSERT INTO public.amormap	
+	(amorid, date, cost)	
+	select amorid,  to_char(mydates,'YYYY-MM') CircleID, monthlyamortizationamount from amortization a
+	CROSS JOIN generate_series(a.date,  a.date+(a.amortizationyearlimit * 12  -1 || ' months')::interval, '1 months') AS mydates
+	where notamortizationamount > 0  and mydates <= (date_trunc('month', now()) + interval '1 month' - interval '1 day')::date
+	ON CONFLICT (amorid,date) DO NOTHING
+	;`
+	/*const sql = `INSERT INTO public.amormap
 	(amorid, date, cost)
 	SELECT amorid, t.CircleID, (Case When hasamortizationamount = 0 then firstamortizationamount else monthlyamortizationamount end) as cost
 		FROM public.amortization a
 	right join (
-		select to_char(dates,'YYYY-MM') CircleID, dates from generate_series('2017-01-01'::timestamp, now(), '1 months') as gs(dates)	
+		select to_char(dates,'YYYY-MM') CircleID, dates from generate_series('2017-01-01'::timestamp, now(), '1 months') as gs(dates)
 	) t on t.dates >= to_char(a.date,'YYYY-MM-01')::timestamp
 	where a.date is not null and notamortizationamount > 0
-	ON CONFLICT (amorid,date) DO UPDATE SET cost = excluded.cost
-	;`
-
-	interdb := amorM.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-
+	ON CONFLICT (amorid,date) DO NOTHING
+	;`*/
+	//ON CONFLICT (amorid,date) DO UPDATE SET cost = excluded.cost
 	res, err := sqldb.Exec(sql)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -209,7 +214,35 @@ func (amorM *AmortizationModel) CreateAmorMap() (err error) {
 	return nil
 }
 
-func (amorM *AmortizationModel) UpdateAmortizationData() (err error) {
+func (amorM *AmortizationModel) InsertFirstAmortizationData(amor *Amortization, sqldb *sql.DB) (err error) {
+
+	const sql = `INSERT INTO public.amormap
+				(amorid, date, cost)
+				values( $1, $2, $3)		
+				ON CONFLICT (amorid,date) DO NOTHING		
+				`
+
+	res, err := sqldb.Exec(sql, amor.AmorId, amor.Date.Format("2006-01-02")[0:7], amor.FirstAmortizationAmount)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+
+	if id == 0 {
+		fmt.Println("Invalid operation, InsertFirstAmortizationData")
+		return errors.New("Invalid operation, InsertFirstAmortizationData")
+	}
+
+	return nil
+}
+
+func (amorM *AmortizationModel) UpdateAmortizationData(sqldb *sql.DB) (err error) {
 
 	const sql = `UPDATE public.amortization t1
 				SET  hasamortizationamount = t2.cost , notamortizationamount = t1.gaincost - t2.cost
@@ -217,11 +250,6 @@ func (amorM *AmortizationModel) UpdateAmortizationData() (err error) {
 					Select SUM(cost) as cost, amorid FROM public.amormap group by amorid
 				)as t2 where t2.amorid = t1.amorid;`
 
-	interdb := amorM.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 	_, err = sqldb.Exec(sql)
 	if err != nil {
 		fmt.Println(err)
@@ -229,6 +257,18 @@ func (amorM *AmortizationModel) UpdateAmortizationData() (err error) {
 	}
 
 	return nil
+}
+
+func (amorM *AmortizationModel) RefreshAmortizationData() {
+
+	interdb := amorM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	amorM.CreateAmorMap(sqldb)
+	amorM.UpdateAmortizationData(sqldb)
 }
 
 func (amorM *AmortizationModel) addAmorInfoTable(tabel *pdf.DataTable, p *pdf.Pdf) (tabel_final *pdf.DataTable,

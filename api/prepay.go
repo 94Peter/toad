@@ -68,21 +68,21 @@ func (api *PrePayAPI) exportPrePayEndpoint(w http.ResponseWriter, req *http.Requ
 	model.GetSystemModel(di)
 	queryVar := util.GetQueryValue(req, []string{"date"}, true)
 	by_m := (*queryVar)["date"].(string)
-	ey_m := by_m
+	//ey_m := by_m
 
 	if by_m == "" {
 		by_m = "1980-01"
-		ey_m = "2200-01"
+		//ey_m = "2200-01"
 	}
 
-	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 		return
 	}
 
-	PrePayM.GetPrePayData(by_m, ey_m)
+	PrePayM.GetPrePayData(b, b)
 	w.Write(PrePayM.PDF())
 }
 
@@ -91,21 +91,21 @@ func (api *PrePayAPI) getPrePayEndpoint(w http.ResponseWriter, req *http.Request
 	PrePayM := model.GetPrePayModel(di)
 	queryVar := util.GetQueryValue(req, []string{"date"}, true)
 	by_m := (*queryVar)["date"].(string)
-	ey_m := by_m
+	//ey_m := by_m
 
 	if by_m == "" {
 		by_m = "1980-01"
-		ey_m = "2200-01"
+		//ey_m = "2200-01"
 	}
 
-	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 		return
 	}
 
-	PrePayM.GetPrePayData(by_m, ey_m)
+	PrePayM.GetPrePayData(b, b)
 	//data, err := json.Marshal(result)
 	data, err := PrePayM.Json()
 	if err != nil {

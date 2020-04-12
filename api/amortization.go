@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -44,19 +45,32 @@ func (api *AmortizationAPI) exportAmortizationEndpoint(w http.ResponseWriter, re
 	//amorID := vars["ID"].(string)
 	amor := model.GetAmortizationModel(di)
 
-	queryVar := util.GetQueryValue(req, []string{"date", "branch"}, true)
-	by_m := (*queryVar)["date"].(string)
-	ey_m := by_m
+	queryVar := util.GetQueryValue(req, []string{"begin", "end", "branch"}, true)
+	by_m := (*queryVar)["begin"].(string)
+	ey_m := (*queryVar)["end"].(string)
 	branch := (*queryVar)["branch"].(string)
 	if by_m == "" {
 		by_m = "1980-01"
+	}
+	if ey_m == "" {
 		ey_m = "2200-01"
 	}
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}
-
-	amor.GetAmortizationData(by_m, ey_m, branch)
+	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+	e, err := time.ParseInLocation("2006-01-02", ey_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+	amor.GetAmortizationData(b, e, branch)
 
 	w.Write(amor.PDF())
 
@@ -89,19 +103,35 @@ func (api *AmortizationAPI) getAmortizationEndpoint(w http.ResponseWriter, req *
 	// var queryDate time.Time
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	// end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
-	queryVar := util.GetQueryValue(req, []string{"date", "branch"}, true)
-	by_m := (*queryVar)["date"].(string)
-	ey_m := by_m
+	queryVar := util.GetQueryValue(req, []string{"begin", "end", "branch"}, true)
+	by_m := (*queryVar)["begin"].(string)
+	ey_m := (*queryVar)["end"].(string)
 	branch := (*queryVar)["branch"].(string)
 	if by_m == "" {
 		by_m = "1980-01"
+	}
+	if ey_m == "" {
 		ey_m = "2200-01"
 	}
+
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}
 
-	amorM.GetAmortizationData(by_m, ey_m, branch)
+	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+	e, err := time.ParseInLocation("2006-01-02", ey_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+
+	amorM.GetAmortizationData(b, e, branch)
 	//data, err := json.Marshal(result)
 	data, err := amorM.Json()
 	if err != nil {

@@ -51,6 +51,7 @@ type SalerSalary struct {
 	Workday       int    `json:"workday"`
 	ManagerBonus  int    `json:"managerBonus"`
 	Lock          string `json:"lock"`
+	Code          string `json:"code"`
 }
 
 type NHISalary struct {
@@ -555,13 +556,19 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 	return nil
 }
 
+/*
+	福利金: 總薪資*0.01
+	商耕費: 總薪資*比例/100
+	*0.01 vs *1/100 答案是不一樣的。
+	所以使用CAST轉型後用ROUND去修正答案。
+*/
 func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err error) {
 
 	const sql = `INSERT INTO public.salersalary
 	(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
 	SELECT BS.bsid, A.sid, COALESCE(C.dateID, $1) dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0) Pbonus, 
-	COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary) total, A.InsuredAmount*CP.LI*0.2/100 LaborFee,A.PayrollBracket*CP.nhi*0.3/100 HealthFee,
-	COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01 Welfare, COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)*cb.commercialFee/100 commercialFee,
+	COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary) total, ROUND(A.InsuredAmount*CP.LI*0.2/100) LaborFee,ROUND(A.PayrollBracket*CP.nhi*0.3/100) HealthFee,
+	ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) Welfare,  ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) ) commercialFee,
 	$3 ,
 	(CASE WHEN A.salary = 0 and A.association = 1 then 0 
 		WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0	 	
@@ -570,14 +577,15 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 		   ( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
 	   end
 	  ) sp ,
-	(COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)* (0.99 - cb.commercialFee/100) -  A.InsuredAmount*CP.LI*0.2/100 - A.PayrollBracket*CP.nhi*0.3/100 ) - 
-	(CASE WHEN A.salary = 0 and A.association = 1 then 0 
-		WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0	 	
-	   WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) * cp.nhi2nd / 100 	 	
-	   else
-		   ( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
-	   end
-	  ) Tamount
+	  (COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) - ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) - ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) ) 
+	  -  ROUND(A.InsuredAmount*CP.LI*0.2/100) - ROUND(A.PayrollBracket*CP.nhi*0.3/100) ) - 
+	 (CASE WHEN A.salary = 0 and A.association = 1 then 0 
+		 WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0	 	
+		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) * cp.nhi2nd / 100 	 	
+		else
+			( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+		end
+	   ) Tamount
 	FROM public.ConfigSaler A
 	Inner Join ( 
 		select sid, max(zerodate) zerodate from public.configsaler cs 
@@ -892,7 +900,8 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 				ss.sp, ss.tax, ss.laborfee, ss.healthfee, ss.welfare, ss.CommercialFee, ss.other, 
 				 tamount,
 				COALESCE(ss.description,''), ss.workday , bs.lock,
-				(case when cb.sid is not null then ie.managerbonus else 0 end) managerbonus
+				(case when cb.sid is not null then ie.managerbonus else 0 end) managerbonus,
+				cs.code
 				FROM public.salersalary ss 
 				inner join public.branchsalary bs on bs.bsid = ss.bsid
 				left join public.incomeexpense ie on ie.bsid = ss.bsid
@@ -912,7 +921,8 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 		var ss SalerSalary
 
 		if err := rows.Scan(&ss.Sid, &ss.BSid, &ss.SName, &ss.Date, &ss.Branch, &ss.Salary, &ss.Pbonus, &ss.Lbonus, &ss.Abonus, &ss.Total,
-			&ss.SP, &ss.Tax, &ss.LaborFee, &ss.HealthFee, &ss.Welfare, &ss.CommercialFee, &ss.Other, &ss.TAmount, &ss.Description, &ss.Workday, &ss.Lock, &ss.ManagerBonus); err != nil {
+			&ss.SP, &ss.Tax, &ss.LaborFee, &ss.HealthFee, &ss.Welfare, &ss.CommercialFee, &ss.Other, &ss.TAmount, &ss.Description, &ss.Workday, &ss.Lock, &ss.ManagerBonus,
+			&ss.Code); err != nil {
 			fmt.Println("err Scan " + err.Error())
 			return nil
 		}
@@ -1106,24 +1116,46 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid string) 
 				SET lbonus= $1, abonus= $2, total= salary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
 				laborfee = ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END),
 				healthfee = ( Case When $6 >= 30 then subquery.healthfee else 0 END),
+				commercialFee =  ROUND( (salary + pbonus + $1 - $2) * subquery.commercialRatio/100 ) ,
 				sp = $9 , welfare = $10 ,
-				tamount = salary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - commercialFee - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
+				tamount = salary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - (salary + pbonus + $1 - $2)* subquery.commercialRatio /100 - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
 				FROM(
-					Select (A.payrollbracket * CP.li * 0.2 / 100) laborfee, (A.payrollbracket * CP.nhi * 0.2 / 100) healthfee FROM public.ConfigSaler A 
-					Inner Join ( 
-						select sid, max(zerodate) zerodate from public.configsaler cs 
-						where now() > zerodate and Sid = $7
-						group by sid 
-					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+					Select commercialFee as commercialRatio, ROUND(A.payrollbracket * CP.li * 0.2 / 100) laborfee, ROUND(A.payrollbracket * CP.nhi * 0.3 / 100) healthfee FROM public.ConfigSaler A 					
 					cross join ( 
 						select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
 						inner join(
 							select  max(date) date from public.ConfigParameter 
 						) A on A.date = C.date limit 1
 					) CP
+					left join(
+						select branch , commercialFee from public.configbranch 
+					) CB on CB.branch = A.branch
+					WHERE sid= $7
 				) as subquery
 				WHERE sid= $7 and bsid = $8;`
 
+	/*
+			const sql = `UPDATE public.salersalary
+		SET lbonus= $1, abonus= $2, total= salary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
+		laborfee = ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END),
+		healthfee = ( Case When $6 >= 30 then subquery.healthfee else 0 END),
+		sp = $9 , welfare = $10 ,
+		tamount = salary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - commercialFee - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
+		FROM(
+			Select ROUND(A.payrollbracket * CP.li * 0.2 / 100) laborfee, ROUND(A.payrollbracket * CP.nhi * 0.3 / 100) healthfee FROM public.ConfigSaler A
+			Inner Join (
+				select sid, max(zerodate) zerodate from public.configsaler cs
+				where now() > zerodate and Sid = $7
+				group by sid
+			) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+			cross join (
+				select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
+				inner join(
+					select  max(date) date from public.ConfigParameter
+				) A on A.date = C.date limit 1
+			) CP
+		) as subquery
+		WHERE sid= $7 and bsid = $8;`*/
 	interdb := salaryM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {

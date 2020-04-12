@@ -141,21 +141,26 @@ func (rm *RTModel) GetReceiptDataByID(rid string) *Receipt {
 	return &rt
 }
 
-func (rm *RTModel) GetReceiptData(begin, end string) []*Receipt {
+func (rm *RTModel) GetReceiptData(begin, end time.Time) []*Receipt {
 
-	//if invoiceno is null in Database return ""
-	//const qspl = `SELECT rid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
-	//left join public.invoice I on  I.Rid = R.rid
+	// const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(iv.invoiceno, null),'')
+	// 				FROM public.receipt R
+	// 				inner join public.ar AR on AR.arid = R.arid
+	// 				left join public.invoice iv on iv.rid = r.rid
+	// 				where to_timestamp(date_part('epoch',R.date)::int) >= '%s' and to_timestamp(date_part('epoch',R.date)::int) <= '%s'::date + '86399999 milliseconds'::interval
+	// 				order by date desc`
 
-	//COALESCE(NULLIF(R.invoiceno, null),'')
 	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(iv.invoiceno, null),'') 
 					FROM public.receipt R
 					inner join public.ar AR on AR.arid = R.arid
-					left join public.invoice iv on iv.rid = r.rid					
-					where to_timestamp(date_part('epoch',R.date)::int) >= '%s' and to_timestamp(date_part('epoch',R.date)::int) <= '%s'::date + '86399999 milliseconds'::interval `
+					left join public.invoice iv on iv.rid = r.rid
+					where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '86399999 milliseconds'::interval) <= '%d'
+					order by date desc`
+	//
 	db := rm.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(qspl, begin, end))
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, begin.Unix(), end.Unix()))
 	if err != nil {
+		fmt.Println(err.Error())
 		return nil
 	}
 

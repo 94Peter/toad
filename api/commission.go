@@ -58,15 +58,21 @@ func (api *CommissionAPI) getCommissionEndpoint(w http.ResponseWriter, req *http
 		by_m = "1980-01"
 		ey_m = "2200-01"
 	}
-	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
+	}
+	e, err := time.ParseInLocation("2006-01-02", ey_m+"-01", time.Local)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 		return
 	}
 
-	cm.GetCommissiontData(by_m+"-01", ey_m+"-01", status)
-
+	//cm.GetCommissiontData(by_m+"-01", ey_m+"-01", status)
+	cm.GetCommissiontData(b, e, status)
 	//data, err := json.Marshal(result)
 	//if export == "" {
 	data, err := cm.Json()

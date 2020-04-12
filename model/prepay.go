@@ -49,16 +49,17 @@ func GetPrePayModel(imr interModelRes) *PrePayModel {
 	return prepayM
 }
 
-func (prepayM *PrePayModel) GetPrePayData(startDate, endDate string) []*PrePay {
+func (prepayM *PrePayModel) GetPrePayData(startDate, endDate time.Time) []*PrePay {
 
 	const PrePayspl = `SELECT PPid, Date, itemname, description, fee FROM public.PrePay
-					   where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval)) ;`
-
+		where extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) <= '%d' ;`
+	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	db := prepayM.imr.GetSQLDB()
 	sqldb, err := db.ConnectSQLDB()
 
-	rows, err := sqldb.Query(fmt.Sprintf(PrePayspl, startDate+"-01", endDate+"-01"))
+	rows, err := sqldb.Query(fmt.Sprintf(PrePayspl, startDate.Unix(), endDate.Unix()))
 	if err != nil {
+		fmt.Println(err)
 		return nil
 	}
 

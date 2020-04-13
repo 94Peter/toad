@@ -52,7 +52,8 @@ func GetPrePayModel(imr interModelRes) *PrePayModel {
 func (prepayM *PrePayModel) GetPrePayData(startDate, endDate time.Time) []*PrePay {
 
 	const PrePayspl = `SELECT PPid, Date, itemname, description, fee FROM public.PrePay
-		where extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) <= '%d' ;`
+		where extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) <= '%d'
+		order by Date;`
 	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	db := prepayM.imr.GetSQLDB()
 	sqldb, err := db.ConnectSQLDB()

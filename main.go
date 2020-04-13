@@ -96,8 +96,12 @@ func startTimer(myDI *resource.DI) {
 			nextMonth := time.Date(year, month+1, 1, 0, 0, 0, 0, time.Local)
 			if day == 1 {
 				fmt.Println("startTimer:", year, month, day)
+				//更新業務薪資
 				configM := model.GetConfigModel(myDI)
 				configM.WorkValidDate()
+				//新增攤提費用
+				amorM := model.GetAmortizationModel(myDI)
+				amorM.RefreshAmortizationData()
 			}
 			fmt.Println("WorkValidDate 距離下次執行時間:", nextMonth.Sub(now))
 

@@ -69,6 +69,7 @@ type NHISalary struct {
 	SP             int    `json:"SP"`
 	FourSP         int    `json:"fourSP"`
 	PTSP           int    `json:"PTSP"`
+	Code           string `json:"code"`
 	/////////pdf
 	Title       string `json:"-"`
 	Description string `json:"-"`
@@ -595,7 +596,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	left join (
 	SELECT c.sid , to_char( to_timestamp(date_part('epoch',r.date)::int),'YYYY-MM')::varchar(50) dateID, sum(c.bonus) Pbonus
 	FROM public.receipt r, public.commission c
-	where c.rid = r.rid and to_timestamp(date_part('epoch',r.date)::int) >= $2::date and to_timestamp(date_part('epoch',r.date)::int) < ( $2::date + '1 month'::interval) and c.bsid is null
+	where c.rid = r.rid and extract(epoch from r.date) >= $2 and extract(epoch from Date - '1 month'::interval) <= $2 and c.bsid is null	
 	group by dateID , c.sid 
 	) C on C.sid = A.Sid 
 	cross join (
@@ -612,6 +613,9 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	where BS.bsid is not null
 	ON CONFLICT (bsid,sid,date,branch) DO Nothing;	
 	`
+	/*
+		where c.rid = r.rid and to_timestamp(date_part('epoch',r.date)::int) >= $2::date and to_timestamp(date_part('epoch',r.date)::int) < ( $2::date + '1 month'::interval) and c.bsid is null
+	*/
 	/*left join (
 		select sum(bonus) bonus , bsid , sid from public.commission c
 		group by bsid , sid
@@ -626,7 +630,9 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	res, err := sqldb.Exec(sql, bs.Date, bs.Date+"-01", year)
+	b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
+	fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
+	res, err := sqldb.Exec(sql, bs.Date, b.Unix(), year)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)
@@ -821,12 +827,15 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 				SELECT c.sid, c.rid, SS.bsid, to_char(r.date,'YYYY-MM')::varchar(50) date
 				FROM public.receipt r
 				inner join public.commission c on c.rid = r.rid and 
-				to_timestamp(date_part('epoch',r.date)::int) >= $1 and to_timestamp(date_part('epoch',r.date)::int) < ( $1::date + '1 month'::interval)
+				extract(epoch from r.date) >= $1 and extract(epoch from Date - '1 month'::interval) <= $1 and c.bsid is null
 				inner join public.SalerSalary SS on SS.date = to_char(r.date,'YYYY-MM') and SS.Sid = C.sid
 				) AS subquery
 				where com.sid = subquery.sid and com.rid = subquery.rid	;	
 				`
-
+	/*
+		where c.rid = r.rid and extract(epoch from r.date) >= $2 and extract(epoch from Date - '1 month'::interval) <= $2 and c.bsid is null
+			to_timestamp(date_part('epoch',r.date)::int) >= $1 and to_timestamp(date_part('epoch',r.date)::int) < ( $1::date + '1 month'::interval)
+	*/
 	interdb := salaryM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
@@ -834,7 +843,9 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	res, err := sqldb.Exec(sql, bs.Date+"-01")
+	b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
+	fmt.Println("UpdateCommissionBSidAndStatus:", bs.Date+"-01 =>", b.Unix())
+	res, err := sqldb.Exec(sql, b.Unix())
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)
@@ -978,7 +989,7 @@ func (salaryM *SalaryModel) GetIncomeExpenseData(bsID string) []*IncomeExpense {
 func (salaryM *SalaryModel) GetNHISalaryData(bsID string) []*NHISalary {
 
 	fmt.Println("GetNHISalaryData")
-	const spl = `SELECT nhi.sid, nhi.bsid, nhi.sname, nhi.payrollbracket, nhi.salary, nhi.pbonus, nhi.bonus, nhi.total, nhi.pd, nhi.salarybalance, nhi.fourbouns, ss.sp, nhi.foursp, nhi.ptsp
+	const spl = `SELECT nhi.sid, nhi.bsid, nhi.sname, nhi.payrollbracket, nhi.salary, nhi.pbonus, nhi.bonus, nhi.total, nhi.pd, nhi.salarybalance, nhi.fourbouns, ss.sp, nhi.foursp, nhi.ptsp, cs.code
 				FROM public.nhisalary nhi
 				inner join (
 					select bsid, sid, sp from public.salersalary 
@@ -998,7 +1009,7 @@ func (salaryM *SalaryModel) GetNHISalaryData(bsID string) []*NHISalary {
 		var nhi NHISalary
 
 		if err := rows.Scan(&nhi.Sid, &nhi.BSid, &nhi.SName, &nhi.PayrollBracket, &nhi.Salary, &nhi.Pbonus, &nhi.Bonus, &nhi.Total,
-			&nhi.PD, &nhi.SalaryBalance, &nhi.FourBouns, &nhi.SP, &nhi.FourSP, &nhi.PTSP); err != nil {
+			&nhi.PD, &nhi.SalaryBalance, &nhi.FourBouns, &nhi.SP, &nhi.FourSP, &nhi.PTSP, &nhi.Code); err != nil {
 			fmt.Println("err Scan " + err.Error())
 			return nil
 		}

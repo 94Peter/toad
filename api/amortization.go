@@ -50,21 +50,21 @@ func (api *AmortizationAPI) exportAmortizationEndpoint(w http.ResponseWriter, re
 	ey_m := (*queryVar)["end"].(string)
 	branch := (*queryVar)["branch"].(string)
 	if by_m == "" {
-		by_m = "1980-01"
+		by_m = "1980-01-01"
 	}
 	if ey_m == "" {
-		ey_m = "2200-01"
+		ey_m = "2200-01-01"
 	}
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}
-	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.ParseInLocation("2006-01-02", by_m, time.Local)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 		return
 	}
-	e, err := time.ParseInLocation("2006-01-02", ey_m+"-01", time.Local)
+	e, err := time.ParseInLocation("2006-01-02", ey_m, time.Local)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))

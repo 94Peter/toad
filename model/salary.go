@@ -1798,10 +1798,11 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, tmp.mdate  from salersalary ss
 				left join(
-					SELECT c.bsid, c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, 
+					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, 
 					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') mdate, COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid		
+					inner JOIN public.ar ar on r.arid = c.arid	
 					left join(
 						select rid, checknumber , fee, item from public.deduct
 					) d on d.rid = r.rid		
@@ -1893,10 +1894,11 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, cs.percent   from salersalary ss
 				inner join(
-					SELECT c.bsid, c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, 
+					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, 
 					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
-					inner JOIN public.receipt r on r.rid = c.rid		
+					inner JOIN public.receipt r on r.rid = c.rid	
+					inner JOIN public.ar ar on ar.arid = c.arid			
 					left join(
 						select rid, checknumber , fee, item from public.deduct
 					) d on d.rid = r.rid		
@@ -2139,6 +2141,7 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignLeft,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2162,7 +2165,7 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			fmt.Println("element.SName:", element.SName, "element.Sid:", element.SName, "   sid:", sid)
+			//fmt.Println("element.SName:", element.SName, "element.Sid:", element.SName, "   sid:", sid)
 			text = element.SName
 			sname = element.SName
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
@@ -2246,8 +2249,6 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			table.RawData = append(table.RawData, vs)
 			table.RawData = append(table.RawData, vs)
 
-			//
-			fmt.Println("element.SName:", element.SName, "element.Sid:", element.SName, "   sid:", sid)
 			text = sname
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 			vs = &pdf.TableStyle{
@@ -2319,6 +2320,7 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignLeft,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2342,7 +2344,7 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			fmt.Println("element.SName:", element.SName, "element.Sid:", element.SName, "   sid:", sid)
+			//fmt.Println("element.SName:", element.SName, "element.Sid:", element.SName, "   sid:", sid)
 			text = element.SName
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 			vs = &pdf.TableStyle{
@@ -2693,7 +2695,7 @@ func (salaryM *SalaryModel) addPayrollTransferInfoTable(mtype int) (DataList []*
 	table := excel.GetDataTable(mtype)
 	var offset = 0
 	for index, element := range configM.ConfigSalerList {
-		fmt.Println(element)
+
 		if table.SheetName != element.Branch {
 			//new branch (need to create sheet)
 			if index != 0 {
@@ -2707,7 +2709,8 @@ func (salaryM *SalaryModel) addPayrollTransferInfoTable(mtype int) (DataList []*
 		table.RawData["A"+strconv.Itoa(index+2-offset)] = element.SName
 		table.RawData["B"+strconv.Itoa(index+2-offset)] = element.IdentityNum
 		table.RawData["C"+strconv.Itoa(index+2-offset)] = element.BankAccount
-		table.RawData["D"+strconv.Itoa(index+2-offset)] = strconv.Itoa(element.Tamount)
+		table.RawData["D"+strconv.Itoa(index+2-offset)] = pr.Sprintf("%d", element.Tamount)
+		//table.RawData["D"+strconv.Itoa(index+2-offset)] = strconv.Itoa(element.Tamount)
 	}
 	DataList = append(DataList, table)
 
@@ -2723,7 +2726,7 @@ func (salaryM *SalaryModel) addIncomeTaxReturnInfoTable(mtype int) (DataList []*
 	//var offset_id_pos = 0
 	fmt.Println("addIncomeTaxReturnInfoTable")
 	for index, element := range configM.ConfigSalerList {
-		fmt.Println(element)
+
 		if table.SheetName != element.Branch {
 			//new branch (need to create sheet)
 			if index != 0 {

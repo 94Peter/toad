@@ -28,11 +28,11 @@ func CompressZip(fname string) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			n, err := fw.Write(filecontent)
+			_, err = fw.Write(filecontent)
 			if err != nil {
 				fmt.Println(err)
 			}
-			fmt.Println(n)
+			//fmt.Println(n)//檔案大小
 		}
 	}
 

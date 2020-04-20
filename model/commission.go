@@ -117,10 +117,11 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	fmt.Println("exportCommissiontData")
 	//if invoiceno is null in Database return ""
 
-	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100 * cs.percent/100) bonus,
+	const qsql = `SELECT c.sid, c.rid, r.date, c.item|| ' ' || ar.name, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100 * cs.percent/100) bonus,
 	r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) , coalesce(d.item,'')
 	FROM public.commission c
 	inner JOIN public.receipt r on r.rid = c.rid
+	inner JOIN public.ar ar on ar.arid = c.arid
 	Inner Join (
 			SELECT A.sid, A.branch, A.percent, A.title
 				FROM public.ConfigSaler A
@@ -283,6 +284,7 @@ func (cm *CModel) PDF(isNew bool) {
 
 	tabel := pdf.GetDataTable(pdf.Commission)
 	data, SR, Bonus := cm.addDataIntoTable(tabel, p)
+
 	//p.DrawPDF(pdf.GetDataTable(""))
 	p.DrawTablePDF(data)
 	//init PDFX is 10
@@ -292,6 +294,7 @@ func (cm *CModel) PDF(isNew bool) {
 	for i := 0; i < 5; i++ {
 		textw += tabel.ColumnWidth[i]
 	}
+
 	pdfx += textw
 	BranchName := "此薪資表無傭金"
 	if len(cm.cList) > 0 {
@@ -517,7 +520,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 	//tabel.ColumnLen
 	var transactionID = ""
 	var sameRow = true
-	for index, element := range cm.cList {
+	for _, element := range cm.cList {
 		if transactionID == element.Rid {
 			sameRow = true
 		} else {
@@ -525,8 +528,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			sameRow = false
 		}
 
-		fmt.Println(index)
-		fmt.Println(tabel.ColumnWidth[index])
+		//fmt.Println("addDataIntoTable:", index)
+		//fmt.Println(tabel.ColumnWidth[index])
 		text := ""
 		//放空白
 		if sameRow {
@@ -544,7 +547,6 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			/// 西元轉民國
 			text := element.ReceiveDate
 			TWyear, _ := strconv.Atoi(text[0:4])
-			fmt.Println(TWyear)
 			TWyear = TWyear - 1911
 			TW_Date := fmt.Sprintf("%d/%s/%s", TWyear, text[5:7], text[8:10])
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
@@ -572,6 +574,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 				Text:  element.Item,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
+				Align: pdf.AlignLeft,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
 			//

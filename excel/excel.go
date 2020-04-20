@@ -12,6 +12,12 @@ type Excel struct {
 	File *excelize.File
 }
 
+type Alignment struct {
+	Horizontal string `json:"horizontal,omitempty"` // 水平对齐方式
+	Vertical   string `json:"vertical,omitempty"`   // 垂直对齐方式
+	WrapText   bool   `json:"wrap_text,omitempty"`  // 自动换行设置
+}
+
 var (
 	excel *Excel
 )
@@ -20,6 +26,7 @@ func GetNewExcel() *Excel {
 	excel = &Excel{
 		File: excelize.NewFile(),
 	}
+
 	return excel
 }
 
@@ -46,8 +53,15 @@ func (excel *Excel) SaveFile(fn string) {
 
 func (excel *Excel) FillText(datatable []*DataTable) {
 	f := excel.File
+
+	//style, _ := f.NewStyle(`{"alignment":{"horizontal":"right","Vertical":"center"},"font":{"bold":true},"border":[{"type":"right","color":"FF0000","style":1}],"fill":{"type":"pattern","color":["#CCFFFF"],"pattern":1}}`)
+	rightStyle, _ := f.NewStyle(`{"alignment":{"horizontal":"right"}}`)
+	//centerStyle, _ := f.NewStyle(`{"alignment":{"horizontal":"center"}}`)
+
 	for _, element := range datatable {
 		f.NewSheet(element.SheetName)
+		f.SetCellStyle(element.SheetName, "D1", "D300", rightStyle)
+
 	}
 	f.DeleteSheet("Sheet1") //預設表格 刪除
 
@@ -57,9 +71,9 @@ func (excel *Excel) FillText(datatable []*DataTable) {
 
 	for _, element := range datatable {
 		data := element.RawData
-		fmt.Println("SheetName:", element.SheetName)
+		//fmt.Println("SheetName:", element.SheetName)
 		for key, value := range data {
-			fmt.Println("Key:", key, "Value:", value)
+			//fmt.Println("Key:", key, "Value:", value)
 			f.SetCellValue(element.SheetName, key, value)
 			f.SetColWidth(element.SheetName, key[:1], key[:1], 35)
 		}

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/94peter/toad/model"
@@ -77,37 +76,6 @@ func main() {
 
 	// configM := model.GetConfigModel(myDI)
 	// configM.WorkValidDate()
-	//
-	// Sync between goroutines.
-	var wg sync.WaitGroup
-
-	// Add goroutine 1.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fmt.Println("Print from goroutine 1")
-	}()
-
-	// Add goroutine 2.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fmt.Println("Print from goroutine 2")
-	}()
-
-	// Add goroutine 3.
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fmt.Println("Print from goroutine 3")
-	}()
-
-	fmt.Println("Print from main")
-
-	// Wait all goroutines.
-	wg.Wait()
-	fmt.Println("wait all done")
-	//
 	startTimer(myDI)
 	log.Printf("Listening on port %s", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), router))

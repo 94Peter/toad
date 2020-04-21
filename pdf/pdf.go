@@ -234,7 +234,7 @@ func (p *Pdf) WriteFile(fname string) {
 	pdf := p.myPDF
 	os.MkdirAll(util.PdfDir, os.ModePerm)
 	pdf.WritePdf(util.PdfDir + fname + ".pdf")
-	fmt.Println("WriteFile:", fname)
+	//fmt.Println("WriteFile:", fname)
 
 }
 
@@ -444,7 +444,6 @@ func (p *Pdf) CustomizedSalerCommission(table *DataTable, SName string, T_Bonus,
 	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
 	p.FillText(pr.Sprintf("%d", T_Bonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
-	fmt.Println("CustomizedSalerCommission")
 	//p.myPDF.AddPage()
 	//p.NewPage()
 }

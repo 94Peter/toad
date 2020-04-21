@@ -43,7 +43,8 @@ type Commission struct {
 	ReceiveDate string `json:"-"` //收據 入帳日期
 	Checknumber string `json:"-"` //票號
 	DedectItem  string `json:"-"` //pdf 備註 >> dedeuct的Item
-
+	//
+	Code string `json:"-"`
 }
 
 func GetCModel(imr interModelRes) *CModel {
@@ -164,8 +165,8 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	}
 
 	cm.cList = cDataList
-	out, _ := json.Marshal(cm.cList)
-	fmt.Println("exportCommissiontData cm.cList :", string(out))
+	// out, _ := json.Marshal(cm.cList)
+	// fmt.Println("exportCommissiontData cm.cList :", string(out))
 
 	return cm.cList
 }
@@ -582,7 +583,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			text = pr.Sprintf("%d", element.Amount)
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 3)
 			vs = &pdf.TableStyle{
-				Text:  strconv.Itoa(element.Amount),
+				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
 				Align: pdf.AlignRight,
@@ -592,7 +593,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			text = pr.Sprintf("%d", element.Fee)
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
-				Text:  strconv.Itoa(element.Fee),
+				Text:  text,
 				Bg:    report.ColorWhite,
 				Front: report.ColorTableLine,
 				Align: pdf.AlignRight,
@@ -635,7 +636,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		//text = fmt.Sprintf("%.f", element.Bonus)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 8)
 		vs = &pdf.TableStyle{
-			Text:  fmt.Sprintf("%.f", element.Bonus),
+			Text:  text,
 			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
 			Front: report.ColorTableLine,
 			Align: pdf.AlignRight,

@@ -135,6 +135,7 @@ type SalaryModel struct {
 	branchSalaryList  []*BranchSalary
 	NHISalaryList     []*NHISalary
 	IncomeExpenseList []*IncomeExpense
+	MailList          []*ConfigSaler
 
 	SystemAccountList []*SystemAccount
 	CommissionList    []*Commission
@@ -223,10 +224,10 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 	} else {
 		p = pdf.GetOriPDF()
 	}
-	send := ""
-	for _, it := range things {
-		send = it
-	}
+	//send := ""
+	// for _, it := range things {
+	// 	send = it
+	// }
 
 	table := pdf.GetDataTable(mtype)
 
@@ -238,7 +239,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 
 	fmt.Println("SalaryModel mtype:", mtype)
 	switch mtype {
-	case pdf.BranchSalary:
+	case pdf.BranchSalary: //1
 		if len(salaryM.salerSalaryList) <= 0 {
 			return
 		}
@@ -268,8 +269,9 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 			fmt.Println(err)
 			return
 		}
+		//用mailList做檔案名稱
 		for _, saler := range mailList {
-			fmt.Println("saler:", saler.SName)
+			//fmt.Println("saler:", saler.SName)
 			p := pdf.GetNewPDF()
 			table = pdf.GetDataTable(mtype)
 			//Header長度重製
@@ -286,18 +288,18 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 				continue
 			}
 			date, _ = util.ADtoROC(date, "file")
-			fname := saler.Branch + "-" + saler.SName + "傭金表" + date
+			fname := saler.Branch + "-" + saler.SName + "-" + saler.Code + "-傭金表" + date
 			p.WriteFile(fname)
 
-			if send == "true" {
-				util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, saler.Email, pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為000000或者您的身分證號碼", fname+".pdf")
-			}
+			// if send == "true" {
+			// 	util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, saler.Email, pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為000000或者您的身分證號碼", fname+".pdf")
+			// }
 		}
 		break
 	case pdf.SalerSalary: //7
 		if len(salaryM.salerSalaryList) > 0 {
 			//systemM.GetAccountData()
-			mailList, err := salaryM.getSalerEmail()
+			//mailList, err := salaryM.getSalerEmail()
 
 			for index, element := range salaryM.salerSalaryList {
 				p := pdf.GetNewPDF()
@@ -309,28 +311,28 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 				}
 
 				data := salaryM.addSalerSalaryInfoTable(table, p, index, element)
-				fmt.Println("DrawTablePDF:")
+				//fmt.Println("DrawTablePDF:type:7")
 				p.DrawTablePDF(data)
 				date, _ := util.ADtoROC(element.Date, "file")
-				fname := element.Branch + "-" + element.SName + "薪資表" + date
+				fname := element.Branch + "-" + element.SName + "-" + element.Code + "-" + "薪資表" + date
 				p.WriteFile(fname)
 				//p = nil
-				if send == "true" {
-					if err != nil {
-						//getSalerEmail 失敗
-						fmt.Println(err)
-						return
-					}
+				// if send == "true" {
+				// 	if err != nil {
+				// 		//getSalerEmail 失敗
+				// 		fmt.Println(err)
+				// 		return
+				// 	}
 
-					for _, myAccount := range mailList {
-						if myAccount.Sid == element.Sid {
-							fmt.Println(fname, " ", myAccount, element)
-							util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, myAccount.Email, pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為000000或者您的身分證號碼", fname+".pdf")
-							//util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, "geassyayaoo3@gmail.com", pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為123456", fname+".pdf")
+				// 	for _, myAccount := range mailList {
+				// 		if myAccount.Sid == element.Sid {
+				// 			//fmt.Println(fname, " ", myAccount, element)
+				// 			util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, myAccount.Email, pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為000000或者您的身分證號碼", fname+".pdf")
+				// 			//util.RunSendMail(salaryM.SMTPConf.Host, salaryM.SMTPConf.Port, salaryM.SMTPConf.Password, salaryM.SMTPConf.User, "geassyayaoo3@gmail.com", pdf.ReportToString(mtype), "薪資測試\r\n開啟若有密碼，則為123456", fname+".pdf")
 
-						}
-					}
-				}
+				// 		}
+				// 	}
+				// }
 			}
 		}
 
@@ -1849,7 +1851,6 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 		return
 	}
 
-	fmt.Println("SQLCommand Done")
 	for rows.Next() {
 		var c Commission
 		var mdate, Item, Branch, DedectItem NullString
@@ -1864,7 +1865,7 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 		if err == nil {
 			c.Date = time
 		}
-		fmt.Println("c.Date:", c.Date)
+
 		c.Item = Item.Value
 		c.Amount = int(Amount.Value)
 		c.Fee = int(Fee.Value)
@@ -2767,13 +2768,7 @@ func (salaryM *SalaryModel) getSalerEmail(things ...string) ([]*ConfigSaler, err
 		branch = it
 	}
 
-	const qspl = `SELECT A.sid, A.sname, A.branch, A.Email
-					FROM public.ConfigSaler A 
-					Inner Join ( 
-						select sid, max(zerodate) zerodate from public.configsaler cs 
-						where now() > zerodate
-						group by sid 
-					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+	const qspl = `SELECT A.sid, A.sname, A.branch, A.Email, A.code	FROM public.ConfigSaler A 				
 					where A.branch like '%s';`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := salaryM.imr.GetSQLDB()
@@ -2791,13 +2786,13 @@ func (salaryM *SalaryModel) getSalerEmail(things ...string) ([]*ConfigSaler, err
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&saler.Sid, &saler.SName, &saler.Branch, &saler.Email); err != nil {
+		if err := rows.Scan(&saler.Sid, &saler.SName, &saler.Branch, &saler.Email, &saler.Code); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
 		saList = append(saList, &saler)
 	}
-
+	salaryM.MailList = saList
 	return saList, nil
 
 }

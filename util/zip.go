@@ -11,6 +11,32 @@ import (
 //windows --> C:\Users\Oswin\AppData\Local\Packages\CanonicalGroupLimited.Ubuntu16.04onWindows_79rhkp1fndgsc\LocalState\rootfs\tmp
 const PdfDir = "/tmp/MyPdf/"
 
+//const PdfDir = "MyPdf/"
+
+func GetSameSalerFileName(fname string) (f1, f2 string) {
+	//獲取原始檔列表
+	f, err := ioutil.ReadDir(PdfDir)
+	if err != nil {
+		fmt.Println(err)
+	}
+	f1, f2 = "", ""
+	//理論上資料夾只有傭金和薪資表
+	for _, file := range f {
+		if strings.Contains(file.Name(), fname) {
+			//fmt.Println("fname Contains:" + file.Name())
+			if f1 == "" {
+				f1 = file.Name()
+			} else if f1 != "" {
+				f2 = file.Name()
+			}
+		}
+	}
+	if f1 == "" || f2 == "" {
+		return "", ""
+	}
+	return PdfDir + f1, PdfDir + f2
+}
+
 func CompressZip(fname string) {
 
 	//獲取原始檔列表

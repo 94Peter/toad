@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/94peter/toad/excel"
@@ -234,11 +235,13 @@ func (api *SalaryAPI) getManagerBonusEndpoint(w http.ResponseWriter, req *http.R
 func (api *SalaryAPI) DownloadTest(w http.ResponseWriter, req *http.Request) {
 	ReceiveFile(w, req, "薪轉明細表.xlsx")
 
-	body := "testbody"
-	fname := "hello.pdf"
+	//body := "testbody"
+	//fname := "hello.pdf"
 	conf := di.GetSMTPConf()
 	fmt.Println(conf)
-	util.RunSendMail(conf.Host, conf.Port, conf.Password, conf.User, "geassyayaoo3@gmail.com", "subject", body, fname)
+	//util.RunSendMail(conf.Host, conf.Port, conf.Password, conf.User, "geassyayaoo3@gmail.com", "subject", body, fname)
+
+	util.GomailMailSend(conf.Host, conf.Port, conf.Password, conf.User, "geassyayaoo3@gmail.com", "subject", "body", "t.txt")
 }
 func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("exportBranchSalaryEndpoint")
@@ -336,8 +339,40 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 			SalaryM.GetSalerSalaryData(element.BSid, "%")
 			SalaryM.PDF(mExport, pdf.NewPdf, send)
 		}
-		//寄送郵件的話，不輸出檔案哦~
+		/*
+			1.寄送郵件的話，不輸出檔案
+			2.個人傭金一起寄信
+			3.根據店名、名稱、code綁定檔案 (重複姓名、code會有疑慮)。
+		*/
 		if send == "true" {
+			//8 pdf運行
+			for _, element := range exportId.BSidList {
+				SalaryM.GetSalerCommission(element.BSid)
+				//SalaryM.PDF(mExport, pdf.OriPdf)
+				SalaryM.PDF(pdf.SalarCommission, pdf.NewPdf, send)
+			}
+			conf := SalaryM.SMTPConf
+			fmt.Println(conf)
+			//mailList已經於SalaryM.GetSalerCommission取得，但包含全部的店。
+			var wg sync.WaitGroup //送信用背景執行。多執行序
+			for _, saler := range SalaryM.MailList {
+				//fmt.Println(saler)
+				//f1 f2 預設空字串
+				f1, f2 := util.GetSameSalerFileName(saler.Branch + "-" + saler.SName + "-" + saler.Code)
+				if f1 != "" && f2 != "" {
+					// Add goroutine 1.
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						//fmt.Println("Print from goroutine ", index)
+						util.GomailMailSend(conf.Host, conf.Port, conf.Password, conf.User, saler.Email, "個人薪資(測試郵件)", "薪資表 <b>薪資測試 開啟若有密碼，則為000000或者您的身分證號碼</b>", f1, f2)
+						//util.GomailMailSend(conf.Host, conf.Port, conf.Password, conf.User, "geassyayaoo3@gmail.com", "個人薪資(測試郵件)", "薪資表 <b>薪資測試 開啟若有密碼，則為000000或者您的身分證號碼</b>", f1, f2)
+					}()
+
+				}
+			}
+			wg.Wait() //等送完信再砍檔案
+			fmt.Println("wait all done to DeleteAllFile")
 			util.DeleteAllFile()
 			w.Write([]byte("OK"))
 			return

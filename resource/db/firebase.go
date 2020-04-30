@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/94peter/pica/util"
@@ -89,7 +90,7 @@ func (db *firebaseDB) CreateUser(phone, displayName, email, pwd, permission stri
 	}
 	params := (&firebaseauth.UserToCreate{}).
 		UID(phone).
-		PhoneNumber(util.StrAppend("+886", phone[1:])).
+		//PhoneNumber(util.StrAppend("+886", phone[1:])).
 		Email(email).
 		Password(pwd).
 		DisplayName(displayName).
@@ -138,6 +139,9 @@ func (db *firebaseDB) UpdateState(uid string, state string) error {
 		return nil
 	}
 	claim := record.CustomClaims
+	if claim == nil {
+		claim = make(map[string]interface{})
+	}
 	claim[ClaimState] = state
 	params := (&firebaseauth.UserToUpdate{}).CustomClaims(claim)
 	_, err = client.UpdateUser(db.ctx, uid, params)
@@ -149,7 +153,7 @@ func (db *firebaseDB) UpdateUser(uid, display, permission string) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("firebaseDB UpdateUser")
 	params := &firebaseauth.UserToUpdate{}
 	if display != "" {
 		params = params.DisplayName(display)
@@ -158,9 +162,20 @@ func (db *firebaseDB) UpdateUser(uid, display, permission string) error {
 	if permission != "" {
 		record, err := client.GetUser(db.ctx, uid)
 		if err != nil {
-			return nil
+			return err
 		}
+
+		out, err := json.Marshal(record)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(out))
+		//claim會取到null，解決方法 可能在firebase要設定
+		//所以null先init一個map。以免出錯
 		claim := record.CustomClaims
+		if claim == nil {
+			claim = make(map[string]interface{})
+		}
 		claim[ClaimPermission] = permission
 		params = params.CustomClaims(claim)
 	}
@@ -179,4 +194,17 @@ func (db *firebaseDB) VerifyToken(idToken string) (string, error) {
 		return "", err
 	}
 	return token.UID, nil
+}
+
+// SendPasswordResetEmail sends password reset for the given user
+// Only useful for the Email/Password provider
+func (db *firebaseDB) SendPasswordResetEmail(email string) error {
+
+	client, err := db.connectAuth()
+	_, err = client.PasswordResetLink(db.ctx, email)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	return nil
 }

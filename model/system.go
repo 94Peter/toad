@@ -11,6 +11,7 @@ import (
 	"github.com/94peter/toad/resource/db"
 )
 
+//取名有點誤會，這是給業務員用的struct
 type SystemAccount struct {
 	Account string `json:"account"`
 	Name    string `json:"name"`
@@ -53,21 +54,28 @@ func GetSystemModel(imr interModelRes) *SystemModel {
 }
 
 func (systemM *SystemModel) GetAccountData() error {
-	const qspl = `SELECT account, name, auth, createdate, email, phone FROM public.account;`
+	const qspl = `SELECT account, name, permission, createdate, lasttime, state, disable FROM public.account;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := systemM.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {
-		return nil
+		fmt.Println(err)
+		return err
 	}
 	var saDataList []*SystemAccount
 
 	for rows.Next() {
 		var sa SystemAccount
 
+		//var lasttime NullTime
+
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
+		// if err := rows.Scan(&user.Account, &user.Name, &user.Permission, &user.CreateDate, &lasttime, &user.State, &disable); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+
 		if err := rows.Scan(&sa.Account, &sa.Name, &sa.Auth, &sa.CreateDate, &sa.Email, &sa.Phone); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}

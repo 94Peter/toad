@@ -26,11 +26,6 @@ type Deduct struct {
 	CheckNumber string    `json:"checkNumber"`
 }
 
-type NullTime struct {
-	Time  time.Time
-	Valid bool // Valid is true if Time is not NULL
-}
-
 // type Receipt struct {
 // 	Rid       string
 // 	Date      time.Time `json:"date"`
@@ -61,19 +56,6 @@ type DeductModel struct {
 	imr        interModelRes
 	db         db.InterSQLDB
 	deductList []*Deduct
-}
-
-//refer https://stackoverflow.com/questions/24564619/nullable-time-time-in-golang
-func (nt *NullTime) Scan(value interface{}) error {
-	nt.Time, nt.Valid = value.(time.Time)
-	return nil
-	//just keep the example
-	// if nt.Valid {
-	// 	// use nt.Time
-
-	// } else {
-	// 	// NULL value
-	// }
 }
 
 func (decuctModel *DeductModel) GetDeductData(by_m, ey_m, mtype string) []*Deduct {

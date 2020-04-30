@@ -47,7 +47,9 @@ func GomailMailSend(smtpHost, smtpPort, smtpPass, smtpUser, to, subject, body st
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 	for _, f := range fNames {
-		m.Attach(f)
+		if f != "" {
+			m.Attach(f)
+		}
 	}
 
 	// smtpConf:

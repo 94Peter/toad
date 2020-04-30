@@ -19,6 +19,14 @@ import (
 
 // [END import]
 // [START main_func]
+type TestAccount struct {
+	Phone string
+	Name  string
+}
+
+func (ta *TestAccount) GetID() string {
+	return ta.Phone
+}
 
 func main() {
 
@@ -42,7 +50,6 @@ func main() {
 	}
 
 	myDI := resource.GetConf(env, timezone)
-
 	router := mux.NewRouter()
 	//middleConf := di.APIConf.Middle
 	middle.SetDI(myDI)
@@ -71,6 +78,7 @@ func main() {
 		mapi.IndexAPI(true),
 		mapi.LogAPI(true),
 	)
+
 	//init EventLogModel, to record event
 	model.GetEventLogModel(myDI)
 

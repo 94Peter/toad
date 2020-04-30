@@ -33,10 +33,10 @@ func (api SystemAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/system/branch", Next: api.getBranchDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/system/account", Next: api.getAccountDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/system/account", Next: api.updateAccountDataEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/system/account/password", Next: api.updateAccountPasswordEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/system/account/{account}", Next: api.deleteAccountDataEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/system/account", Next: api.createAccountDataEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		//&APIHandler{Path: "/v1/system/account", Next: api.updateAccountDataEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		//&APIHandler{Path: "/v1/system/account/password", Next: api.updateAccountPasswordEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		//&APIHandler{Path: "/v1/system/account/{account}", Next: api.deleteAccountDataEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		//&APIHandler{Path: "/v1/system/account", Next: api.createAccountDataEndpoint, Method: "POST", Auth: false, Group: permission.All},
 	}
 }
 

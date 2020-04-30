@@ -47,6 +47,11 @@ type NullFloat struct {
 	Value float64
 	Valid bool // Valid is true if Time is not NULL
 }
+type NullTime struct {
+	Time  time.Time
+	Valid bool // Valid is true if Time is not NULL
+}
+
 type ConfigSaler struct {
 	Sid string `json:"sid"`
 	//Csid     string    `json:"csid"`
@@ -140,6 +145,18 @@ func (ns *NullFloat) Scan(value interface{}) error {
 	// }
 }
 
+//refer https://stackoverflow.com/questions/24564619/nullable-time-time-in-golang
+func (nt *NullTime) Scan(value interface{}) error {
+	nt.Time, nt.Valid = value.(time.Time)
+	return nil
+	//just keep the example
+	// if nt.Valid {
+	// 	// use nt.Time
+
+	// } else {
+	// 	// NULL value
+	// }
+}
 func GetConfigModel(imr interModelRes) *ConfigModel {
 	if configM != nil {
 		return configM

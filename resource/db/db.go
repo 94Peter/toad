@@ -13,6 +13,14 @@ type interDoc interface {
 type InterDB interface {
 	C(c string) InterDB
 	Save(doc interDoc) error
+	CreateUser(phone, displayName, email, pwd, permission string) error
+	DeleteUser(uid string) error
+	SetUserDisable(uid string, disable bool) error
+	ChangePwd(uid string, pwd string) error
+	SendPasswordResetEmail(email string) error
+	UpdateState(uid string, state string) error
+	UpdateUser(uid, display, permission string) error
+	VerifyToken(idToken string) (string, error)
 	GetByID(id string, doc interface{}) error
 }
 
@@ -25,8 +33,8 @@ type InterSQLDB interface {
 
 	InitDB() bool
 	//CreateDB() error
-	CreateARTable() error
-	CreateReceiptTable() error
+	//CreateARTable() error
+	//CreateReceiptTable() error
 	//InitTable() error
 }
 
@@ -72,6 +80,7 @@ func (dbc *DBConf) GetDB() InterDB {
 	if dbc.db != nil {
 		return dbc.db
 	}
+
 	dbc.db = &firebaseDB{
 		credentialsFile: dbc.FirebaseConf.CredentialsFile,
 		ctx:             context.Background(),

@@ -93,7 +93,7 @@ func GetConf(env string, timezone string) *DI {
 
 	myDI.Location = loc
 	myDI.Log.StartLog()
-	myDI.GetSQLDB() //for quickly test DB
+	myDI.GetSQLDB() //for quickly check DB schema
 
 	// var queryDate time.Time
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())

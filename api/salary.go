@@ -358,15 +358,15 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 			for _, saler := range SalaryM.MailList {
 				//fmt.Println(saler)
 				//f1 f2 預設空字串
-				f1, f2 := util.GetSameSalerFileName(saler.Branch + "-" + saler.SName + "-" + saler.Code)
+				f1, f2, f3 := util.GetSameSalerFileName(saler.Branch + "-" + saler.SName + "-" + saler.Code)
+				//fmt.Println("f1, f2, f3 ", f1, f2, f3)
 				if f1 != "" && f2 != "" {
 					// Add goroutine 1.
 					wg.Add(1)
 					go func() {
 						defer wg.Done()
-						//fmt.Println("Print from goroutine ", index)
-						util.GomailMailSend(conf.Host, conf.Port, conf.Password, conf.User, saler.Email, "個人薪資(測試郵件)", "薪資表 <b>薪資測試 開啟若有密碼，則為000000或者您的身分證號碼</b>", f1, f2)
-						//util.GomailMailSend(conf.Host, conf.Port, conf.Password, conf.User, "geassyayaoo3@gmail.com", "個人薪資(測試郵件)", "薪資表 <b>薪資測試 開啟若有密碼，則為000000或者您的身分證號碼</b>", f1, f2)
+						//util.GomailMailSend(conf.Host, conf.Port, conf.Password, conf.User, saler.Email, "個人薪資(測試郵件)", "薪資表 <b>薪資測試 開啟若有密碼，則為000000或者您的身分證號碼</b>", f1, f2,f3)
+						util.GomailMailSend(conf.Host, conf.Port, conf.Password, conf.User, "geassyayaoo3@gmail.com", "個人薪資(測試郵件)", "薪資表 <b>薪資測試 開啟若有密碼，則為000000或者您的身分證號碼</b>", f1, f2, f3)
 					}()
 
 				}
@@ -403,7 +403,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		SalaryM.PDF(mExport, pdf.OriPdf)
 		break
 
-	case pdf.SalarCommission: //8
+	case pdf.SalarCommission: //8 (在7[pdf.SalerSalary]的時候會執行 這邊應該用不到了!)
 		SalaryM.SetSMTPConf(di.GetSMTPConf())
 		for _, element := range exportId.BSidList {
 			SalaryM.GetSalerCommission(element.BSid)
@@ -439,6 +439,11 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 	// 	amor := model.GetAmortizationModel(di) // 會使用到system model函式，預防崩潰，所以要初始化
 	// 	amor.GetAmortizationData("1980-01", "2280-01", "%")
 	// 	break
+
+	case 0: //test
+
+		SalaryM.PDF(mExport, pdf.OriPdf)
+		break
 	default:
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("unsupport " + strconv.Itoa(mExport) + " type "))

@@ -13,7 +13,8 @@ import "github.com/94peter/gopdf"
 // var PageSizeA1 = &Rect{W: 1685, H: 2384}
 // var PageSizeA2 = &Rect{W: 1190, H: 1684}
 // var PageSizeA3 = &Rect{W: 842, H: 1190}
-var PageSizeA4 = gopdf.Rect{W: 595, H: 842} // &Rect{W: 595, H: 842}
+var PageSizeA4 = gopdf.Rect{W: 595, H: 842}  // &Rect{W: 595, H: 842}
+var PageSizeA4_ = gopdf.Rect{W: 842, H: 595} // &Rect{W: 595, H: 842}
 // var PageSizeA4Small = &Rect{W: 595, H: 842}
 // var PageSizeA5 = &Rect{W: 420, H: 595}
 // var PageSizeB4 = &Rect{W: 729, H: 1032}

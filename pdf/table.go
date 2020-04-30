@@ -131,7 +131,7 @@ func ResizeWidth(table *DataTable, new float64, index int) {
 
 func getTableHeader(mType int) []*TableStyle {
 	var h_data []string
-	fmt.Println("getTableHeader:...", mType)
+
 	switch mType {
 	case NHI:
 		h_data = NHITableHeader

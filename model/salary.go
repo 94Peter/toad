@@ -52,6 +52,7 @@ type SalerSalary struct {
 	ManagerBonus  int    `json:"managerBonus"`
 	Lock          string `json:"lock"`
 	Code          string `json:"code"`
+	ManagerID     string `json:"-"`
 }
 
 type NHISalary struct {
@@ -224,10 +225,10 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 	} else {
 		p = pdf.GetOriPDF()
 	}
-	//send := ""
-	// for _, it := range things {
-	// 	send = it
-	// }
+	send := ""
+	for _, it := range things {
+		send = it
+	}
 
 	table := pdf.GetDataTable(mtype)
 
@@ -316,6 +317,11 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 				date, _ := util.ADtoROC(element.Date, "file")
 				fname := element.Branch + "-" + element.SName + "-" + element.Code + "-" + "薪資表" + date
 				p.WriteFile(fname)
+
+				if send == "true" && element.Sid == element.ManagerID {
+					fmt.Println("Build PDFIncomeStatement")
+					salaryM.PDFIncomeStatement(element.Branch, element.SName, element.Code, date)
+				}
 				//p = nil
 				// if send == "true" {
 				// 	if err != nil {
@@ -361,9 +367,35 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 				T_PD, T_FourBouns, T_SP, T_FourSP, T_Tax, T_SPB)
 		}
 		break
+	case 0:
+		//salaryM.PDFIncomeStatement("明湖店")
+
+		break
 	}
 
 	return //p.GetBytesPdf()
+}
+
+func (salaryM *SalaryModel) PDFIncomeStatement(branch, SName, Code, date string) {
+	p := pdf.GetNewPDF(pdf.PageSizeA4_)
+	indexM := GetIndexModel(salaryM.imr)
+	incomeStatement := indexM.GetIncomeStatement(branch)
+	if incomeStatement == nil {
+		fmt.Println("incomeStatement null")
+		return
+	}
+	p.CustomizedIncomeStatement(incomeStatement.Branch, incomeStatement.Income.SR, incomeStatement.Income.Salesamounts, incomeStatement.Income.Businesstax,
+		incomeStatement.Expense.Pbonus, incomeStatement.Expense.LBonus, incomeStatement.Expense.Salary, incomeStatement.Expense.Prepay, incomeStatement.Expense.Pocket,
+		incomeStatement.Expense.Amorcost, incomeStatement.Expense.Agentsign, incomeStatement.Expense.Rent, incomeStatement.Expense.Commercialfee, incomeStatement.Expense.Annualbonus, incomeStatement.Expense.SalerFee,
+		incomeStatement.BusinessIncomeTax, incomeStatement.Aftertax, incomeStatement.Pretax, incomeStatement.Lastloss, incomeStatement.ManagerBonus, incomeStatement.Expense.Agentsign)
+
+	fname := branch + "-" + SName + "-" + Code + "-" + "損益表" + date
+	p.WriteFile(fname)
+
+	// (branch string, SR, Salesamounts, Businesstax,
+	// 	Pbonus, LBonus, Salary, Prepay, Pocket, Amorcost, Agentsign, Rent, Commercialfee, Annualbonus, AnnualRatio, SalerFee,
+	// 	BusinessIncomeTax, Aftertax, Pretax, Lastloss, ManagerBonus int)
+
 }
 
 func (salaryM *SalaryModel) EXCEL(mtype int) {
@@ -914,7 +946,7 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 				 tamount,
 				COALESCE(ss.description,''), ss.workday , bs.lock,
 				(case when cb.sid is not null then ie.managerbonus else 0 end) managerbonus,
-				cs.code
+				cs.code, cb.sid
 				FROM public.salersalary ss 
 				inner join public.branchsalary bs on bs.bsid = ss.bsid
 				left join public.incomeexpense ie on ie.bsid = ss.bsid
@@ -932,13 +964,16 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 
 	for rows.Next() {
 		var ss SalerSalary
+		var ManagerID NullString
 
 		if err := rows.Scan(&ss.Sid, &ss.BSid, &ss.SName, &ss.Date, &ss.Branch, &ss.Salary, &ss.Pbonus, &ss.Lbonus, &ss.Abonus, &ss.Total,
 			&ss.SP, &ss.Tax, &ss.LaborFee, &ss.HealthFee, &ss.Welfare, &ss.CommercialFee, &ss.Other, &ss.TAmount, &ss.Description, &ss.Workday, &ss.Lock, &ss.ManagerBonus,
-			&ss.Code); err != nil {
+			&ss.Code, &ManagerID); err != nil {
 			fmt.Println("err Scan " + err.Error())
 			return nil
 		}
+
+		ss.ManagerID = ManagerID.Value
 
 		ssDataList = append(ssDataList, &ss)
 	}
@@ -1818,32 +1853,9 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 			) cs on cs.sid=ss.sid 			
 			where ss.bsid = '%s' order by code,mdate, sid asc;`
 
-	// const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, tmp.bonus, tmp.remark from salersalary ss
-	// left join(
-	// 	SELECT c.bsid, c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100 * cs.percent/100) bonus,
-	// 	r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(r.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
-	// 	FROM public.commission c
-	// 	inner JOIN public.receipt r on r.rid = c.rid
-	// 	Inner Join (
-	// 			SELECT A.sid, A.branch, A.percent, A.title
-	// 				FROM public.ConfigSaler A
-	// 				Inner Join (
-	// 					select sid, max(zerodate) zerodate from public.configsaler cs
-	// 					where now() > zerodate
-	// 					group by sid
-	// 				) B on A.sid=B.sid and A.zeroDate = B.zeroDate
-	// 		) cs on c.sid=cs.sid
-	// 	left join(
-	// 		select rid, checknumber , fee, item from public.deduct
-	// 	) d on d.rid = r.rid
-	// ) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
-	// where ss.bsid = '%s' order by ss.sid asc;`
-
-	//left JOIN (select sum(fee) fee, count(rid) ,arid from public.deduct group by arid) as tmp on tmp.arid = r.arid
 	db := cm.imr.GetSQLDB()
 
 	cDataList := []*Commission{}
-	//salerList := []*SystemAccount{}
 
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, bsID))
 	if err != nil {
@@ -1876,18 +1888,7 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 		c.DedectItem = DedectItem.Value
 		cDataList = append(cDataList, &c)
 	}
-	if len(cDataList) > 0 {
-		//systemM.GetAccountData()
-		//salerList = systemM.systemAccountList
-	} else {
-		//salerList = nil
-	}
 
-	// out, _ := json.Marshal(salerList)
-	// fmt.Println("salerList :", string(out))
-	// out, _ = json.Marshal(cDataList)
-	// fmt.Println("cDataList :", string(out))
-	//salaryM.SystemAccountList = salerList
 	salaryM.CommissionList = cDataList
 	return
 }
@@ -1914,9 +1915,6 @@ func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 			where ss.bsid = '%s' order by cs.code, ss.sid asc;`
 
 	db := cm.imr.GetSQLDB()
-
-	// cDataList := []*Commission{}
-	// salerList := []*SystemAccount{}
 
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, bsID))
 	if err != nil {

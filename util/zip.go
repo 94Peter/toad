@@ -13,28 +13,33 @@ const PdfDir = "/tmp/MyPdf/"
 
 //const PdfDir = "MyPdf/"
 
-func GetSameSalerFileName(fname string) (f1, f2 string) {
+func GetSameSalerFileName(fname string) (f1, f2, f3 string) {
 	//獲取原始檔列表
 	f, err := ioutil.ReadDir(PdfDir)
 	if err != nil {
 		fmt.Println(err)
 	}
-	f1, f2 = "", ""
+	f1, f2, f3 = "", "", ""
 	//理論上資料夾只有傭金和薪資表
+	//店長還有一張損益表
 	for _, file := range f {
 		if strings.Contains(file.Name(), fname) {
 			//fmt.Println("fname Contains:" + file.Name())
 			if f1 == "" {
 				f1 = file.Name()
-			} else if f1 != "" {
-				f2 = file.Name()
+			} else {
+				if f2 == "" {
+					f2 = file.Name()
+				} else {
+					f3 = PdfDir + file.Name()
+				}
 			}
 		}
 	}
 	if f1 == "" || f2 == "" {
-		return "", ""
+		return "", "", ""
 	}
-	return PdfDir + f1, PdfDir + f2
+	return PdfDir + f1, PdfDir + f2, f3
 }
 
 func CompressZip(fname string) {

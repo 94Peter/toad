@@ -228,12 +228,15 @@ func (sdb *sqlDB) CreateAccountTable() error {
 		"CREATE TABLE public.account "+
 			"( "+
 			"account character varying(50) not NULL,"+
-			"passoword character varying(50) not NULL,"+
+			//"passoword character varying(50) not NULL,"+
 			"name character varying(50) not NULL,"+
-			"auth character varying(50) not NULL, "+
-			"email character varying(50) not NULL, "+ // 信箱
-			"phone character varying(50) DEFAULT '', "+ // 信箱
-			"createdate timestamp(0) without time zone not NULL, "+
+			"permission character varying(50) not NULL, "+
+			//"email character varying(50) not NULL, "+ // 信箱
+			//"phone character varying(50) DEFAULT '', "+ // 信箱
+			"createdate timestamp(0) DEFAULT now(), "+
+			"lasttime timestamp(0) DEFAULT NULL, "+
+			"state character varying(50) not NULL, "+ // 狀態
+			"disable integer DEFAULT 0, "+ // 啟用
 			"PRIMARY KEY (account) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
@@ -246,7 +249,7 @@ func (sdb *sqlDB) CreateAccountTable() error {
 		fmt.Println("CreateTable:" + err.Error())
 		return err
 	}
-	fmt.Println("CreatehousegoTable Done")
+	fmt.Println("CreateAccountTable Done")
 	return nil
 }
 

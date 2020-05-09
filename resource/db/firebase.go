@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/94peter/pica/util"
@@ -96,6 +95,9 @@ func (db *firebaseDB) CreateUser(phone, displayName, email, pwd, permission stri
 		DisplayName(displayName).
 		Disabled(false)
 	_, err = client.CreateUser(db.ctx, params)
+	if permission != "" {
+		db.UpdateUser(email, displayName, permission)
+	}
 	return err
 }
 
@@ -148,6 +150,28 @@ func (db *firebaseDB) UpdateState(uid string, state string) error {
 	return err
 }
 
+func (db *firebaseDB) GetUser(uid string) (map[string]interface{}, error) {
+	client, err := db.connectAuth()
+	if err != nil {
+		return nil, err
+	}
+	record, err := client.GetUser(db.ctx, uid)
+	if err != nil {
+		return nil, err
+	}
+	claim := record.CustomClaims
+	if claim == nil {
+		claim = make(map[string]interface{})
+	}
+	//fmt.Println("claim:", claim)
+	// fmt.Println(record)
+	// out, err := json.Marshal(record)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
+	return claim, nil
+}
 func (db *firebaseDB) UpdateUser(uid, display, permission string) error {
 	client, err := db.connectAuth()
 	if err != nil {
@@ -165,11 +189,12 @@ func (db *firebaseDB) UpdateUser(uid, display, permission string) error {
 			return err
 		}
 
-		out, err := json.Marshal(record)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(string(out))
+		// out, err := json.Marshal(record)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// fmt.Println(string(out))
+
 		//claim會取到null，解決方法 可能在firebase要設定
 		//所以null先init一個map。以免出錯
 		claim := record.CustomClaims
@@ -187,10 +212,12 @@ func (db *firebaseDB) UpdateUser(uid, display, permission string) error {
 func (db *firebaseDB) VerifyToken(idToken string) (string, error) {
 	client, err := db.connectAuth()
 	if err != nil {
+		fmt.Println("connectAuth:", err)
 		return "", err
 	}
 	token, err := client.VerifyIDToken(db.ctx, idToken)
 	if err != nil {
+		fmt.Println("error verifying ID token:", err)
 		return "", err
 	}
 	return token.UID, nil

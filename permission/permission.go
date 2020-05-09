@@ -8,7 +8,7 @@ const (
 )
 
 var (
-	Backend  = []string{Office, Admin}
-	Frontend = []string{Sales, Manager, Admin}
+	Backend  = []string{Manager, Admin}
+	Frontend = []string{Office, Manager, Admin}
 	All      = []string{Sales, Manager, Admin, Office}
 )

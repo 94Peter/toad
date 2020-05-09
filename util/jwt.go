@@ -64,6 +64,7 @@ func (j *JwtConf) getPrivateKey() (*rsa.PrivateKey, error) {
 }
 
 func (j *JwtConf) Parse(tokenStr string) (*jwt.Token, error) {
+
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		pk, err := j.getPublicKey()
 		return pk, err
@@ -77,6 +78,7 @@ func (j *JwtConf) Parse(tokenStr string) (*jwt.Token, error) {
 			// Token is either expired or not active yet
 			return nil, errors.New("Timing is everything")
 		} else {
+
 			return nil, err
 		}
 	}

@@ -22,6 +22,7 @@ type InterDB interface {
 	UpdateUser(uid, display, permission string) error
 	VerifyToken(idToken string) (string, error)
 	GetByID(id string, doc interface{}) error
+	GetUser(uid string) (map[string]interface{}, error)
 }
 
 type InterSQLDB interface {

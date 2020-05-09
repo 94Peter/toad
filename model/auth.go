@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/94peter/toad/resource/db"
+	"github.com/94peter/toad/util"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -29,9 +31,10 @@ type memberModel struct {
 }
 
 type categoryUser struct {
-	db    db.InterDB
-	sqldb db.InterSQLDB
-	Db    db.InterDB
+	db             db.InterDB
+	sqldb          db.InterSQLDB
+	DictionaryUser map[string]*User   `json:"-"`
+	CategoryUsers  map[string][]*User `json:"c"`
 }
 
 type User struct {
@@ -43,20 +46,24 @@ type User struct {
 	Lasttime   time.Time `json:"lasttime"`
 	State      string    `json:"state"`
 	Disable    bool      `json:"disable"`
+	Category   string    `json:"-"`
 }
 
 func GetMemberModel(mr interModelRes) *memberModel {
 	cu := &categoryUser{
 		db:    mr.GetDB(),
 		sqldb: mr.GetSQLDB(),
-		Db:    mr.GetDB(),
 	}
 	cu.load()
 
 	return &memberModel{
 		cu: cu,
-		Cu: cu,
 	}
+}
+
+func (dc *categoryUser) GetID() string {
+	const id = "1"
+	return id
 }
 
 func (dc *categoryUser) load() error {
@@ -64,6 +71,17 @@ func (dc *categoryUser) load() error {
 		fmt.Println("db not set")
 		return errors.New("db not set")
 	}
+	// err := dc.db.C(userC).GetByID(dc.GetID(), dc)
+	// if err != nil {
+	// 	return err
+	// }
+	// dc.DictionaryUser = make(map[string]*User)
+	// for _, s := range dc.CategoryUsers {
+	// 	for _, u := range s {
+	// 		dc.DictionaryUser[u.Account] = u
+	// 	}
+	// }
+	// fmt.Println(dc)
 	return nil
 }
 
@@ -248,13 +266,29 @@ func (memM *memberModel) UpdateUser(user *User) error {
 	return nil
 }
 
-func (memM *memberModel) VerifyToken(idToken string) (string, error) {
-	res, err := memM.cu.db.VerifyToken(idToken)
+// func (memM *memberModel) VerifyToken(idToken string) string {
+// 	res, err := memM.cu.db.VerifyToken(idToken)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return ""
+// 	}
+// 	return res
+// }
+
+func (memM *memberModel) VerifyToken(ftoken string) *User {
+	uid, err := memM.cu.db.VerifyToken(ftoken)
 	if err != nil {
-		fmt.Println(err)
-		return "", err
+		return nil
 	}
-	return res, nil
+	claim, err := memM.cu.db.GetUser(uid)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	//convert map[string] to struct
+	user := User{}
+	mapstructure.Decode(claim, &user)
+
+	return &user
 }
 
 func (memM *memberModel) GetAccountUserData() ([]*User, error) {
@@ -290,4 +324,17 @@ func (memM *memberModel) GetAccountUserData() ([]*User, error) {
 	// fmt.Println(string(out))
 
 	return userDataList, nil
+}
+
+func (u *User) GetToken(jwtConf *util.JwtConf) (string, error) {
+	token, err := jwtConf.GetToken(map[string]interface{}{
+		"sub": u.Account,
+		"nam": u.Name,
+		"per": u.Permission,
+		"cat": u.Category,
+	})
+	if err != nil {
+		return "", err
+	}
+	return *token, nil
 }

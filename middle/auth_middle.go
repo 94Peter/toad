@@ -79,14 +79,23 @@ func (am AuthMiddle) GetMiddleWare() func(f http.HandlerFunc) http.HandlerFunc {
 
 				jwtToken, err := di.GetJWTConf().Parse(authToken)
 				if err != nil {
+					fmt.Println("err:", err.Error())
 					w.WriteHeader(http.StatusUnauthorized)
 					w.Write([]byte(err.Error()))
 					return
 				}
+
+				// out, err := json.Marshal(jwtToken)
+				// if err != nil {
+				// 	panic(err)
+				// }
+				// fmt.Println(string(out))
+
 				mapClaims := jwtToken.Claims.(jwt.MapClaims)
 
 				permission := mapClaims["per"].(string)
 				if hasPerm := hasPerm(path, r.Method, permission); !hasPerm {
+					fmt.Println("permission error")
 					w.WriteHeader(http.StatusUnauthorized)
 					w.Write([]byte("permission error"))
 					return

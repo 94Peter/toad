@@ -182,34 +182,15 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status string) []*Com
 				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d'
 				and c.status like '%s';`
 
-	// const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - d.fee)* c.cpercent/100) sr, ( (r.amount - d.fee)* c.cpercent/100 * cs.percent/100) bonus,
-	// r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(r.invoiceno, null),'') , d.checknumber , d.fee , d.item
-	// FROM public.commission c
-	// inner JOIN public.receipt r on r.rid = c.rid
-	// Inner Join (
-	// 		SELECT A.sid, A.branch, A.percent, A.title
-	// 			FROM public.ConfigSaler A
-	// 			Inner Join (
-	// 				select sid, max(zerodate) zerodate from public.configsaler cs
-	// 				where now() > zerodate
-	// 				group by sid
-	// 			) B on A.sid=B.sid and A.zeroDate = B.zeroDate
-	// 	) cs on c.sid=cs.sid
-	// inner join(
-	// 	select rid, checknumber , fee, item from public.deduct
-	// ) d on d.rid = r.rid
-	// where to_timestamp(date_part('epoch',r.date)::int) >= '%s' and to_timestamp(date_part('epoch',r.date)::int) < '%s'::date + '1 month'::interval
-	// and c.status like '%s';`
-
-	//left JOIN (select sum(fee) fee, count(rid) ,arid from public.deduct group by arid) as tmp on tmp.arid = r.arid
 	db := cm.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
+	fmt.Println("debug,", fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
 	var cDataList []*Commission
-	fmt.Println("SQLCommand Done")
+	i := 1
 	for rows.Next() {
 		var c Commission
 
@@ -224,39 +205,9 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status string) []*Com
 		// }
 
 		cDataList = append(cDataList, &c)
+		i++
 	}
-
-	// const feesql = `select sum(fee) fee, arid from public.deduct group by arid;`
-	// rows, err = db.SQLCommand(fmt.Sprintf(feesql))
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return nil
-	// }
-	// for rows.Next() {
-	// 	var arid string
-	// 	var fee int
-	// 	Rid := ""
-	// 	// if err := rows.Scan(&r.ARid, &s); err != nil {
-	// 	// 	fmt.Println("err Scan " + err.Error())
-	// 	// }
-	// 	if err := rows.Scan(&fee, &arid); err != nil {
-	// 		fmt.Println("err Scan " + err.Error())
-	// 	}
-	// 	for _, commission := range cDataList {
-	// 		if Rid == commission.Rid || Rid == "" {
-	// 			//fmt.Println("arid "+arid+","+commission.ARid+" fee ", fee)
-	// 			if commission.ARid == arid {
-	// 				commission.Fee = fee
-	// 				Rid = commission.Rid
-	// 				commission.SR = float64(commission.Amount-fee) * commission.CPercent / 100
-	// 				commission.Bonus = commission.Bonus * float64(commission.Amount-fee) / float64(commission.Amount-0)
-	// 			}
-	// 		} else {
-	// 			break
-	// 		}
-	// 	}
-	// }
-
+	//fmt.Println("cDataList:len ", len(cDataList))
 	cm.cList = cDataList
 	return cm.cList
 }

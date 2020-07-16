@@ -770,7 +770,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	(bsid, Pbonus ,LBonus, salary, prepay, pocket, amorcost, sr, annualbonus, salesamounts,  businesstax, agentsign, rent, commercialfee, pretax, businessincometax, aftertax,  lastloss, managerbonus, annualratio )	
 	WITH  vals  AS (VALUES ( 'none' ) )
 	SELECT subtable.bsid , subtable.Pbonus, subtable.LBonus , subtable.salary, subtable.prepay, subtable.pocket , subtable.thisMonthAmor , subtable.sr, subtable.annualbonus, subtable.salesamounts , subtable.businesstax , subtable.agentsign , subtable.rent,
-	subtable.commercialfee, subtable.PreTax , ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) BusinessIncomeTax, 
+	subtable.tCFee, subtable.PreTax , ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) BusinessIncomeTax, 
 	subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) AfterTax , 
 	(subtable.pretaxTotal)  lastloss ,  
 	( CASE WHEN (subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal) + 0 > 0 then 
@@ -782,11 +782,11 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	SELECT incomeexpense.branch , COALESCE(incomeexpense.pretaxTotal ,0) pretaxTotal , BS.Bsid,BonusTable.PBonus , BonusTable.LBonus , BonusTable.Salary , COALESCE(prepayTable.prepay,0) prepay , COALESCE(pocketTable.pocket,0) pocket , COALESCE(amorTable.thisMonthAmor,0) thisMonthAmor,
 	COALESCE(commissionTable.SR,0) SR, COALESCE(commissionTable.SR / 1.05 ,0) salesamounts , COALESCE(commissionTable.SR - commissionTable.SR / 1.05 ,0) businesstax, configTable.agentsign, configTable.rent, configTable.commercialfee, 
 	( COALESCE(commissionTable.SR,0)/1.05  - COALESCE(amorTable.thisMonthAmor,0) - configTable.agentsign - configTable.rent - COALESCE(pocketTable.pocket,0) - COALESCE(prepayTable.prepay,0) - BonusTable.PBonus - 
-	BonusTable.Salary - BonusTable.LBonus - COALESCE(commissionTable.SR,0) * 0.05 - configTable.commercialfee - 0  ) PreTax ,
-	COALESCE(commissionTable.SR * configTable.annualratio / 100 ,0) Annualbonus , configTable.annualratio
+	BonusTable.Salary - BonusTable.LBonus - COALESCE(commissionTable.SR,0) * 0.05 - BonusTable.tCFee - 0  ) PreTax ,
+	COALESCE(commissionTable.SR * configTable.annualratio / 100 ,0) Annualbonus , configTable.annualratio, BonusTable.tCFee
 	FROM public.branchsalary  BS
 	inner join (
-	  SELECT sum(BonusTable.pbonus) PBonus , sum(BonusTable.lbonus) LBonus, sum(BonusTable.Salary) Salary, bsid  FROM public.SalerSalary BonusTable group by bsid
+	  SELECT sum(BonusTable.pbonus) PBonus , sum(BonusTable.lbonus) LBonus, sum(BonusTable.Salary) Salary, sum(commercialfee) tCFee, bsid  FROM public.SalerSalary BonusTable group by bsid
 	) BonusTable on BonusTable.bsid = BS.bsid
 	left join (
 		SELECT sum(cost) prepay , branch FROM public.prepay PP 
@@ -800,12 +800,12 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 		group by branch
 	) pocketTable on pocketTable.branch = BS.branch
 	left join(
-	    SELECT to_char(amor.date,'yyyy-MM') , branch , sum(cost) thismonthamor FROM public.amortization amor
+	    SELECT  branch , sum(cost) thismonthamor FROM public.amortization amor
 		inner join (
 			SELECT amorid, date, cost FROM public.amormap
 		) amormap on amormap.amorid = amor.amorid
-		where isover = 0 and to_char(amor.date,'yyyy-MM') = $1
-		group by to_char(amor.date,'yyyy-MM') , amor.branch		
+		where isover = 0 and amormap.date = $1
+		group by  amor.branch		
 	) amorTable on amorTable.branch = BS.branch
 	left join(
 		Select sum(SR) SR , bsid FROM public.commission 

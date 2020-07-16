@@ -32,7 +32,7 @@ func (api AmortizationAPI) Enable() bool {
 func (api AmortizationAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/amortization", Next: api.getAmortizationEndpoint, Method: "GET", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/amortization", Next: api.createAmortizationEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/amortization", Next: api.createAmortizationEndpoint, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/amortization/{ID}", Next: api.deleteAmortizationEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
 		&APIHandler{Path: "/v1/amortization/export", Next: api.exportAmortizationEndpoint, Method: "GET", Auth: true, Group: permission.All},

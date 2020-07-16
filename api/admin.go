@@ -24,20 +24,20 @@ func (api AdminAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/token", Next: api.tokenEndpoint, Method: "GET", Auth: false},
 
-		&APIHandler{Path: "/v1/refreshToken", Next: api.RefreshTokenEndpoint, Method: "GET", Auth: true},
+		&APIHandler{Path: "/v1/refreshToken", Next: api.refreshTokenEndpoint, Method: "GET", Auth: true},
 
 		&APIHandler{Path: "/v1/category", Next: api.getCategoryEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/category", Next: api.t, Method: "POST", Auth: false, Group: permission.All},
 
-		&APIHandler{Path: "/v1/user", Next: api.getUserEndPoint, Method: "GET", Auth: true, Group: permission.Backend},
-		&APIHandler{Path: "/v1/user", Next: api.createUser, Method: "POST", Auth: true, Group: permission.Backend},
-		&APIHandler{Path: "/v1/user/{ID}", Next: api.deleteUserEndPoint, Method: "DELETE", Auth: true, Group: permission.Backend},
-		&APIHandler{Path: "/v1/user", Next: api.updateUserEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
+		&APIHandler{Path: "/v1/user", Next: api.getUserEndPoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user", Next: api.createUser, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user/{ID}", Next: api.deleteUserEndPoint, Method: "DELETE", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user", Next: api.updateUserEndPoint, Method: "PUT", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/user/pwd", Next: api.updatePwdEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
+		&APIHandler{Path: "/v1/user/pwd", Next: api.updatePwdEndPoint, Method: "PUT", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/user/pwd/{Email}", Next: api.resetPwdEndPoint, Method: "POST", Auth: false, Group: permission.All}, not work
-		&APIHandler{Path: "/v1/user/disable", Next: api.disableUserEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
-		&APIHandler{Path: "/v1/user/state", Next: api.updateStateEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
+		&APIHandler{Path: "/v1/user/disable", Next: api.disableUserEndPoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user/state", Next: api.updateStateEndPoint, Method: "PUT", Auth: true, Group: permission.All},
 	}
 }
 
@@ -268,7 +268,7 @@ func (api *AdminAPI) tokenEndpoint(w http.ResponseWriter, req *http.Request) {
 }
 
 // test
-func (api *AdminAPI) RefreshTokenEndpoint(w http.ResponseWriter, req *http.Request) {
+func (api *AdminAPI) refreshTokenEndpoint(w http.ResponseWriter, req *http.Request) {
 	//ftoken := req.Header.Get("Auth-Token")
 
 	user := model.User{

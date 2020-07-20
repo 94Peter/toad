@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/94peter/toad/resource/db"
+	"toad/resource/db"
 )
 
 type PModel struct {

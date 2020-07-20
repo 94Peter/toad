@@ -2,8 +2,6 @@ package pdf
 
 import (
 	"fmt"
-
-	"dforcepro.com/report"
 )
 
 type DataTable struct {
@@ -15,8 +13,8 @@ type DataTable struct {
 
 type TableStyle struct {
 	Text   string
-	Bg     report.Color
-	Front  report.Color
+	Bg     Color
+	Front  Color
 	Align  int
 	Valign int
 }
@@ -97,7 +95,7 @@ func GetDataTable(mtype int) *DataTable {
 	// for i := 0; i < len(salaryTableHeader); i++ {
 	// 	var tbs = TextBlockStyle{
 	// 		Text:        salaryTableHeader[i],
-	// 		Color:       report.ColorTableLine,
+	// 		Color:       ColorTableLine,
 	// 		ColumnWidth: 30,
 	// 	}
 	// 	header = append(header, tbs)
@@ -107,7 +105,7 @@ func GetDataTable(mtype int) *DataTable {
 	// for i := 0; i < len(salaryTableHeader); i++ {
 	// 	var tbs = TextBlockStyle{
 	// 		Text:        salaryTableHeader[i],
-	// 		Color:       report.ColorTableLine,
+	// 		Color:       ColorTableLine,
 	// 		ColumnWidth: 30,
 	// 	}
 	// 	tmp = append(tmp, tbs)
@@ -176,16 +174,16 @@ func getTableHeader(mType int) []*TableStyle {
 	for i := 0; i < len(h_data); i++ {
 		var vs = &TableStyle{
 			Text:  h_data[i],
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    ColorWhite,
+			Front: ColorTableLine,
 		}
 		header = append(header, vs)
 	}
 
 	// var vs = &TableStyle{
 	// 	Text:  "t1",
-	// 	Bg:    report.ColorWhite,
-	// 	Front: report.ColorTableLine,
+	// 	Bg:    ColorWhite,
+	// 	Front: ColorTableLine,
 	// }
 	// header = append(header, vs)
 

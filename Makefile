@@ -7,6 +7,7 @@ run: clear
 	./bin/api 
 
 gcp:
+	gcloud config set project toad777
 	gcloud app deploy
 
 clear:

@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"dforcepro.com/report"
-	"github.com/94peter/toad/pdf"
-	"github.com/94peter/toad/resource/db"
+	"toad/pdf"
+	"toad/resource/db"
 )
 
 type CModel struct {
@@ -252,18 +251,18 @@ func (cm *CModel) PDF(isNew bool) {
 	if len(cm.cList) > 0 {
 		BranchName = cm.cList[0].Branch
 	}
-	p.DrawRectangle(textw, pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText(BranchName, 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, textw, pdf.TextHeight)
+	p.DrawRectangle(textw, pdf.TextHeight, pdf.ColorWhite, "FD")
+	p.FillText(BranchName, 12, pdf.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, textw, pdf.TextHeight)
 
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(tabel.ColumnWidth[5]+tabel.ColumnWidth[6], pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText("合計金額", 12, report.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, tabel.ColumnWidth[5]+tabel.ColumnWidth[6], pdf.TextHeight)
+	p.DrawRectangle(tabel.ColumnWidth[5]+tabel.ColumnWidth[6], pdf.TextHeight, pdf.ColorWhite, "FD")
+	p.FillText("合計金額", 12, pdf.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, tabel.ColumnWidth[5]+tabel.ColumnWidth[6], pdf.TextHeight)
 	p.SetPdf_XY(pdfx+tabel.ColumnWidth[5]+tabel.ColumnWidth[6], -1)
-	p.DrawRectangle(tabel.ColumnWidth[7], pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%.f", SR), 12, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, tabel.ColumnWidth[7], pdf.TextHeight)
+	p.DrawRectangle(tabel.ColumnWidth[7], pdf.TextHeight, pdf.ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%.f", SR), 12, pdf.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, tabel.ColumnWidth[7], pdf.TextHeight)
 	p.SetPdf_XY(pdfx+tabel.ColumnWidth[5]+tabel.ColumnWidth[6]+tabel.ColumnWidth[7], -1)
-	p.DrawRectangle(tabel.ColumnWidth[8], pdf.TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%.f", Bonus), 12, report.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, tabel.ColumnWidth[8], pdf.TextHeight)
+	p.DrawRectangle(tabel.ColumnWidth[8], pdf.TextHeight, pdf.ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%.f", Bonus), 12, pdf.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, tabel.ColumnWidth[8], pdf.TextHeight)
 
 	p.NewLine(25)
 	p.NewLine(25) //空一行
@@ -487,8 +486,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		if sameRow {
 			vs := &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
 			tabel.RawData = append(tabel.RawData, vs)
@@ -504,8 +503,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
 			vs := &pdf.TableStyle{
 				Text:  TW_Date,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
 
@@ -514,8 +513,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
 			vs = &pdf.TableStyle{
 				Text:  element.InvoiceNo,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
 
@@ -524,8 +523,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 2)
 			vs = &pdf.TableStyle{
 				Text:  element.Item,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignLeft,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
@@ -535,8 +534,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 3)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
@@ -545,8 +544,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
@@ -556,8 +555,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 5)
 		vs := &pdf.TableStyle{
 			Text:  element.SName,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -565,8 +564,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 6)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -576,8 +575,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 7)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
@@ -588,8 +587,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 8)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
@@ -598,8 +597,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 9)
 		vs = &pdf.TableStyle{
 			Text:  element.DedectItem,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -607,8 +606,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 10)
 		vs = &pdf.TableStyle{
 			Text:  element.Branch,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -616,8 +615,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 11)
 		vs = &pdf.TableStyle{
 			Text:  element.Percent,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -625,8 +624,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 12)
 		vs = &pdf.TableStyle{
 			Text:  "",
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -634,8 +633,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 13)
 		vs = &pdf.TableStyle{
 			Text:  element.Checknumber,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 	}
@@ -653,56 +652,56 @@ func (cm *CModel) agentSignTable(tabel *pdf.DataTable) *pdf.DataTable {
 	for _, element := range cm.cList {
 		var vs = &pdf.TableStyle{
 			Text:  element.Item,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		vs = &pdf.TableStyle{
 			Text:  strconv.Itoa(element.Amount),
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		vs = &pdf.TableStyle{
 			Text:  strconv.Itoa(element.Fee),
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		vs = &pdf.TableStyle{
 			Text:  element.SName,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		vs = &pdf.TableStyle{
 			Text:  strconv.FormatFloat(element.CPercent, 'E', -1, 32),
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		vs = &pdf.TableStyle{
 			Text:  strconv.FormatFloat(element.SR, 'E', -1, 32),
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		vs = &pdf.TableStyle{
 			Text:  strconv.FormatFloat(element.Bonus, 'E', -1, 32),
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		vs = &pdf.TableStyle{
 			Text:  "",
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		vs = &pdf.TableStyle{
 			Text:  "店家",
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 	}

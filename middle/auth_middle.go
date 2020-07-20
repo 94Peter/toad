@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/94peter/toad/util"
-	jwt "github.com/dgrijalva/jwt-go"
+	"toad/util"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 )
 

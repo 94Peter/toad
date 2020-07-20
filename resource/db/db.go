@@ -17,7 +17,6 @@ type InterDB interface {
 	DeleteUser(uid string) error
 	SetUserDisable(uid string, disable bool) error
 	ChangePwd(uid string, pwd string) error
-	SendPasswordResetEmail(email string) error
 	UpdateState(uid string, state string) error
 	UpdateUser(uid, display, permission string) error
 	VerifyToken(idToken string) (string, error)

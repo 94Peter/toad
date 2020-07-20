@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/94peter/toad/resource/db"
+	"toad/resource/db"
 )
 
 //`json:"id"` 回傳重新命名

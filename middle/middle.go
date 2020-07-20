@@ -3,9 +3,9 @@ package middle
 import (
 	"net/http"
 
-	"github.com/94peter/toad/resource"
-	mlog "github.com/94peter/toad/resource/log"
-	"github.com/94peter/toad/util"
+	"toad/resource"
+	mlog "toad/resource/log"
+	"toad/util"
 )
 
 type middle interface {

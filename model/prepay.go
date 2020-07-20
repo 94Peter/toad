@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"dforcepro.com/report"
-	"github.com/94peter/toad/pdf"
-	"github.com/94peter/toad/resource/db"
-	"github.com/94peter/toad/util"
+	"toad/pdf"
+	"toad/resource/db"
+	"toad/util"
 )
 
 type PrePay struct {
@@ -324,8 +323,8 @@ func (prepayM *PrePayModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf, branc
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 0)
 		vs := &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -333,8 +332,8 @@ func (prepayM *PrePayModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf, branc
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 1)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -342,8 +341,8 @@ func (prepayM *PrePayModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf, branc
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
@@ -352,8 +351,8 @@ func (prepayM *PrePayModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf, branc
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 3)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
@@ -373,8 +372,8 @@ func (prepayM *PrePayModel) addInfoTable(tabel *pdf.DataTable, p *pdf.Pdf, branc
 			pdf.ResizeWidth(tabel, p.GetTextWidth(text), index+k)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: If(f, pdf.AlignCenter, pdf.AlignRight).(int),
 			}
 			tabel.RawData = append(tabel.RawData, vs)

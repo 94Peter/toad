@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"time"
 
-	mdb "github.com/94peter/toad/resource/db"
-	mlog "github.com/94peter/toad/resource/log"
-	"github.com/94peter/toad/resource/sms"
-	"github.com/94peter/toad/util"
+	mdb "toad/resource/db"
+	mlog "toad/resource/log"
+	"toad/resource/sms"
+	"toad/util"
 
 	yaml "gopkg.in/yaml.v2"
 )

@@ -3,10 +3,11 @@ package middle
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 
-	"github.com/betacraft/yaag/middleware"
 	"github.com/gorilla/mux"
 )
 
@@ -33,7 +34,12 @@ func (lm DebugMiddle) GetMiddleWare() func(f http.HandlerFunc) http.HandlerFunc 
 			getLog().Debug("path: " + path)
 			header, _ := json.Marshal(r.Header)
 			getLog().Debug("header: " + string(header))
-			b := middleware.ReadBody(r)
+			b, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				log.Printf("Error reading body: %v", err)
+				http.Error(w, "can't read body", http.StatusBadRequest)
+				return
+			}
 			out, _ := json.Marshal(b)
 			getLog().Debug("body: " + string(out))
 

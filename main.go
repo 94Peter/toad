@@ -8,13 +8,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/94peter/toad/model"
-	"github.com/94peter/toad/resource"
+	"toad/model"
+	"toad/resource"
 
 	"github.com/gorilla/mux"
 
-	mapi "github.com/94peter/toad/api"
-	"github.com/94peter/toad/middle"
+	mapi "toad/api"
+	"toad/middle"
 )
 
 // [END import]

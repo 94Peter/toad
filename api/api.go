@@ -5,15 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/94peter/toad/util"
-
-	"github.com/94peter/toad/resource/db"
-	"github.com/94peter/toad/resource/sms"
+	"toad/middle"
+	"toad/resource/db"
+	mlog "toad/resource/log"
+	"toad/resource/sms"
+	"toad/util"
 
 	"github.com/gorilla/mux"
-
-	"github.com/94peter/toad/middle"
-	mlog "github.com/94peter/toad/resource/log"
 )
 
 type APIconf struct {

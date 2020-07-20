@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 
-	"github.com/94peter/pica/util"
+	"toad/util"
 
 	"golang.org/x/net/context"
 
@@ -221,17 +221,4 @@ func (db *firebaseDB) VerifyToken(idToken string) (string, error) {
 		return "", err
 	}
 	return token.UID, nil
-}
-
-// SendPasswordResetEmail sends password reset for the given user
-// Only useful for the Email/Password provider
-func (db *firebaseDB) SendPasswordResetEmail(email string) error {
-
-	client, err := db.connectAuth()
-	_, err = client.PasswordResetLink(db.ctx, email)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	return nil
 }

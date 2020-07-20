@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/94peter/pica/permission"
-	"github.com/94peter/toad/model"
-	"github.com/94peter/toad/util"
+	"toad/model"
+	"toad/permission"
+	"toad/util"
 )
 
 type SystemAPI bool

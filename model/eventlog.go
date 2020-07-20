@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/94peter/toad/resource/db"
+	"toad/resource/db"
 )
 
 type EventLog struct {

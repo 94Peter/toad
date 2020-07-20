@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/94peter/pica/permission"
-	"github.com/94peter/toad/model"
-	"github.com/94peter/toad/pdf"
-	"github.com/94peter/toad/util"
+	"toad/model"
+	"toad/pdf"
+	"toad/permission"
+	"toad/util"
 )
 
 type ReceiptAPI bool

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/94peter/toad/resource/db"
+	"toad/resource/db"
 )
 
 //取名有點誤會，這是給業務員用的struct

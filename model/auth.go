@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/94peter/toad/resource/db"
-	"github.com/94peter/toad/util"
+	"toad/permission"
+	"toad/resource/db"
+	"toad/util"
+
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -214,15 +216,6 @@ func (memM *memberModel) ChangePwd(uid string, pwd string) error {
 	return nil
 }
 
-func (memM *memberModel) ResetPwd(email string) error {
-	err := memM.cu.db.SendPasswordResetEmail(email)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	return nil
-}
-
 func (memM *memberModel) UpdateState(uid string, state string) error {
 	err := memM.cu.db.UpdateState(uid, state)
 	if err != nil {
@@ -287,6 +280,8 @@ func (memM *memberModel) VerifyToken(ftoken string) *User {
 	//convert map[string] to struct
 	user := User{}
 	mapstructure.Decode(claim, &user)
+	user.Permission = permission.Office
+	user.State = "OK"
 
 	return &user
 }

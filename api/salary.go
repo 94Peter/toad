@@ -9,12 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/94peter/toad/excel"
-
-	"github.com/94peter/pica/permission"
-	"github.com/94peter/toad/model"
-	"github.com/94peter/toad/pdf"
-	"github.com/94peter/toad/util"
+	"toad/excel"
+	"toad/model"
+	"toad/pdf"
+	"toad/permission"
+	"toad/util"
 )
 
 type SalaryAPI bool

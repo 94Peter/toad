@@ -7,3 +7,6 @@ conf/*
 app.yaml
 admin.js
 /conf
+.DS_Store
+/html
+nginx.conf

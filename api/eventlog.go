@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	"github.com/94peter/pica/permission"
-	"github.com/94peter/toad/model"
+	"toad/model"
+	"toad/permission"
 )
 
 type LogAPI bool

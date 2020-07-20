@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"dforcepro.com/report"
+	"toad/util"
+
 	"github.com/94peter/gopdf"
-	"github.com/94peter/toad/util"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -173,7 +173,7 @@ func (p *Pdf) DrawTablePDF(dataTable *DataTable) {
 				TextWidth = dataTable.ColumnWidth[i]
 				//fmt.Println("i:", i)
 				//fmt.Println("data:", drawData[i].Text, " width:", dataTable.ColumnWidth[i])
-				p.DrawRectangle(TextWidth, TextHeight, report.ColorWhite, "FD")
+				p.DrawRectangle(TextWidth, TextHeight, ColorWhite, "FD")
 				//fmt.Println("DrawRectangle")
 				Align := AlignCenter
 				Valign := ValignMiddle
@@ -183,7 +183,7 @@ func (p *Pdf) DrawTablePDF(dataTable *DataTable) {
 				if drawData[i].Valign != 0 {
 					Valign = drawData[i].Valign
 				}
-				p.FillText(drawData[i].Text, 12, report.ColorTableLine, Align, Valign, TextWidth, TextHeight)
+				p.FillText(drawData[i].Text, 12, ColorTableLine, Align, Valign, TextWidth, TextHeight)
 				//fmt.Println("FillText")
 				pdf.SetX(pdf.GetX() + TextWidth)
 				//fmt.Println("SetX")
@@ -204,16 +204,16 @@ func (p *Pdf) DrawTablePDF(dataTable *DataTable) {
 			}
 		}
 		// for i := 0; i < len(drawData); i++ {
-		// 	p.DrawRectangle(textWidth, textHeight, report.ColorWhite, "FD")
-		// 	p.FillText("aaa", 12, report.ColorTableLine, pdf.GetX(), pdf.GetY(), AlignCenter, valignBottom, textWidth, textHeight)
+		// 	p.DrawRectangle(textWidth, textHeight, ColorWhite, "FD")
+		// 	p.FillText("aaa", 12, ColorTableLine, pdf.GetX(), pdf.GetY(), AlignCenter, valignBottom, textWidth, textHeight)
 		// 	pdf.SetX(pdf.GetX() + textWidth)
 		// }
 	}
-	//p.rectFillColor("Play", 14, p.x, p.y, 100, 100, report.ColorWhite, alignRight, valignBottom)
+	//p.rectFillColor("Play", 14, p.x, p.y, 100, 100, ColorWhite, alignRight, valignBottom)
 
-	//rectFillColor(&pdf, "分店名11111111111111111111", 14, p.x, 170, 60, 35, report.ColorWhite, AlignCenter, ValignMiddle)
+	//rectFillColor(&pdf, "分店名11111111111111111111", 14, p.x, 170, 60, 35, ColorWhite, AlignCenter, ValignMiddle)
 
-	//rectFillColor(&pdf, "Play", 14, p.x, 300, 50, 20, report.ColorWhite, alignRight, valignBottom)
+	//rectFillColor(&pdf, "Play", 14, p.x, 300, 50, 20, ColorWhite, alignRight, valignBottom)
 
 	//pdf.WritePdf("italic.pdf")
 
@@ -260,13 +260,13 @@ func (p *Pdf) NewPage() {
 	pdf.AddPage()
 }
 
-func (p *Pdf) DrawRectangle(w, h float64, color report.Color, rectType string) {
+func (p *Pdf) DrawRectangle(w, h float64, color Color, rectType string) {
 	pdf := p.myPDF
 	pdf.SetFillColor(color.R, color.G, color.B)
 	pdf.RectFromUpperLeftWithStyle(pdf.GetX(), pdf.GetY(), w, h, rectType)
 }
 
-func (p *Pdf) FillText(text string, floatFontSize float64, color report.Color, align, valign int, w, h float64) float64 {
+func (p *Pdf) FillText(text string, floatFontSize float64, color Color, align, valign int, w, h float64) float64 {
 	pdf := p.myPDF
 	ox := pdf.GetX()
 	oy := pdf.GetY()
@@ -303,7 +303,7 @@ func (p *Pdf) rectFillColor(
 	text string,
 	fontSize int,
 	x, y, w, h float64,
-	color report.Color,
+	color Color,
 	align, valign int,
 ) {
 	pdf := p.myPDF
@@ -350,73 +350,73 @@ func (p *Pdf) CustomizedBranchSalary(table *DataTable, T_Salary, T_Pbonus, T_Abo
 	pr := message.NewPrinter(language.English)
 	textw := table.ColumnWidth[1]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText("合計", 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText("合計", 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[2]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Salary), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Salary), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[3]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Pbonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Pbonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[4]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Lbonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Lbonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Abonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Abonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Total), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Total), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[7]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_SP), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_SP), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[8]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Tax), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Tax), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[9]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_LaborFee), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_LaborFee), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[10]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_HealthFee), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_HealthFee), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[11]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Welfare), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Welfare), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[12]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_CommercialFee), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_CommercialFee), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[13]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Other), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Other), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[14]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_TAmount), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_TAmount), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 }
@@ -433,18 +433,18 @@ func (p *Pdf) CustomizedSalerCommission(table *DataTable, SName string, T_Bonus,
 	//應扣費用 姓名 比例
 	textw := table.ColumnWidth[2] + table.ColumnWidth[3] + table.ColumnWidth[4]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(SName, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(SName, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_SR), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_SR), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Bonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Bonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//p.myPDF.AddPage()
 	//p.NewPage()
@@ -464,30 +464,30 @@ func (p *Pdf) CustomizedAgentSign(table *DataTable, T_Bonus, T_SR float64) (Tota
 	// textw := table.ColumnWidth[3]
 
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(table.ColumnWidth[4]+table.ColumnWidth[5]+table.ColumnWidth[6], TextHeight, report.ColorWhite, "FD")
-	// p.FillText(SName, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(table.ColumnWidth[4]+table.ColumnWidth[5]+table.ColumnWidth[6], TextHeight, ColorWhite, "FD")
+	// p.FillText(SName, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	// pdfx += textw
 
 	textw := table.ColumnWidth[4]
 	p.SetPdf_XY(pdfx, -1)
-	//p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText("合計", 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	//p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText("合計", 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
-	//p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
+	//p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
 	text := pr.Sprintf("%.f", T_SR)
 	Total_SR += T_SR
-	p.FillText(text, 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.FillText(text, 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
 	text = pr.Sprintf("%.f", T_Bonus)
 	Total_Bonus += T_Bonus
-	//p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	//p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 	//p.myPDF.AddPage()
@@ -506,8 +506,8 @@ func (p *Pdf) CustomizedAmortizationTitle(table *DataTable, title string) {
 		textw += table.ColumnWidth[i]
 	}
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(title, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(title, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdf := p.myPDF
 	pdf.Br(25)
 }
@@ -519,23 +519,23 @@ func (p *Pdf) CustomizedAmortization(table *DataTable, T_Month, T_Has, T_not int
 
 	textw := table.ColumnWidth[0] + table.ColumnWidth[1] + table.ColumnWidth[2] + table.ColumnWidth[3]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText("合計", 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText("合計", 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[4]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Month), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Month), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Has), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Has), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_not), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_not), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 }
@@ -550,16 +550,16 @@ func (p *Pdf) CustomizedPrepayTitle(table *DataTable, title string, branch []str
 		textw += table.ColumnWidth[i]
 	}
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(title, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(title, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdf.Br(25)
 
 	//日期------支出金額
 	for i := 0; i < 4; i++ {
 		p.SetPdf_XY(pdfx, -1)
 		textw = table.ColumnWidth[i]
-		p.DrawRectangle(textw, TextHeight*2, report.ColorWhite, "FD")
-		p.FillText(table.RawData[i].Text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight*2)
+		p.DrawRectangle(textw, TextHeight*2, ColorWhite, "FD")
+		p.FillText(table.RawData[i].Text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight*2)
 		pdfx += table.ColumnWidth[i]
 	}
 	p.SetPdf_XY(pdfx, -1)
@@ -568,16 +568,16 @@ func (p *Pdf) CustomizedPrepayTitle(table *DataTable, title string, branch []str
 	for i := 4; i < len(table.ColumnWidth); i++ {
 		textw += table.ColumnWidth[i]
 	}
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText("分攤金額", 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText("分攤金額", 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdf.Br(25)
 	//
 	//各店家欄位
 	for i := 0; i < len(branch); i++ {
 		p.SetPdf_XY(pdfx, -1)
 		textw = table.ColumnWidth[i+4]
-		p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-		p.FillText(branch[i], 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+		p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+		p.FillText(branch[i], 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 		pdfx += textw
 	}
 	pdf.Br(25)
@@ -592,16 +592,16 @@ func (p *Pdf) CustomizedPrepay(table *DataTable, Total []int) {
 		textw += table.ColumnWidth[i]
 	}
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText("合計金額", 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText("合計金額", 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 	//各店家總額
 	for i := 0; i < len(Total); i++ {
 		p.SetPdf_XY(pdfx, -1)
 		textw = table.ColumnWidth[i+3]
-		p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-		p.FillText(pr.Sprintf("%d", Total[i]), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+		p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+		p.FillText(pr.Sprintf("%d", Total[i]), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 		pdfx += textw
 	}
 
@@ -616,8 +616,8 @@ func (p *Pdf) CustomizedPocketTitle(table *DataTable, title string) {
 		textw += table.ColumnWidth[i]
 	}
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(title, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(title, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdf := p.myPDF
 	pdf.Br(25)
 }
@@ -629,23 +629,23 @@ func (p *Pdf) CustomizedPocket(table *DataTable, T_Income, T_Fee, T_Balance int)
 
 	textw := table.ColumnWidth[0] + table.ColumnWidth[1] + table.ColumnWidth[2] + table.ColumnWidth[3]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText("總計金額", 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText("總計金額", 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[4]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Income), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Income), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Fee), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Fee), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Balance), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Balance), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 }
@@ -658,89 +658,89 @@ func (p *Pdf) CustomizedNHI(table *DataTable, T_PayrollBracket, T_Salary, T_Pbon
 
 	textw := table.ColumnWidth[0]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText("合計", 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText("合計", 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[1]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_PayrollBracket), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_PayrollBracket), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[2]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Salary), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Salary), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	textw = table.ColumnWidth[3]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Pbonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Pbonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[4]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Bonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Bonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[5]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText("0", 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText("0", 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//合計
 	textw = table.ColumnWidth[6]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Total), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Total), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[7]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Balance), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Balance), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[8]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_PD), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_PD), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[9]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_FourBouns), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_FourBouns), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//補充保費薪資差額
 	textw = table.ColumnWidth[10]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_SPB), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_SPB), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[11]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_FourSP), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_FourSP), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[12]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_FourSP), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_FourSP), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[13]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_PTSP), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_PTSP), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 	textw = table.ColumnWidth[14]
 	p.SetPdf_XY(pdfx, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", T_Tax), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", T_Tax), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 	//
 }
@@ -757,32 +757,32 @@ func (p *Pdf) CustomizedIncomeStatement(branch string, SR, Salesamounts, Busines
 	// text := "本月業績"
 	// textw := headw
 	// p.SetPdf_XY(pdfx, -1)
-	// p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	// p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	// p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	// p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	// pdfx += textw
 
 	// pdfx = 250.0
 	// text = "累積應收"
 	// textw = headw
 	// p.SetPdf_XY(pdfx, -1)
-	// p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	// p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	// p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	// p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	// pdfx += textw
 
 	/**/
 	// p.SetPdf_XY(100, 10)
-	// p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	// p.FillText(pr.Sprintf("%d", SR), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	// p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	// p.FillText(pr.Sprintf("%d", SR), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	// p.SetPdf_XY(350, 10)
-	// p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	// p.FillText(pr.Sprintf("%d", SR), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	// p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	// p.FillText(pr.Sprintf("%d", SR), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 
 	text := branch + "損益表"
 	textw := 700.0 //table.ColumnWidth[0]
 	p.SetPdf_XY(10, -1)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfx += textw
 
 	p.NewLine(30)
@@ -794,94 +794,94 @@ func (p *Pdf) CustomizedIncomeStatement(branch string, SR, Salesamounts, Busines
 
 	p.SetPdf_XY(pdfx, pdfy)
 
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	text = "實績"
 	textw = headw
 
 	p.SetPdf_XY(pdfx, pdfy)
 
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 
 	pdfy += TextHeight + gap
 	text = "營業稅"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	text = "銷售額"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	/**/
 	textw = 140
 	pdfx = 100
 	pdfy = 70.0 + TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", SR), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", SR), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Businesstax), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Businesstax), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Salesamounts), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Salesamounts), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 	text = "支出" //起始點 (300,70)
 	pdfx = 300.0
 	pdfy = 70.0
 	textw = 420
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "攤提成本"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "房租(含稅)"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "薪資"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "獎金"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "組長獎金"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "年終提撥"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	/**/
@@ -889,28 +889,28 @@ func (p *Pdf) CustomizedIncomeStatement(branch string, SR, Salesamounts, Busines
 	pdfx = pdfx + textw
 	pdfy = 70.0 + TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Amorcost), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Amorcost), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Rent), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Rent), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Salary), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Salary), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Pbonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Pbonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", LBonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", LBonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Annualbonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Annualbonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 
 	pdfx = 520.0
@@ -918,49 +918,49 @@ func (p *Pdf) CustomizedIncomeStatement(branch string, SR, Salesamounts, Busines
 	text = "經紀人簽章費"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "零用金"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "代支費用"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 
 	text = "商耕費"
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	/**/
 	textw = 100
 	pdfx = pdfx + textw
 	pdfy = 70.0 + TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", AgentSign), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", AgentSign), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Pocket), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Pocket), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Prepay), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Prepay), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	pdfy += TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Commercialfee), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Commercialfee), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 
 	text = "稅前盈餘" //起始點 (10,370)
@@ -968,56 +968,56 @@ func (p *Pdf) CustomizedIncomeStatement(branch string, SR, Salesamounts, Busines
 	pdfy = 370.0
 	textw = headw
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	/**/
 	p.SetPdf_XY(pdfx+headw, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Pretax), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Pretax), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 	text = "累積上期虧損"
 	textw = headw
 	pdfx = 300.0
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	/**/
 	p.SetPdf_XY(pdfx+headw, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Lastloss), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Lastloss), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 	text = "營所稅"
 	textw = headw
 	pdfx = 520.0
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	/**/
 	p.SetPdf_XY(pdfx+headw, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", BusinessIncomeTax), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", BusinessIncomeTax), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 	text = "稅後盈餘"
 	textw = headw
 	pdfx = 30.0
 	pdfy = pdfy + TextHeight + gap
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	/**/
 	p.SetPdf_XY(pdfx+headw, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", Aftertax), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", Aftertax), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 	text = "店長紅利"
 	textw = headw
 	pdfx = 520.0
 	p.SetPdf_XY(pdfx, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(text, 12, report.ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(text, 12, ColorTableLine, AlignCenter, ValignMiddle, textw, TextHeight)
 	/**/
 	p.SetPdf_XY(pdfx+headw, pdfy)
-	p.DrawRectangle(textw, TextHeight, report.ColorWhite, "FD")
-	p.FillText(pr.Sprintf("%d", ManagerBonus), 12, report.ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
+	p.DrawRectangle(textw, TextHeight, ColorWhite, "FD")
+	p.FillText(pr.Sprintf("%d", ManagerBonus), 12, ColorTableLine, AlignRight, ValignMiddle, textw, TextHeight)
 	/**/
 }

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/94peter/toad/resource/db"
+	"toad/resource/db"
 )
 
 var ACTION_BUY = "buy"

@@ -7,14 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/94peter/toad/excel"
+	"toad/excel"
+	"toad/pdf"
+	"toad/resource/db"
+	"toad/util"
+
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
-
-	"dforcepro.com/report"
-	"github.com/94peter/toad/pdf"
-	"github.com/94peter/toad/resource/db"
-	"github.com/94peter/toad/util"
 )
 
 type BranchSalary struct {
@@ -1407,8 +1406,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 		var vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
@@ -1416,8 +1415,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		table.RawData = append(table.RawData, vs)
 		//底薪
@@ -1427,8 +1426,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1439,8 +1438,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1451,8 +1450,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1463,8 +1462,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1475,8 +1474,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorBlack, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorBlack, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1487,8 +1486,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 7)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1499,8 +1498,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 8)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1511,8 +1510,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 9)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1523,8 +1522,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 10)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1535,8 +1534,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 11)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1546,8 +1545,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 12)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 
@@ -1558,8 +1557,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 13)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1569,8 +1568,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 14)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1579,8 +1578,8 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 15)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-			Front: report.ColorTableLine,
+			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -1598,8 +1597,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 	var vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 	}
 	table.RawData = append(table.RawData, vs)
 	//
@@ -1607,8 +1606,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 	}
 	table.RawData = append(table.RawData, vs)
 	//底薪
@@ -1617,8 +1616,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1627,8 +1626,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1637,8 +1636,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1648,8 +1647,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1659,8 +1658,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1670,8 +1669,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 7)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1681,8 +1680,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 8)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1692,8 +1691,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 9)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1703,8 +1702,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 10)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1714,8 +1713,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 11)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1725,8 +1724,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 12)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1736,8 +1735,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 13)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -1747,8 +1746,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 14)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 
@@ -1758,8 +1757,8 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 15)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-		Front: report.ColorTableLine,
+		Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+		Front: pdf.ColorTableLine,
 	}
 	table.RawData = append(table.RawData, vs)
 	//}
@@ -2073,8 +2072,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				text := ""
 				var vs = &pdf.TableStyle{
 					Text:  text,
-					Bg:    report.ColorWhite,
-					Front: report.ColorTableLine,
+					Bg:    pdf.ColorWhite,
+					Front: pdf.ColorTableLine,
 				}
 				table.RawData = append(table.RawData, vs)
 				table.RawData = append(table.RawData, vs)
@@ -2084,8 +2083,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 				vs = &pdf.TableStyle{
 					Text:  text,
-					Bg:    report.ColorWhite,
-					Front: report.ColorTableLine,
+					Bg:    pdf.ColorWhite,
+					Front: pdf.ColorTableLine,
 				}
 				table.RawData = append(table.RawData, vs)
 				//
@@ -2093,8 +2092,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 				vs = &pdf.TableStyle{
 					Text:  text,
-					Bg:    report.ColorWhite,
-					Front: report.ColorTableLine,
+					Bg:    pdf.ColorWhite,
+					Front: pdf.ColorTableLine,
 				}
 				table.RawData = append(table.RawData, vs)
 				//
@@ -2102,8 +2101,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 				vs = &pdf.TableStyle{
 					Text:  text,
-					Bg:    report.ColorWhite,
-					Front: report.ColorTableLine,
+					Bg:    pdf.ColorWhite,
+					Front: pdf.ColorTableLine,
 					Align: pdf.AlignRight,
 				}
 				table.RawData = append(table.RawData, vs)
@@ -2112,8 +2111,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 				vs = &pdf.TableStyle{
 					Text:  text,
-					Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-					Front: report.ColorTableLine,
+					Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+					Front: pdf.ColorTableLine,
 					Align: pdf.AlignRight,
 				}
 				table.RawData = append(table.RawData, vs)
@@ -2121,8 +2120,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 				text = ""
 				vs = &pdf.TableStyle{
 					Text:  text,
-					Bg:    report.ColorWhite,
-					Front: report.ColorTableLine,
+					Bg:    pdf.ColorWhite,
+					Front: pdf.ColorTableLine,
 				}
 				table.RawData = append(table.RawData, vs)
 				table.RawData = append(table.RawData, vs)
@@ -2138,8 +2137,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 			var vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignLeft,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2148,8 +2147,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2158,8 +2157,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2170,8 +2169,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2179,8 +2178,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2190,8 +2189,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2202,8 +2201,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-				Front: report.ColorTableLine,
+				Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2212,8 +2211,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 7)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-				Front: report.ColorTableLine,
+				Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2221,8 +2220,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 8)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-				Front: report.ColorTableLine,
+				Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2230,8 +2229,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 9)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-				Front: report.ColorTableLine,
+				Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 		}
@@ -2241,8 +2240,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			text := ""
 			var vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			table.RawData = append(table.RawData, vs)
@@ -2252,8 +2251,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2261,8 +2260,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2270,8 +2269,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2280,8 +2279,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-				Front: report.ColorTableLine,
+				Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2289,8 +2288,8 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			text = ""
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			table.RawData = append(table.RawData, vs)
@@ -2317,8 +2316,8 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 			var vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignLeft,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2327,8 +2326,8 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2337,8 +2336,8 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2348,8 +2347,8 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2357,8 +2356,8 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			//
@@ -2367,8 +2366,8 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2378,8 +2377,8 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-				Front: report.ColorTableLine,
+				Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+				Front: pdf.ColorTableLine,
 				Align: pdf.AlignRight,
 			}
 			table.RawData = append(table.RawData, vs)
@@ -2388,8 +2387,8 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 7)
 			vs = &pdf.TableStyle{
 				Text:  text,
-				Bg:    If(true, report.ColorWhite, report.ColorWhite).(report.Color),
-				Front: report.ColorTableLine,
+				Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 		}
@@ -2412,8 +2411,8 @@ func (salaryM *SalaryModel) addSRInfoTable(table *pdf.DataTable, p *pdf.Pdf) (ta
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 		vs := &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		table.RawData = append(table.RawData, vs)
 		//SR
@@ -2422,8 +2421,8 @@ func (salaryM *SalaryModel) addSRInfoTable(table *pdf.DataTable, p *pdf.Pdf) (ta
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2433,8 +2432,8 @@ func (salaryM *SalaryModel) addSRInfoTable(table *pdf.DataTable, p *pdf.Pdf) (ta
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2444,16 +2443,16 @@ func (salaryM *SalaryModel) addSRInfoTable(table *pdf.DataTable, p *pdf.Pdf) (ta
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 	vs := &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 	}
 	table.RawData = append(table.RawData, vs)
 	text = pr.Sprintf("%d", T_SR)
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 	table.RawData = append(table.RawData, vs)
@@ -2461,8 +2460,8 @@ func (salaryM *SalaryModel) addSRInfoTable(table *pdf.DataTable, p *pdf.Pdf) (ta
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 	vs = &pdf.TableStyle{
 		Text:  text,
-		Bg:    report.ColorWhite,
-		Front: report.ColorTableLine,
+		Bg:    pdf.ColorWhite,
+		Front: pdf.ColorTableLine,
 		Align: pdf.AlignRight,
 	}
 
@@ -2490,15 +2489,15 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 			pdf.ResizeWidth(table, p.GetTextWidth(Branch), 0)
 			vs := &pdf.TableStyle{
 				Text:  Branch,
-				Bg:    report.ColorWhite,
-				Front: report.ColorTableLine,
+				Bg:    pdf.ColorWhite,
+				Front: pdf.ColorTableLine,
 			}
 			table.RawData = append(table.RawData, vs)
 			for i := 1; i < 17; i++ {
 				vs := &pdf.TableStyle{
 					Text:  "",
-					Bg:    report.ColorWhite,
-					Front: report.ColorTableLine,
+					Bg:    pdf.ColorWhite,
+					Front: pdf.ColorTableLine,
 				}
 				table.RawData = append(table.RawData, vs)
 			}
@@ -2508,8 +2507,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 		vs := &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
@@ -2518,8 +2517,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 1)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2529,8 +2528,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 2)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2540,8 +2539,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 3)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2551,8 +2550,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2561,8 +2560,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 5)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2572,8 +2571,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2583,8 +2582,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 7)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2594,8 +2593,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 8)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2605,8 +2604,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 9)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2616,8 +2615,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 10)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2627,8 +2626,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 11)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2638,8 +2637,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 12)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2649,8 +2648,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 13)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2660,8 +2659,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 14)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 			Align: pdf.AlignRight,
 		}
 		table.RawData = append(table.RawData, vs)
@@ -2670,8 +2669,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 15)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		table.RawData = append(table.RawData, vs)
 		//
@@ -2679,8 +2678,8 @@ func (salaryM *SalaryModel) addNHIInfoTable(table *pdf.DataTable, p *pdf.Pdf) (t
 		pdf.ResizeWidth(table, p.GetTextWidth(text), 16)
 		vs = &pdf.TableStyle{
 			Text:  text,
-			Bg:    report.ColorWhite,
-			Front: report.ColorTableLine,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
 		}
 		table.RawData = append(table.RawData, vs)
 	}

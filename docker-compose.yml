@@ -1,0 +1,15 @@
+db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: toad123
+      POSTGRES_USER: postgres
+
+web:
+    image: nginx:1.15.6
+    ports:
+        - 80:80
+    volumes:
+        - ./nginx.conf:/etc/nginx/nginx.conf:ro
+        - ./html:/html
+

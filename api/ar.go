@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/94peter/toad/model"
-	"github.com/94peter/toad/permission"
-	"github.com/94peter/toad/util"
+	"toad/model"
+	"toad/permission"
+	"toad/util"
 )
 
 type ARAPI bool

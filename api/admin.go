@@ -35,7 +35,6 @@ func (api AdminAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/user", Next: api.updateUserEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
 
 		&APIHandler{Path: "/v1/user/pwd", Next: api.updatePwdEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
-		//&APIHandler{Path: "/v1/user/pwd/{Email}", Next: api.resetPwdEndPoint, Method: "POST", Auth: false, Group: permission.All}, not work
 		&APIHandler{Path: "/v1/user/disable", Next: api.disableUserEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
 		&APIHandler{Path: "/v1/user/state", Next: api.updateStateEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
 	}
@@ -179,21 +178,7 @@ func (api *AdminAPI) updatePwdEndPoint(w http.ResponseWriter, req *http.Request)
 
 	w.Write([]byte("ok"))
 }
-func (api *AdminAPI) resetPwdEndPoint(w http.ResponseWriter, req *http.Request) {
 
-	vars := util.GetPathVars(req, []string{"Email"})
-	Email := vars["Email"].(string)
-
-	memM := model.GetMemberModel(di)
-
-	if err := memM.ResetPwd(Email); err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
-	w.Write([]byte("ok"))
-}
 func (api *AdminAPI) disableUserEndPoint(w http.ResponseWriter, req *http.Request) {
 
 	user := inputDisable{}

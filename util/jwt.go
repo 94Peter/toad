@@ -92,9 +92,11 @@ func (j *JwtConf) GetToken(data map[string]interface{}) (*string, error) {
 	}
 	now := time.Now()
 	const expDuration = 3 * time.Hour
+
 	data["iss"] = j.Claims.Iss
 	data["iat"] = now.Unix()
 	data["exp"] = now.Add(j.Claims.ExpDuration).Unix()
+
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims(data))
 
 	token.Header = j.getHeader()

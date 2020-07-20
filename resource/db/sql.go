@@ -765,7 +765,7 @@ func (sdb *sqlDB) CreateCommissionTable() error {
 			"SR integer DEFAULT 0 ,"+
 			"bonus integer DEFAULT 0 ,"+
 			"status character varying(50) DEFAULT 'normal',"+
-			"bankaccount character varying(50) DEFAULT 'normal',"+
+			//"bankaccount character varying(50) DEFAULT 'normal',"+
 			"PRIMARY KEY (Sid,Rid)"+
 			") "+
 			"WITH ( OIDS = FALSE);"+

@@ -128,7 +128,6 @@ func (api *SalaryAPI) deleteSalaryEndpoint(w http.ResponseWriter, req *http.Requ
 
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
-	fmt.Println(ID)
 	SalaryM := model.GetSalaryModel(di)
 
 	if err := SalaryM.DeleteSalary(ID); err != nil {

@@ -1,6 +1,7 @@
 package middle
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -35,13 +36,14 @@ func (lm DebugMiddle) GetMiddleWare() func(f http.HandlerFunc) http.HandlerFunc 
 			header, _ := json.Marshal(r.Header)
 			getLog().Debug("header: " + string(header))
 			b, err := ioutil.ReadAll(r.Body)
+			r.Body.Close()
+			r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 			if err != nil {
 				log.Printf("Error reading body: %v", err)
 				http.Error(w, "can't read body", http.StatusBadRequest)
 				return
 			}
-			out, _ := json.Marshal(b)
-			getLog().Debug("body: " + string(out))
+			getLog().Debug("body: " + string(b))
 
 			start := time.Now()
 			f(w, r)

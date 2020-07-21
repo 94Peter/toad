@@ -54,8 +54,8 @@ func main() {
 	//middleConf := di.APIConf.Middle
 	middle.SetDI(myDI)
 	middlewares := middle.GetMiddlewares(
-		// middle.DBMiddle(true),
-		middle.DebugMiddle(true),
+		//middle.DBMiddle(true),
+		//middle.DebugMiddle(true),
 		middle.AuthMiddle(true),
 		// middle.BasicAuthMiddle(middleConf.Auth),
 	)

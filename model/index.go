@@ -113,8 +113,11 @@ func (indexM *IndexModel) GetInfoData() *Info {
 			fmt.Println("err Scan " + err.Error())
 		}
 
-		//info.Receivable = Amount - RA
-		info.Receivable = RA
+		info.Receivable = Amount - RA
+
+		//先顛倒，前端沒弄好
+		info.Receivable = info.Performance
+		info.Performance = Amount - RA
 
 		data = &info
 	}

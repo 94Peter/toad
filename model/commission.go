@@ -178,7 +178,7 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status string) []*Com
 	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
 				FROM public.commission c
 				inner JOIN public.receipt r on r.rid = c.rid
-				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d'
+				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
 				and c.status like '%s';`
 
 	db := cm.imr.GetSQLDB()
@@ -189,7 +189,7 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status string) []*Com
 		return nil
 	}
 	var cDataList []*Commission
-	i := 1
+
 	for rows.Next() {
 		var c Commission
 
@@ -204,7 +204,7 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status string) []*Com
 		// }
 
 		cDataList = append(cDataList, &c)
-		i++
+
 	}
 	//fmt.Println("cDataList:len ", len(cDataList))
 	cm.cList = cDataList

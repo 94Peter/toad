@@ -45,14 +45,14 @@ func GetPocketModel(imr interModelRes) *PocketModel {
 	return pocketM
 }
 
-func (pocketM *PocketModel) GetPocketData(beginDate, endDate, branch string) []*Pocket {
+func (pocketM *PocketModel) GetPocketData(beginDate, endDate time.Time, branch string) []*Pocket {
 
 	const qspl = `SELECT Pid, Date, branch, itemname, description, income, fee, balance FROM public.pocket 
-				where branch like '%s' and (Date >= '%s' and Date < ('%s'::date + '1 month'::interval)) 
+				where branch like '%s' and (  extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) < '%d' ) 
 				ORDER BY branch, date, pid asc;`
 
 	db := pocketM.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch, beginDate+"-01", endDate+"-01"))
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch, beginDate.Unix(), endDate.Unix()))
 	if err != nil {
 		fmt.Println(err)
 		return nil

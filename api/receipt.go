@@ -65,29 +65,26 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 	//end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
 	queryVar := util.GetQueryValue(req, []string{"begin", "end"}, true)
-	begin := (*queryVar)["begin"].(string)
-	end := (*queryVar)["end"].(string)
-	if begin == "" {
-		begin = "1980-01-01"
+	by_m := (*queryVar)["begin"].(string)
+	ey_m := (*queryVar)["end"].(string)
+
+	if by_m == "" {
+		by_m = "1980-01-01T00:00:00.000Z"
+
+	}
+	if ey_m == "" {
+		ey_m = "2200-12-31T00:00:00.000Z"
+	}
+	b, err := time.Parse(time.RFC3339, by_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	if end == "" {
-		end = "2200-01-01"
-	}
-	b, err := time.ParseInLocation("2006-01-02", begin, time.Local)
+	e, err := time.Parse(time.RFC3339, ey_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("begin date is not valid, %s", err.Error())))
-		return
-	}
-	fmt.Println(b)
-	fmt.Println(b.UTC())
-	fmt.Println(b.Unix())
-	e, err := time.ParseInLocation("2006-01-02", end, time.Local)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("end date is not valid, %s", err.Error())))
-		return
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
 	rm.GetReceiptData(b, e)

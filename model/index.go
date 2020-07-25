@@ -63,7 +63,7 @@ func (indexM *IndexModel) Json(mtype string) ([]byte, error) {
 	return nil, nil
 }
 
-func (indexM *IndexModel) GetInfoData() *Info {
+func (indexM *IndexModel) GetInfoData(date time.Time) *Info {
 
 	// const sql = `SELECT
 	// 			ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount,
@@ -75,7 +75,7 @@ func (indexM *IndexModel) GetInfoData() *Info {
 	// 			group by ar.arid;`
 	const sql = `SELECT  SUM(ar.amount) amount,      
 	SUM(COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0)) AS SUM_RA ,
-	COALESCE((SELECT  sum(amount) FROM public.receipt where date between '%s' and ('%s'::date + '1 month'::interval)),0) AS Performance
+	COALESCE((SELECT  sum(amount) FROM public.receipt where extract(epoch from date) >= '%d' and extract(epoch from date - '1 month'::interval)  < '%d'  ),0) AS Performance
 	FROM public.ar ar `
 	/*
 	*balance equal ar.amount - COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA
@@ -92,10 +92,13 @@ func (indexM *IndexModel) GetInfoData() *Info {
 	// 	t.Year(), t.Month(), t.Day(),
 	// 	t.Hour(), t.Minute(), t.Second())
 	//curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
-	curDate := fmt.Sprintf("2020-01-01")
-	fmt.Println(curDate)
 
-	rows, err := db.SQLCommand(fmt.Sprintf(sql, curDate, curDate))
+	b, _ := time.Parse(time.RFC3339, "2019-12-31T16:00:00Z")
+
+	//curDate := fmt.Sprintf("2020-01-01")
+	//fmt.Println(curDate)
+	rows, err := db.SQLCommand(fmt.Sprintf(sql, b.Unix(), b.Unix()))
+	//rows, err := db.SQLCommand(fmt.Sprintf(sql, curDate, curDate))
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -116,8 +119,8 @@ func (indexM *IndexModel) GetInfoData() *Info {
 		info.Receivable = Amount - RA
 
 		//先顛倒，前端沒弄好
-		info.Receivable = info.Performance
-		info.Performance = Amount - RA
+		//info.Receivable = info.Performance
+		//info.Performance = Amount - RA
 
 		data = &info
 	}
@@ -133,7 +136,7 @@ func (indexM *IndexModel) GetInfoData() *Info {
 
 }
 
-func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
+func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*IncomeStatement, error) {
 
 	//本來使用此sql，但有可能branchsalary為空
 	const sql = `WITH  vals  AS (VALUES ( 'none' ) )
@@ -227,18 +230,23 @@ func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
 	lastMonthDate := fmt.Sprintf("%d-%02d-01", lt.Year(), lt.Month())
 	fmt.Println("lastMonthDate:", lastMonthDate)
 	//curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
-	layout := "2006-01-02"
-	curDate := fmt.Sprintf("2020-01")
-	t, _ := time.Parse(layout, curDate+"-01")
+	//layout := "2006-01-02"
+	//curDate := fmt.Sprintf("2020-01")
+
+	mdate, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00+08:00")
+
+	curDate := fmt.Sprintf("%d-%02d", mdate.Year(), mdate.Month())
+	fmt.Println(curDate)
+	//t, _ := time.Parse(layout, curDate+"-01")
 
 	mdb := indexM.imr.GetSQLDB()
 	db, err := mdb.ConnectSQLDB()
 	defer db.Close()
 
-	rows, err := db.Query(fmt.Sprintf(incomeSql, t.Unix(), t.Unix(), branch))
+	rows, err := db.Query(fmt.Sprintf(incomeSql, mdate.Unix(), mdate.Unix(), branch))
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return nil, nil
 	}
 	//fmt.Println(fmt.Sprintf(incomeSql, t.Unix(), t.Unix(), branch))
 	// 收入/薪資支出 年終提播
@@ -246,7 +254,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
 	for rows.Next() {
 		if err := rows.Scan(&SR, &Bonus, &Salary); err != nil {
 			fmt.Println("err Scan " + err.Error())
-			return nil
+			return nil, err
 		}
 	}
 	Salesamounts = int(round(float64(SR)/1.05, 1))
@@ -255,65 +263,65 @@ func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
 	rows, err = db.Query(fmt.Sprintf(amorSql, curDate, branch))
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 	var Amor int
 	for rows.Next() {
 		if err := rows.Scan(&Amor); err != nil {
 			fmt.Println("err Scan " + err.Error())
-			return nil
+			return nil, err
 		}
 	}
 
 	rows, err = db.Query(fmt.Sprintf(pocketSql, curDate, branch))
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 	var Pocket int
 	for rows.Next() {
 		if err := rows.Scan(&Pocket); err != nil {
 			fmt.Println("err Scan " + err.Error())
-			return nil
+			return nil, err
 		}
 	}
 
 	rows, err = db.Query(fmt.Sprintf(prepaySql, curDate+"-01", curDate+"-01", branch))
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 	var Prepay int
 	for rows.Next() {
 		if err := rows.Scan(&Prepay); err != nil {
 			fmt.Println("err Scan " + err.Error())
-			return nil
+			return nil, err
 		}
 	}
 
 	rows, err = db.Query(fmt.Sprintf(configBranchSql, branch))
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return nil, err
 	}
 	var Rent, Agentsign int
 	var Commmercialfee, Annualratio float64
 	for rows.Next() {
 		if err := rows.Scan(&Rent, &Agentsign, &Commmercialfee, &Annualratio); err != nil {
 			fmt.Println("err Scan " + err.Error())
-			return nil
+			return nil, err
 		}
 	}
 
 	rows, err = db.Query(fmt.Sprintf(lastlossSql, branch))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	var lastloss int
 	for rows.Next() {
 		if err := rows.Scan(&lastloss); err != nil {
 			fmt.Println("err Scan " + err.Error())
-			return nil
+			return nil, err
 		}
 	}
 
@@ -373,6 +381,6 @@ func (indexM *IndexModel) GetIncomeStatement(branch string) *IncomeStatement {
 	// fmt.Println("Aftertax:", Aftertax)
 	// fmt.Println("ManagerBonus:", ManagerBonus)
 
-	indexM.incomeStatement = data
-	return indexM.incomeStatement
+	//indexM.incomeStatement = data
+	return data, err
 }

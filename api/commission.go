@@ -32,7 +32,7 @@ type exportCommission struct {
 func (api CommissionAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/commission", Next: api.getCommissionEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		//&APIHandler{Path: "/v1/commission/export", Next: api.exportCommissionEndpoint, Method: "POST", Auth: true, Group: permission.All},
+
 		&APIHandler{Path: "/v1/commission/{Rid}/{Sid}", Next: api.updateCommissionEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/commission/status/{Rid}/{Sid}", Next: api.updateCommissionStatusEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		//更新Bonus使用
@@ -55,20 +55,20 @@ func (api *CommissionAPI) getCommissionEndpoint(w http.ResponseWriter, req *http
 	}
 
 	if by_m == "" {
-		by_m = "1980-01"
-		ey_m = "2200-01"
+		by_m = "1980-01-01T00:00:00.000Z"
+		ey_m = "2200-12-31T00:00:00.000Z"
 	}
-	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+
+	b, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
 	}
-	e, err := time.ParseInLocation("2006-01-02", ey_m+"-01", time.Local)
+
+	e, err := time.Parse(time.RFC3339, ey_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
 	}
 
 	//cm.GetCommissiontData(by_m+"-01", ey_m+"-01", status)
@@ -88,26 +88,6 @@ func (api *CommissionAPI) getCommissionEndpoint(w http.ResponseWriter, req *http
 	// 	w.Write(data)
 	// }
 }
-
-// func (api *CommissionAPI) exportCommissionEndpoint(w http.ResponseWriter, req *http.Request) {
-
-// 	cm := model.GetCModel(di)
-
-// 	exportC := exportCommission{}
-// 	err := json.NewDecoder(req.Body).Decode(&exportC)
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		w.Write([]byte("Invalid JSON format"))
-// 		return
-// 	}
-
-// 	// data, err := json.Marshal(exportC)
-// 	// fmt.Println(string(data))
-
-// 	cm.ExportCommissiontData(exportC.GetCommission())
-// 	w.Write(cm.PDF())
-
-// }
 
 func (api *CommissionAPI) updateCommissionEndpoint(w http.ResponseWriter, req *http.Request) {
 

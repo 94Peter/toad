@@ -64,21 +64,28 @@ func (api *DeductAPI) getDeductEndpoint(w http.ResponseWriter, req *http.Request
 	ey_m := (*queryVar)["date"].(string)
 	mtype := (*queryVar)["type"].(string)
 	if by_m == "" {
-		by_m = "1980-01"
-		ey_m = "2200-01"
+		by_m = "1980-01-01T00:00:00.000Z"
+		ey_m = "2200-12-31T00:00:00.000Z"
 	}
+
 	if mtype == "" || mtype == "全部" || strings.ToLower(mtype) == "all" {
 		mtype = "%"
 	}
 
-	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
 	}
+
+	e, err := time.Parse(time.RFC3339, ey_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+	}
+
 	//fmt.Println("by_m:", by_m)
-	dm.GetDeductData(by_m, ey_m, mtype)
+	dm.GetDeductData(b, e, mtype)
 	//data, err := json.Marshal(result)
 	data, err := dm.Json()
 	if err != nil {

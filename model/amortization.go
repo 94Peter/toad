@@ -53,7 +53,7 @@ func (amorM *AmortizationModel) GetAmortizationData(beginDate, endDate time.Time
 	const qspl = `SELECT amorid, branch, Date, itemname, gaincost, amortizationyearlimit, monthlyamortizationamount, firstamortizationamount, hasamortizationamount, notamortizationamount, isover
 				FROM public.amortization
 				where branch like '%s' and 
-				extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) <= '%d'
+				extract(epoch from Date) >= '%d' and extract(epoch from Date) <= '%d'
 				order by Date;`
 	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	//const qspl = `SELECT arid,sales	FROM public.ar;`

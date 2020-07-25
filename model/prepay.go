@@ -51,7 +51,7 @@ func GetPrePayModel(imr interModelRes) *PrePayModel {
 func (prepayM *PrePayModel) GetPrePayData(startDate, endDate time.Time) []*PrePay {
 
 	const PrePayspl = `SELECT PPid, Date, itemname, description, fee FROM public.PrePay
-		where extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) <= '%d'
+		where extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) < '%d'
 		order by Date;`
 	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	db := prepayM.imr.GetSQLDB()
@@ -141,7 +141,10 @@ func (prepayM *PrePayModel) PDF() []byte {
 	fmt.Println(" data len", len(data.ColumnWidth))
 	p.CustomizedPrepayTitle(data, "代支費用", branchList)
 	data.RawData = data.RawData[4:]
-	p.DrawTablePDF(data)
+	fmt.Println(" data.RawData", len(data.RawData))
+	if len(data.RawData) > 0 {
+		p.DrawTablePDF(data)
+	}
 	p.CustomizedPrepay(data, Total)
 	return p.GetBytesPdf()
 

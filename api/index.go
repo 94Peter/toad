@@ -1,7 +1,10 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
 	"toad/model"
 	"toad/permission"
@@ -22,9 +25,16 @@ func (api IndexAPI) GetAPIs() *[]*APIHandler {
 }
 
 func (api *IndexAPI) getInfoDataEndpoint(w http.ResponseWriter, req *http.Request) {
+	queryVar := util.GetQueryValue(req, []string{"date"}, true)
+	by_m := (*queryVar)["date"].(string)
+	date, err := time.Parse(time.RFC3339, by_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+	}
 
 	indexM := model.GetIndexModel(di)
-	indexM.GetInfoData()
+	indexM.GetInfoData(date)
 	data, err := indexM.Json("info")
 	//data, err := json.Marshal(result)
 	//data, err := systemM.Json("branch")
@@ -38,7 +48,16 @@ func (api *IndexAPI) getInfoDataEndpoint(w http.ResponseWriter, req *http.Reques
 }
 func (api *IndexAPI) getBranchDataEndpoint(w http.ResponseWriter, req *http.Request) {
 
-	queryVar := util.GetQueryValue(req, []string{"branch"}, true)
+	queryVar := util.GetQueryValue(req, []string{"branch", "date"}, true)
+
+	by_m := (*queryVar)["date"].(string)
+
+	date, err := time.Parse(time.RFC3339, by_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+	}
+
 	branch := (*queryVar)["branch"].(string)
 	if branch == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -47,8 +66,8 @@ func (api *IndexAPI) getBranchDataEndpoint(w http.ResponseWriter, req *http.Requ
 	}
 
 	indexM := model.GetIndexModel(di)
-	indexM.GetIncomeStatement(branch)
-	data, err := indexM.Json("incomeStatement")
+	data, err := indexM.GetIncomeStatement(branch, date)
+	//data, err := indexM.Json("incomeStatement")
 	//data, err := json.Marshal(result)
 	//data, err := systemM.Json("branch")
 	if err != nil {
@@ -56,6 +75,7 @@ func (api *IndexAPI) getBranchDataEndpoint(w http.ResponseWriter, req *http.Requ
 		w.Write([]byte(err.Error()))
 		return
 	}
+	result, _ := json.Marshal(data)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
+	w.Write(result)
 }

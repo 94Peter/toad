@@ -31,11 +31,11 @@ func (api AmortizationAPI) Enable() bool {
 
 func (api AmortizationAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/amortization", Next: api.getAmortizationEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/amortization", Next: api.getAmortizationEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/amortization", Next: api.createAmortizationEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/amortization/{ID}", Next: api.deleteAmortizationEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/amortization/{ID}", Next: api.deleteAmortizationEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 
-		&APIHandler{Path: "/v1/amortization/export", Next: api.exportAmortizationEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/amortization/export", Next: api.exportAmortizationEndpoint, Method: "GET", Auth: false, Group: permission.All},
 	}
 }
 
@@ -50,26 +50,26 @@ func (api *AmortizationAPI) exportAmortizationEndpoint(w http.ResponseWriter, re
 	ey_m := (*queryVar)["end"].(string)
 	branch := (*queryVar)["branch"].(string)
 	if by_m == "" {
-		by_m = "1980-01-01"
+		by_m = "1980-01-01T00:00:00.000Z"
 	}
 	if ey_m == "" {
-		ey_m = "2200-01-01"
+		ey_m = "2200-12-31T00:00:00.000Z"
 	}
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}
-	b, err := time.ParseInLocation("2006-01-02", by_m, time.Local)
+	b, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
 	}
-	e, err := time.ParseInLocation("2006-01-02", ey_m, time.Local)
+
+	e, err := time.Parse(time.RFC3339, ey_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
 	}
+
 	amor.GetAmortizationData(b, e, branch)
 
 	w.Write(amor.PDF())
@@ -108,27 +108,26 @@ func (api *AmortizationAPI) getAmortizationEndpoint(w http.ResponseWriter, req *
 	ey_m := (*queryVar)["end"].(string)
 	branch := (*queryVar)["branch"].(string)
 	if by_m == "" {
-		by_m = "1980-01-01"
+		by_m = "1980-01-01T00:00:00.000Z"
 	}
 	if ey_m == "" {
-		ey_m = "2200-01-01"
+		ey_m = "2200-12-31T00:00:00.000Z"
 	}
 
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}
 
-	b, err := time.ParseInLocation("2006-01-02", by_m, time.Local)
+	b, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
 	}
-	e, err := time.ParseInLocation("2006-01-02", ey_m, time.Local)
+
+	e, err := time.Parse(time.RFC3339, ey_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
 	}
 
 	amorM.GetAmortizationData(b, e, branch)
@@ -181,7 +180,7 @@ func (iAmor *inputAmortization) isAmorValid() (bool, error) {
 	// 	return false, errors.New("CompletionDate is not valid")
 	// }
 
-	_, err := time.ParseInLocation("2006-01-02", iAmor.Date, time.Local)
+	_, err := time.Parse(time.RFC3339, iAmor.Date)
 	if err != nil {
 		return false, errors.New("date is not valid, " + err.Error())
 	}
@@ -209,7 +208,7 @@ func (iAmor *inputAmortization) isAmorValid() (bool, error) {
 }
 
 func (iAmor *inputAmortization) GetAmortization() *model.Amortization {
-	date, _ := time.ParseInLocation("2006-01-02", iAmor.Date, time.Local)
+	date, _ := time.Parse(time.RFC3339, iAmor.Date)
 	var MonthlyAmortizationAmount = iAmor.GainCost / (iAmor.AmortizationYearLimit * 12)
 	var FirstAmortizationAmount = MonthlyAmortizationAmount + iAmor.GainCost%(iAmor.AmortizationYearLimit*12)
 	return &model.Amortization{

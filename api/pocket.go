@@ -51,15 +51,19 @@ func (api *PocketAPI) exportPocketEndpoint(w http.ResponseWriter, req *http.Requ
 	branch := (*queryVar)["branch"].(string)
 
 	if by_m == "" {
-		by_m = "1980-01"
-		ey_m = "2200-01"
+		by_m = "1980-01-01T00:00:00.000Z"
+		ey_m = "2200-12-31T00:00:00.000Z"
 	}
 
-	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
+	}
+	m, err := time.Parse(time.RFC3339, ey_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
@@ -69,7 +73,7 @@ func (api *PocketAPI) exportPocketEndpoint(w http.ResponseWriter, req *http.Requ
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	// end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
-	PocketM.GetPocketData(by_m, ey_m, branch)
+	PocketM.GetPocketData(b, m, branch)
 	w.Write(PocketM.PDF())
 }
 
@@ -104,15 +108,19 @@ func (api *PocketAPI) getPocketEndpoint(w http.ResponseWriter, req *http.Request
 	branch := (*queryVar)["branch"].(string)
 
 	if by_m == "" {
-		by_m = "1980-01"
-		ey_m = "2200-01"
+		by_m = "1980-01-01T00:00:00.000Z"
+		ey_m = "2200-12-31T00:00:00.000Z"
 	}
 
-	_, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
+	}
+	m, err := time.Parse(time.RFC3339, ey_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
@@ -122,7 +130,7 @@ func (api *PocketAPI) getPocketEndpoint(w http.ResponseWriter, req *http.Request
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	// end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
-	PocketM.GetPocketData(by_m, ey_m, branch)
+	PocketM.GetPocketData(b, m, branch)
 	//data, err := json.Marshal(result)
 	data, err := PocketM.Json()
 	if err != nil {

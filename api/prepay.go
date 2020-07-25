@@ -68,21 +68,25 @@ func (api *PrePayAPI) exportPrePayEndpoint(w http.ResponseWriter, req *http.Requ
 	model.GetSystemModel(di)
 	queryVar := util.GetQueryValue(req, []string{"date"}, true)
 	by_m := (*queryVar)["date"].(string)
-	//ey_m := by_m
+	ey_m := by_m
 
 	if by_m == "" {
-		by_m = "1980-01"
-		//ey_m = "2200-01"
+		by_m = "1980-01-01T00:00:00.000Z"
+		ey_m = "2200-01-01T00:00:00.000Z"
 	}
 
-	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
+	}
+	e, err := time.Parse(time.RFC3339, ey_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	PrePayM.GetPrePayData(b, b)
+	PrePayM.GetPrePayData(b, e)
 	w.Write(PrePayM.PDF())
 }
 
@@ -94,15 +98,13 @@ func (api *PrePayAPI) getPrePayEndpoint(w http.ResponseWriter, req *http.Request
 	//ey_m := by_m
 
 	if by_m == "" {
-		by_m = "1980-01"
-		//ey_m = "2200-01"
+		by_m = "1980-01-01T00:00:00.000Z"
 	}
 
-	b, err := time.ParseInLocation("2006-01-02", by_m+"-01", time.Local)
+	b, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
-		return
 	}
 
 	PrePayM.GetPrePayData(b, b)
@@ -182,9 +184,9 @@ func (iPrePay *inputPrePay) isPrePayValid() (bool, error) {
 	// 	return false, errors.New("permission error")
 	// }
 
-	_, err := time.ParseInLocation("2006-01-02", iPrePay.Date, time.Local)
+	_, err := time.Parse(time.RFC3339, iPrePay.Date)
 	if err != nil {
-		return false, err
+		return false, errors.New("date is not valid, " + err.Error())
 	}
 
 	if iPrePay.Description == "" {
@@ -211,9 +213,9 @@ func (iPrePay *inputPrePay) isPrePayValid() (bool, error) {
 }
 
 func (iPrePay *inputPrePay) GetPrePay() *model.PrePay {
-	_time, _ := time.ParseInLocation("2006-01-02", iPrePay.Date, time.Local)
+	date, _ := time.Parse(time.RFC3339, iPrePay.Date)
 	return &model.PrePay{
-		Date:        _time,
+		Date:        date,
 		ItemName:    iPrePay.ItemName,
 		Description: iPrePay.Description,
 		Fee:         iPrePay.Fee,

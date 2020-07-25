@@ -378,11 +378,17 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 func (salaryM *SalaryModel) PDFIncomeStatement(branch, SName, Code, date string) {
 	p := pdf.GetNewPDF(pdf.PageSizeA4_)
 	indexM := GetIndexModel(salaryM.imr)
-	incomeStatement := indexM.GetIncomeStatement(branch)
+	mdate, _ := time.Parse(time.RFC3339, "2019-12-31T16:00:00Z")
+	incomeStatement, err := indexM.GetIncomeStatement(branch, mdate)
+	if err != nil {
+		fmt.Println("ERROR PDFIncomeStatement:", err)
+		return
+	}
 	if incomeStatement == nil {
 		fmt.Println("incomeStatement null")
 		return
 	}
+
 	p.CustomizedIncomeStatement(incomeStatement.Branch, incomeStatement.Income.SR, incomeStatement.Income.Salesamounts, incomeStatement.Income.Businesstax,
 		incomeStatement.Expense.Pbonus, incomeStatement.Expense.LBonus, incomeStatement.Expense.Salary, incomeStatement.Expense.Prepay, incomeStatement.Expense.Pocket,
 		incomeStatement.Expense.Amorcost, incomeStatement.Expense.Agentsign, incomeStatement.Expense.Rent, incomeStatement.Expense.Commercialfee, incomeStatement.Expense.Annualbonus, incomeStatement.Expense.SalerFee,

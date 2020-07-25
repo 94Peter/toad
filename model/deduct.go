@@ -58,19 +58,26 @@ type DeductModel struct {
 	deductList []*Deduct
 }
 
-func (decuctModel *DeductModel) GetDeductData(by_m, ey_m, mtype string) []*Deduct {
+func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype string) []*Deduct {
 
 	//
+	// const qspl = `SELECT D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , R.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D
+	// 			inner join public.ar as AR on AR.arid = D.arid
+	// 			Left join public.receipt as R on R.rid = D.rid
+	// 			where ( to_timestamp(date_part('epoch',R.date)::int) >= '%s' and to_timestamp(date_part('epoch',R.date)::int) < ('%s'::date + '1 month'::interval) or R.date is null )
+	// 			and (D.item like '%s' OR  D.status like '%s');`
+
 	const qspl = `SELECT D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , R.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D 
-				inner join public.ar as AR on AR.arid = D.arid
-				Left join public.receipt as R on R.rid = D.rid
-				where ( to_timestamp(date_part('epoch',R.date)::int) >= '%s' and to_timestamp(date_part('epoch',R.date)::int) < ('%s'::date + '1 month'::interval) or R.date is null ) 
-				and (D.item like '%s' OR  D.status like '%s');`
+	inner join public.ar as AR on AR.arid = D.arid
+	Left join public.receipt as R on R.rid = D.rid
+	where ( extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d' or R.date is null ) 
+	and (D.item like '%s' OR  D.status like '%s');`
+
 	//where D.rid = R.rid;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	//fmt.Println(fmt.Sprintf(qspl, by_m+"-01", ey_m+"-01", mtype, mtype))
 	db := decuctModel.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(qspl, by_m+"-01", ey_m+"-01", mtype, mtype))
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, by_m.Unix(), ey_m.Unix(), mtype, mtype))
 	if err != nil {
 		fmt.Println(err)
 		return nil

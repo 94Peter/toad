@@ -30,6 +30,17 @@ func (ta *TestAccount) GetID() string {
 
 func main() {
 
+	b, err := time.ParseInLocation("2006-01-02", "2020-01-01", time.Local)
+	fmt.Println(b, " ", b.Unix)
+	fmt.Println(err)
+
+	t, err := time.Parse(time.RFC3339, "2013-06-05T14:10:43.678+08:00")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(t)
+	fmt.Println(t.Unix())
+
 	// [START setting_port]
 	port := os.Getenv("PORT")
 	if port == "" {

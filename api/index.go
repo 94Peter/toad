@@ -31,6 +31,7 @@ func (api *IndexAPI) getInfoDataEndpoint(w http.ResponseWriter, req *http.Reques
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
 	}
 
 	indexM := model.GetIndexModel(di)
@@ -56,6 +57,7 @@ func (api *IndexAPI) getBranchDataEndpoint(w http.ResponseWriter, req *http.Requ
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
 	}
 
 	branch := (*queryVar)["branch"].(string)

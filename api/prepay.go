@@ -15,7 +15,7 @@ import (
 type PrePayAPI bool
 
 type inputPrePay struct {
-	Date        string                `json:"date"`
+	Date        time.Time             `json:"date"`
 	ItemName    string                `json:"itemName"`
 	Description string                `json:"description"`
 	Fee         int                   `json:"fee"`
@@ -172,7 +172,7 @@ func (api *PrePayAPI) updatePrePayEndpoint(w http.ResponseWriter, req *http.Requ
 	_err := PrePayM.UpdatePrePay(ID, iPrePay.GetPrePay())
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error"))
+		w.Write([]byte("Error:" + _err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -184,10 +184,10 @@ func (iPrePay *inputPrePay) isPrePayValid() (bool, error) {
 	// 	return false, errors.New("permission error")
 	// }
 
-	_, err := time.Parse(time.RFC3339, iPrePay.Date)
-	if err != nil {
-		return false, errors.New("date is not valid, " + err.Error())
-	}
+	// _, err := time.Parse(time.RFC3339, iPrePay.Date)
+	// if err != nil {
+	// 	return false, errors.New("date is not valid, " + err.Error())
+	// }
 
 	if iPrePay.Description == "" {
 		return false, errors.New("description is empty")
@@ -204,7 +204,7 @@ func (iPrePay *inputPrePay) isPrePayValid() (bool, error) {
 		return false, errors.New("prepay is not valid")
 	}
 
-	_, err = json.Marshal(iPrePay)
+	_, err := json.Marshal(iPrePay)
 	if err != nil {
 		return false, err
 	}
@@ -213,9 +213,9 @@ func (iPrePay *inputPrePay) isPrePayValid() (bool, error) {
 }
 
 func (iPrePay *inputPrePay) GetPrePay() *model.PrePay {
-	date, _ := time.Parse(time.RFC3339, iPrePay.Date)
+
 	return &model.PrePay{
-		Date:        date,
+		Date:        iPrePay.Date,
 		ItemName:    iPrePay.ItemName,
 		Description: iPrePay.Description,
 		Fee:         iPrePay.Fee,

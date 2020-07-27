@@ -16,9 +16,9 @@ import (
 type PocketAPI bool
 
 type inputPocket struct {
-	Branch string `json:"branch"`
+	Branch string    `json:"branch"`
+	Date   time.Time `json:"date"`
 	//Date        time.Time `json:"date"`
-	Date        string `json:"date"`
 	ItemName    string `json:"itemName"`
 	Description string `json:"description"`
 	Income      int    `json:"income"`
@@ -59,11 +59,13 @@ func (api *PocketAPI) exportPocketEndpoint(w http.ResponseWriter, req *http.Requ
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
 	}
 	m, err := time.Parse(time.RFC3339, ey_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+		return
 	}
 
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
@@ -225,23 +227,22 @@ func (iPocket *inputPocket) isPocketValid() (bool, error) {
 		return false, errors.New("income is not valid")
 	}
 
-	_, err := time.ParseInLocation("2006-01-02", iPocket.Date, time.Local)
-	if err != nil {
-		return false, errors.New("date is not valid, " + err.Error())
-	}
-
 	return true, nil
 }
 
 func (iPocket *inputPocket) GetPocket() *model.Pocket {
-	the_time, _ := time.ParseInLocation("2006-01-02", iPocket.Date, time.Local)
+	//GCP local time zone是+0時區，circleID月份強制改+8時間
+	loc, _ := time.LoadLocation("Asia/Taipei")
+	t := iPocket.Date.In(loc)
+	circleid := fmt.Sprintf("%d-%02d", t.Year(), t.Month())
+	fmt.Println("circleID:", circleid)
 	return &model.Pocket{
 		Branch:      iPocket.Branch,
 		ItemName:    iPocket.ItemName,
 		Description: iPocket.Description,
 		Fee:         iPocket.Fee,
 		Income:      iPocket.Income,
-		Date:        the_time,
-		CircleID:    iPocket.Date[:7],
+		Date:        iPocket.Date,
+		CircleID:    circleid,
 	}
 }

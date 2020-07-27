@@ -61,6 +61,10 @@ func (am AuthMiddle) GetMiddleWare() func(f http.HandlerFunc) http.HandlerFunc {
 	return func(f http.HandlerFunc) http.HandlerFunc {
 		// one time scope setup area for middleware
 		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, Auth-Token, Authorization, Token")
+			fmt.Println("GetMiddleWare")
 			// ... pre handler functionality
 			path, err := mux.CurrentRoute(r).GetPathTemplate()
 			if err != nil {

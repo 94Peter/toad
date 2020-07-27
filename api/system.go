@@ -30,9 +30,9 @@ func (api SystemAPI) Enable() bool {
 
 func (api SystemAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/system/branch", Next: api.getBranchDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/system/branch", Next: api.getBranchDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
 
-		&APIHandler{Path: "/v1/system/account", Next: api.getAccountDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/system/account", Next: api.getAccountDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		//&APIHandler{Path: "/v1/system/account", Next: api.updateAccountDataEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/system/account/password", Next: api.updateAccountPasswordEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/system/account/{account}", Next: api.deleteAccountDataEndpoint, Method: "DELETE", Auth: true, Group: permission.All},

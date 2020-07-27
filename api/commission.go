@@ -33,10 +33,10 @@ func (api CommissionAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/commission", Next: api.getCommissionEndpoint, Method: "GET", Auth: false, Group: permission.All},
 
-		&APIHandler{Path: "/v1/commission/{Rid}/{Sid}", Next: api.updateCommissionEndpoint, Method: "PUT", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/commission/status/{Rid}/{Sid}", Next: api.updateCommissionStatusEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/commission/{Rid}/{Sid}", Next: api.updateCommissionEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/commission/status/{Rid}/{Sid}", Next: api.updateCommissionStatusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 		//更新Bonus使用
-		&APIHandler{Path: "/v1/commission/bonus/{Rid}/{Sid}", Next: api.refreshCommissionBonusEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/commission/bonus/{Rid}/{Sid}", Next: api.refreshCommissionBonusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 	}
 }
 

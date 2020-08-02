@@ -23,9 +23,10 @@ type inputDeduct struct {
 	ARid string `json:"arid"`
 	//Status      string    `json:"status"`
 	//Date        time.Time `json:"date"`
-	Fee         int    `json:"fee"`
-	Description string `json:"description"`
-	Item        string `json:"item"`
+	Fee         int               `json:"fee"`
+	Description string            `json:"description"`
+	Item        string            `json:"item"`
+	SalerList   []*model.MAPSaler `json:"salerList"`
 }
 type inputUpdateDeduct struct {
 	// Status string    `json:"status"`
@@ -40,6 +41,10 @@ type inputUpdateDeductItem struct {
 	Item string `json:"item"`
 }
 
+type inputUpdateSales struct {
+	SalerList []*model.MAPSaler `json:"salerList"`
+}
+
 func (api DeductAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/deduct", Next: api.getDeductEndpoint, Method: "GET", Auth: false, Group: permission.All},
@@ -49,6 +54,7 @@ func (api DeductAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/deductFee/{ID}", Next: api.updateDeductFeeEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/deduct/item/{ID}", Next: api.updateDeductItemEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/deduct/sales/{ID}", Next: api.updateDeductSalesEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 	}
 }
 
@@ -200,6 +206,31 @@ func (api *DeductAPI) updateDeductItemEndpoint(w http.ResponseWriter, req *http.
 
 }
 
+func (api *DeductAPI) updateDeductSalesEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+	vars := util.GetPathVars(req, []string{"ID"})
+	ID := vars["ID"].(string)
+
+	iUD := inputUpdateSales{}
+	err := json.NewDecoder(req.Body).Decode(&iUD)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	DM := model.GetDecuctModel(di)
+
+	_err := DM.UpdateDeductSales(ID, iUD.SalerList)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error" + _err.Error()))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+
 func (iUD *inputUpdateDeduct) isUpdateDeductValid() (bool, error) {
 	// if !util.IsStrInList(iAR.Permission, permission.All...) {
 	// 	return false, errors.New("permission error")
@@ -257,6 +288,7 @@ func (iDeduct *inputDeduct) GetDeduct() *model.Deduct {
 		Item:        iDeduct.Item,
 		Description: iDeduct.Description,
 		Fee:         iDeduct.Fee,
+		Sales:       iDeduct.SalerList,
 	}
 }
 

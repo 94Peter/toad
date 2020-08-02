@@ -12,18 +12,19 @@ import (
 
 //`json:"id"` 回傳重新命名
 type Deduct struct {
-	ARid        string    `json:"-"`
-	Did         string    `json:"id"`
-	Status      string    `json:"status"`
-	Date        time.Time `json:"date"`
-	Fee         int       `json:"fee"`
-	Description string    `json:"description"`
-	Item        string    `json:"item"`
-	ReceiveDate time.Time `json:"receiveDate"`
-	CNo         string    `json:"contractNo"`
-	CaseName    string    `json:"caseName"`
-	Type        string    `json:"type"`
-	CheckNumber string    `json:"checkNumber"`
+	ARid        string      `json:"-"`
+	Did         string      `json:"id"`
+	Status      string      `json:"status"`
+	Date        time.Time   `json:"date"`
+	Fee         int         `json:"fee"`
+	Description string      `json:"description"`
+	Item        string      `json:"item"`
+	ReceiveDate time.Time   `json:"receiveDate"`
+	CNo         string      `json:"contractNo"`
+	CaseName    string      `json:"caseName"`
+	Type        string      `json:"type"`
+	CheckNumber string      `json:"checkNumber"`
+	Sales       []*MAPSaler `json:"sales"`
 }
 
 // type Receipt struct {
@@ -99,6 +100,32 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype string
 		deductDataList = append(deductDataList, &d)
 	}
 
+	//找出sales
+	const Mapsql = `SELECT did, sid, proportion, sname	FROM public.deductmap; `
+	rows, err = db.SQLCommand(Mapsql)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	for rows.Next() {
+		var did string
+		var saler MAPSaler
+
+		if err := rows.Scan(&did, &saler.Sid, &saler.Percent, &saler.SName); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		for _, deduct := range deductDataList {
+			if deduct.Did == did {
+				deduct.Sales = append(deduct.Sales, &saler)
+				//fmt.Println(arid)
+				break
+			}
+		}
+
+	}
+
 	decuctModel.deductList = deductDataList
 	return decuctModel.deductList
 
@@ -110,6 +137,13 @@ func (decuctModel *DeductModel) Json() ([]byte, error) {
 
 func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct) (err error) {
 	fmt.Println("arid:", deduct.ARid)
+
+	out, err := json.Marshal(deduct)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(out))
+
 	/*為了在Deduct Table中 找到對應的收款明細，以便取得收款時間。
 	//若先建立應扣款項(所以會找不到應收款項Rid)，Rid就會是null
 	*/
@@ -144,6 +178,25 @@ func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, CreateDeduct")
 	}
+
+	//應收扣款帳款成功才建立業務對應表，對應表要從ARMAP自動找出(預設配對正常)
+	if id > 0 {
+		const mapSql = `INSERT INTO public.DEDUCTMAP(Did, Sid, proportion , SName )
+		(select $1, Sid, proportion , SName from public.armap where arid = $2);`
+
+		res, err := sqldb.Exec(mapSql, fakeid, deduct.ARid)
+		if err != nil {
+			fmt.Println("DEDUCT MAP ", err)
+			return err
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+			return err
+		}
+		fmt.Println(id)
+	}
+
 	deduct.Did = fmt.Sprintf("%d", fakeid)
 	decuctModel.setFeeToCommission(sqldb, deduct.Did, deduct.ARid)
 
@@ -439,6 +492,49 @@ func (decuctModel *DeductModel) UpdateDeductRid(ARid string) (err error) {
 		return errors.New("Invalid operation, UpdateDeductRid")
 	}
 	return nil
+}
+
+func (decuctModel *DeductModel) UpdateDeductSales(Did string, salerList []*MAPSaler) (err error) {
+
+	fmt.Println("UpdateDeductSales")
+	interdb := decuctModel.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	decuctModel.DeleteDeductMAP(Did)
+	decuctModel.SaveDeductMAP(salerList, Did, sqldb)
+
+	return nil
+}
+
+func (decuctModel *DeductModel) SaveDeductMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
+	const mapSql = `INSERT INTO public.DeductMAP(
+		Did, Sid, proportion , SName )
+		VALUES ($1, $2, $3, $4);`
+	count := 0
+	for _, element := range salerList {
+		// element is the element from someSlice for where we are
+		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName)
+		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		if err != nil {
+			fmt.Println("SaveDeductMAP ", err)
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+		}
+		count += int(id)
+	}
+	fmt.Println("SaveDeductMAP:", count)
+}
+
+func (decuctModel *DeductModel) DeleteDeductMAP(Did string) {
+
+	interdb := decuctModel.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		fmt.Println(err)
+	}
+	const sql = `delete from public.deductmap where did = $1`
+	_, err = sqldb.Exec(sql, Did)
 }
 
 func getNil(msg string) (response *string) {

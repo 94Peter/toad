@@ -588,7 +588,30 @@ func (sdb *sqlDB) CreateARMAPTable() error {
 		fmt.Println("CreateARMAPTable:" + err.Error())
 		return err
 	}
-	fmt.Println("CreateInvoiceTable Done")
+	fmt.Println("CreateARMapTable Done")
+	return nil
+}
+
+func (sdb *sqlDB) CreateDeductMAPTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.DEDUCTMAP "+
+			"( "+
+			"Did character varying(50) not NULL,"+
+			"Sid character varying(50) not NULL,"+
+			"Proportion double precision DEFAULT 0,"+
+			"SName  character varying(50) not NULL,"+
+			"PRIMARY KEY (Did,Sid) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.DEDUCTMAP "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateDEDUCTMAPTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateDEDUCTMAPTable Done")
 	return nil
 }
 
@@ -849,6 +872,7 @@ func (sdb *sqlDB) InitTable() error {
 		"configparameter": false,
 		"invoice":         false,
 		"armap":           false,
+		"deductmap":       false,
 		"salersalary":     false,
 		"branchsalary":    false,
 		"nhisalary":       false,
@@ -912,6 +936,9 @@ func (sdb *sqlDB) InitTable() error {
 			break
 		case "armap":
 			mT["armap"] = true
+			break
+		case "deductmap":
+			mT["deductmap"] = true
 			break
 		case "salersalary":
 			mT["salersalary"] = true
@@ -1014,7 +1041,9 @@ func (sdb *sqlDB) InitTable() error {
 			case "eventlog":
 				err = sdb.CreateEventLogTable()
 				break
-
+			case "deductmap":
+				err = sdb.CreateDeductMAPTable()
+				break
 			default:
 				fmt.Printf("unknown table %s.\n", tableName)
 				break

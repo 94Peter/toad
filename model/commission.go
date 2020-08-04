@@ -57,68 +57,12 @@ func GetCModel(imr interModelRes) *CModel {
 	return cm
 }
 
-func (cm *CModel) ExportCommissiontData(data []*Commission) []*Commission {
-	fmt.Println("exportCommissiontData")
-	//if invoiceno is null in Database return ""
-
-	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100 * cs.percent/100) bonus,
-	r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(r.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) , coalesce(d.item,'')
-	FROM public.commission c
-	inner JOIN public.receipt r on r.rid = c.rid
-	Inner Join (
-			SELECT A.sid, A.branch, A.percent, A.title
-				FROM public.ConfigSaler A
-				Inner Join (
-					select sid, max(zerodate) zerodate from public.configsaler cs
-					where now() > zerodate
-					group by sid
-				) B on A.sid=B.sid and A.zeroDate = B.zeroDate
-		) cs on c.sid=cs.sid
-	left join(
-		select rid, checknumber , fee, item from public.deduct
-	) d on d.rid = r.rid
-	where c.rid = '%s' and c.sid ='%s';`
-
-	//left JOIN (select sum(fee) fee, count(rid) ,arid from public.deduct group by arid) as tmp on tmp.arid = r.arid
-	db := cm.imr.GetSQLDB()
-	var cDataList []*Commission
-	for _, element := range data {
-		fmt.Println(fmt.Sprintf(qsql, element.Rid, element.Sid))
-		rows, err := db.SQLCommand(fmt.Sprintf(qsql, element.Rid, element.Sid))
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
-
-		fmt.Println("SQLCommand Done")
-		for rows.Next() {
-			fmt.Println("rows.Next ")
-			var c Commission
-
-			if err := rows.Scan(&c.Sid, &c.Rid, &c.Date, &c.Item, &c.Amount, &c.Fee, &c.SName, &c.CPercent, &c.SR, &c.Bonus, &c.ARid, &c.Status, &c.Branch, &c.Percent, &c.ReceiveDate, &c.InvoiceNo, &c.Checknumber, &c.Fee, &c.DedectItem); err != nil {
-				fmt.Println("err Scan " + err.Error())
-			}
-
-			out2, _ := json.Marshal(c)
-			fmt.Println("c :", string(out2))
-
-			cDataList = append(cDataList, &c)
-		}
-
-	}
-	cm.cList = cDataList
-	out, _ := json.Marshal(cm.cList)
-	fmt.Println("cm.cList :", string(out))
-
-	return cm.cList
-}
-
 func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	fmt.Println("exportCommissiontData")
 	//if invoiceno is null in Database return ""
 
-	const qsql = `SELECT c.sid, c.rid, r.date, c.item|| ' ' || ar.name, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100 * cs.percent/100) bonus,
-	r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) , coalesce(d.item,'')
+	const qsql = `SELECT c.sid, c.rid, r.date, c.item|| ' ' || ar.name, r.amount, c.sname, c.cpercent, ( r.amount * c.cpercent/100)  - coalesce(c.fee,0) sr, ( ( r.amount * c.cpercent/100)  - coalesce(c.fee,0) ) * cs.percent/100 bonus,
+	r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) , coalesce(d.item,'')
 	FROM public.commission c
 	inner JOIN public.receipt r on r.rid = c.rid
 	inner JOIN public.ar ar on ar.arid = c.arid
@@ -153,7 +97,7 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 
 		var c Commission
 
-		if err := rows.Scan(&c.Sid, &c.Rid, &c.Date, &c.Item, &c.Amount, &c.Fee, &c.SName, &c.CPercent, &c.SR, &c.Bonus, &c.ARid, &c.Status, &c.Branch, &c.Percent, &c.ReceiveDate, &c.InvoiceNo, &c.Checknumber, &c.Fee, &c.DedectItem); err != nil {
+		if err := rows.Scan(&c.Sid, &c.Rid, &c.Date, &c.Item, &c.Amount, &c.SName, &c.CPercent, &c.SR, &c.Bonus, &c.ARid, &c.Status, &c.Branch, &c.Percent, &c.ReceiveDate, &c.InvoiceNo, &c.Checknumber, &c.Fee, &c.DedectItem); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -385,7 +329,7 @@ func (cm *CModel) RefreshCommissionBonus(Sid, Rid, mtype string) (err error) {
 	}
 
 	const sql = `Update public.commission t1
-					set sr = (t2.amount - t2.fee) * t2.cpercent / 100 , bonus = (t2.amount - t2.fee) * t2.cpercent / 100 * t2.percent /100
+					set sr = t2.amount  * t2.cpercent / 100 - t2.fee, bonus = (t2.amount  * t2.cpercent / 100 - t2.fee) * t2.percent /100
 				FROM(
 				SELECT c.bsid, c.sid, c.rid, r.amount, c.fee , c.cpercent, c.sr, c.bonus,  cs.percent
 								FROM public.commission c
@@ -493,7 +437,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			tabel.RawData = append(tabel.RawData, vs)
 			tabel.RawData = append(tabel.RawData, vs)
 			tabel.RawData = append(tabel.RawData, vs)
-			tabel.RawData = append(tabel.RawData, vs)
+
 		} else {
 			/// 西元轉民國
 			text := element.ReceiveDate
@@ -539,21 +483,21 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 				Align: pdf.AlignRight,
 			}
 			tabel.RawData = append(tabel.RawData, vs)
-			//
-			text = pr.Sprintf("%d", element.Fee)
-			pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
-			vs = &pdf.TableStyle{
-				Text:  text,
-				Bg:    pdf.ColorWhite,
-				Front: pdf.ColorTableLine,
-				Align: pdf.AlignRight,
-			}
-			tabel.RawData = append(tabel.RawData, vs)
 		}
+		//
+		text = pr.Sprintf("%d", element.Fee)
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 4)
+		vs := &pdf.TableStyle{
+			Text:  text,
+			Bg:    pdf.ColorWhite,
+			Front: pdf.ColorTableLine,
+			Align: pdf.AlignRight,
+		}
+		tabel.RawData = append(tabel.RawData, vs)
 		//
 		text = element.SName
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 5)
-		vs := &pdf.TableStyle{
+		vs = &pdf.TableStyle{
 			Text:  element.SName,
 			Bg:    pdf.ColorWhite,
 			Front: pdf.ColorTableLine,

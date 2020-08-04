@@ -405,6 +405,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		SalaryM.SetSMTPConf(di.GetSMTPConf())
 		for _, element := range exportId.BSidList {
 			SalaryM.GetSalerCommission(element.BSid)
+			
 			//SalaryM.PDF(mExport, pdf.OriPdf)
 			SalaryM.PDF(mExport, pdf.NewPdf, send)
 		}

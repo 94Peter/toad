@@ -332,14 +332,13 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID string, salerList []*M
 	const sql = `Update public.ar t1
 					set	amount = $1
 				FROM (
-					SELECT ar.arid, ar.amount, sum(r.amount)
+					SELECT ar.arid, ar.amount, coalesce(sum(r.amount),0) sunreceipt
 					FROM public.ar ar
 					LEFT JOIN public.receipt r ON ar.arid = r.arid
 					where ar.arid = $2
-					group by ar.arid
-					HAVING sum(r.amount)<= $1
+					group by ar.arid				
 				)as t2 
-				where t1.arid = $2;`
+				where t1.arid = $2  and  sunreceipt <= $1 ;`
 
 	interdb := am.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -365,13 +364,37 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID string, salerList []*M
 	//刪除ARMAP 重建
 	am.DeleteARandDeductMAP(ID)
 	am.SaveARMAP(salerList, ID, sqldb)
-	//連動更改ARMAP TABLE的數值
+	am.SaveDeductMAP(ID, sqldb)
+	//連動更改ARMAP TABLE的數值 (目前重新建立，不須連動了)
 	//am.UpdateAccountReceivableSalerProportion(salerList, ID)
 
 	//連動更改傭金明細TABLE的數值
 	am.RefreshCommissionBonus(ID)
 
 	return nil
+}
+
+func (am *ARModel) SaveDeductMAP(ID string, sqldb *sql.DB) {
+	fmt.Println("SaveDeductMAP")
+	const mapSql = `INSERT INTO public.DEDUCTMAP (Did, Sid, proportion , SName )
+					(
+						select * from  
+						(
+							SELECT d.did, armap.* FROM public.ar ar
+							inner join public.deduct d on ar.arid = d.arid
+							cross JOIN (
+							select Sid, proportion , SName from public.armap where arid = $1
+							) armap 
+							where ar.arid = $1 
+						) tmp						
+					) ;`
+
+	_, err := sqldb.Exec(mapSql, ID)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("SaveDeductMAP:", err)
+	}
+
 }
 
 func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
@@ -398,7 +421,7 @@ func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
 //;
 
 func (am *ARModel) DeleteARandDeductMAP(ID string) (err error) {
-	fmt.Println("UpdateAccountReceivable")
+	fmt.Println("DeleteARandDeductMAP")
 	sql := `delete from public.armap where arid = $1`
 
 	interdb := am.imr.GetSQLDB()

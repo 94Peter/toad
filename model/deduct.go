@@ -204,6 +204,7 @@ func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct) (err error) {
 }
 
 //因為傭金明細只需要一筆有應扣費用，hard code更新。
+//如果things有帶入，功能回傳arid用。
 func (decuctModel *DeductModel) setFeeToCommission(sqldb *sql.DB, Did, ARid string, things ...interface{}) (string, error) {
 
 	if ARid == "" {
@@ -228,22 +229,18 @@ func (decuctModel *DeductModel) setFeeToCommission(sqldb *sql.DB, Did, ARid stri
 			return ARid, nil
 		}
 	}
-
-	sql := `Update public.commission set fee = COALESCE((select sum(fee) from public.deduct where arid = $1),0)
-			where rid = (SELECT min(rid) FROM public.commission c where arid = $1) and bsid is null`
-	// if mtype == "date" {
-	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = to_timestamp($1 ,'YYYY-MM-DD hh24:mi:ss') Where did = $2", mtype)
-	// }
-
-	// if mtype == "status" {
-	// 	sql = fmt.Sprintf("UPDATE public.deduct Set %s = $1 Where did = $2", mtype)
-	// }
-
-	// interdb := decuctModel.imr.GetSQLDB()
-	// sqldb, err := interdb.ConnectSQLDB()
-	// if err != nil {
-	// 	return "", err
-	// }
+	fmt.Println("setFeeToCommission")
+	// sql := `Update public.commission set fee = COALESCE((select sum(fee) from public.deduct where arid = $1),0)
+	// 		where rid = (SELECT min(rid) FROM public.commission c where arid = $1) and bsid is null`
+	sql := `UPDATE public.commission c 
+			SET fee = subquery.fee
+			FROM (
+				select map.sid, map.sname, COALESCE(sum(d.fee * map.proportion / 100 ),0) fee from public.deductmap map
+			LEFT JOIN public.deduct d on d.did = map.did
+			where d.arid  = $1
+			group by map.sid, map.sname
+			) AS subquery
+			where c.rid = (SELECT min(rid) FROM public.commission  where arid = $1) and c.bsid is null and subquery.sid  = c.sid`
 
 	res, err := sqldb.Exec(sql, ARid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -269,7 +266,7 @@ func (decuctModel *DeductModel) setFeeToCommission(sqldb *sql.DB, Did, ARid stri
 func (decuctModel *DeductModel) updateSRBonusToCommission(ARid string, sqldb *sql.DB) (string, error) {
 
 	sql := `Update public.commission t1
-	set sr = (t2.amount - t2.fee) * t2.cpercent / 100 , bonus = (t2.amount - t2.fee) * t2.cpercent / 100 * t2.percent /100
+	set sr = t2.amount * t2.cpercent / 100 - t2.fee, bonus = (t2.amount * t2.cpercent / 100 - t2.fee) * t2.percent /100
 	FROM(
 	SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status , cs.percent
 					FROM public.commission c
@@ -325,7 +322,9 @@ func (decuctModel *DeductModel) updateSRBonusToCommission(ARid string, sqldb *sq
 }
 
 func (decuctModel *DeductModel) DeleteDeduct(ID string) (err error) {
-
+	/*
+	* 邏輯是先取得ARID後刪除，然後從算傭金應扣。
+	 */
 	interdb := decuctModel.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
@@ -524,6 +523,11 @@ func (decuctModel *DeductModel) SaveDeductMAP(salerList []*MAPSaler, ID string, 
 		count += int(id)
 	}
 	fmt.Println("SaveDeductMAP:", count)
+	//連動更新傭金
+	if count > 0 {
+		arid, _ := decuctModel.setFeeToCommission(sqldb, ID, "", "nothing")
+		decuctModel.setFeeToCommission(sqldb, "", arid)
+	}
 }
 
 func (decuctModel *DeductModel) DeleteDeductMAP(Did string) {

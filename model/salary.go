@@ -256,11 +256,11 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 		//data.RawData = data.RawData[data.ColumnLen:]
 		fmt.Println("DrawTablePDF")
 		p.DrawTablePDF(data)
-		fmt.Println("CustomizedAgentSign")
+		fmt.Println("CustomizedAgentSign:T_SR ", T_SR, " T_Bonus", T_Bonus)
 		//SR, Bonus := p.CustomizedAgentSign(data, "saler.Name", T_Bonus, T_SR)
 		//total_SR += SR
 		//total_Bonus += Bonus
-		p.CustomizedAgentSign(table, T_SR, T_Bonus)
+		p.CustomizedAgentSign(table, T_Bonus, T_SR)
 		break
 	case pdf.SalarCommission: //8
 		mailList, err := salaryM.getSalerEmail()
@@ -1776,7 +1776,7 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname ,  coalesce(sum(tmp.SR),0)  ,coalesce( sum( tmp.SR * cs.percent/100)  , 0 ) bonus , cs.branch , ss.date
 	from salersalary ss
 		left join(
-			SELECT c.bsid, c.sid, c.rid,  ((r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr					
+			SELECT c.bsid, c.sid, c.rid,  (r.amount * c.cpercent/100 - coalesce(c.fee,0)) sr					
 			FROM public.commission c
 			inner JOIN public.receipt r on r.rid = c.rid		
 			left join(
@@ -1838,13 +1838,13 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 }
 
 func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
-	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, tmp.mdate  from salersalary ss
+	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, (tmp.sr * cs.percent/100) bonus , tmp.remark , cs.branch, tmp.mdate  from salersalary ss
 				left join(
-					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, 
-					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') mdate, COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
+					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100 - coalesce(c.fee,0)) sr, 
+					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') mdate, COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid		
-					inner JOIN public.ar ar on r.arid = c.arid	
+					inner JOIN public.ar ar on ar.arid = c.arid	
 					left join(
 						select rid, checknumber , fee, item from public.deduct
 					) d on d.rid = r.rid		
@@ -1901,8 +1901,8 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, cs.percent   from salersalary ss
 				inner join(
-					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( (r.amount - coalesce(d.fee,0) )* c.cpercent/100) sr, 
-					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(d.fee,0) fee , coalesce(d.item,'') remark
+					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100- coalesce(c.fee,0)) sr, 
+					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid	
 					inner JOIN public.ar ar on ar.arid = c.arid			
@@ -2201,8 +2201,9 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			T_Bonus += element.Bonus
-			tmp_Bonus += element.Bonus
+			element.Bonus = round(float64(element.Bonus), 1) //對第一位小數 四捨五入
+			T_Bonus += float64(int(element.Bonus))
+			tmp_Bonus += float64(int(element.Bonus))
 			text = pr.Sprintf("%d", int(element.Bonus))
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 6)
 			vs = &pdf.TableStyle{

@@ -250,15 +250,21 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 	}
 	//fmt.Println(fmt.Sprintf(incomeSql, t.Unix(), t.Unix(), branch))
 	// 收入/薪資支出 年終提播
-	var SR, Salary, Bonus, Salesamounts, Businesstax int
+	var SR, Salary, Bonus NullInt
+	var Salesamounts, Businesstax int
 	for rows.Next() {
 		if err := rows.Scan(&SR, &Bonus, &Salary); err != nil {
 			fmt.Println("err Scan " + err.Error())
 			return nil, err
 		}
 	}
-	Salesamounts = int(round(float64(SR)/1.05, 1))
-	Businesstax = SR - Salesamounts
+	fmt.Println("Salary:", Salary)
+	fmt.Println("mdate.Unix():", mdate.Unix())
+	fmt.Println(fmt.Sprintf(incomeSql, mdate.Unix(), mdate.Unix(), branch))
+
+	intSR := SR.Value
+	Salesamounts = int(round(float64(intSR)/1.05, 1))
+	Businesstax = int(SR.Value) - Salesamounts
 
 	rows, err = db.Query(fmt.Sprintf(amorSql, curDate, branch))
 	if err != nil {
@@ -326,7 +332,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 	}
 
 	var Pretax, Aftertax, BusinessIncomeTax, ManagerBonus int
-	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + Salary + Prepay + Bonus + int(round(Commmercialfee*float64(Salary+Bonus)/100, 1)) + int(round(Annualratio*float64(SR)/100, 1)))
+	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + Prepay + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 1)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)))
 	if Pretax > 0 {
 		BusinessIncomeTax = int(round(float64(Pretax)*0.8, 1))
 	} else {
@@ -338,7 +344,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 		ManagerBonus = 0
 	}
 	income := Income{
-		SR:           SR,
+		SR:           int(SR.Value),
 		Salesamounts: Salesamounts,
 		Businesstax:  Businesstax,
 	}
@@ -347,11 +353,11 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 		Agentsign:     Agentsign,
 		Rent:          Rent,
 		Pocket:        Pocket,
-		Salary:        Salary,
+		Salary:        int(Salary.Value),
 		Prepay:        Prepay,
-		Pbonus:        Bonus,
-		Annualbonus:   int(round(Annualratio*float64(SR)/100, 1)),
-		Commercialfee: int(round(Commmercialfee*float64(Salary+Bonus)/100, 1)),
+		Pbonus:        int(Bonus.Value),
+		Annualbonus:   int(round(Annualratio*float64(SR.Value)/100, 1)),
+		Commercialfee: int(round(Commmercialfee*float64(Salary.Value+Bonus.Value)/100, 1)),
 	}
 	data := &IncomeStatement{
 		Aftertax:          Aftertax,

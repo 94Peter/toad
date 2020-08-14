@@ -669,9 +669,12 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
+	//GCP local time zone是+0時區，預設前端丟進來的是+8時區
+	loc, _ := time.LoadLocation("Asia/Taipei")
 	b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
+	t := b.In(loc)
 	fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
-	res, err := sqldb.Exec(sql, bs.Date, b.Unix(), year)
+	res, err := sqldb.Exec(sql, bs.Date, t.Unix(), year)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)

@@ -226,9 +226,9 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 			inner join public.BranchSalary BS on  IE.bsid = BS.bsid
 			where date = '%s' and branch = '%s';`
 
-	lt := time.Now().AddDate(0, -1, 0)
-	lastMonthDate := fmt.Sprintf("%d-%02d-01", lt.Year(), lt.Month())
-	fmt.Println("lastMonthDate:", lastMonthDate)
+	//lt := time.Now().AddDate(0, -1, 0)
+	//lastMonthDate := fmt.Sprintf("%d-%02d-01", lt.Year(), lt.Month())
+
 	//curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
 	//layout := "2006-01-02"
 	//curDate := fmt.Sprintf("2020-01")
@@ -258,9 +258,6 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 			return nil, err
 		}
 	}
-	fmt.Println("Salary:", Salary)
-	fmt.Println("mdate.Unix():", mdate.Unix())
-	fmt.Println(fmt.Sprintf(incomeSql, mdate.Unix(), mdate.Unix(), branch))
 
 	intSR := SR.Value
 	Salesamounts = int(round(float64(intSR)/1.05, 1))

@@ -633,7 +633,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 		group by sid 
 	) B on A.sid=B.sid and A.zeroDate = B.zeroDate
 	left join (
-	SELECT c.sid , to_char( to_timestamp(date_part('epoch',r.date)::int),'YYYY-MM')::varchar(50) dateID, sum(c.bonus) Pbonus
+	SELECT c.sid , to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','YYYY-MM')::varchar(50) dateID, sum(c.bonus) Pbonus
 	FROM public.receipt r, public.commission c
 	where c.rid = r.rid and extract(epoch from r.date) >= $2 and extract(epoch from Date - '1 month'::interval) <= $2 and c.bsid is null	
 	group by dateID , c.sid 
@@ -670,11 +670,11 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
 	//GCP local time zone是+0時區，預設前端丟進來的是+8時區
-	loc, _ := time.LoadLocation("Asia/Taipei")
-	b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
-	t := b.In(loc)
+
+	b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
 	fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
-	res, err := sqldb.Exec(sql, bs.Date, t.Unix(), year)
+	res, err := sqldb.Exec(sql, bs.Date, b.Unix(), year)
+
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)
@@ -977,7 +977,7 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 		if err := rows.Scan(&ss.Sid, &ss.BSid, &ss.SName, &ss.Date, &ss.Branch, &ss.Salary, &ss.Pbonus, &ss.Lbonus, &ss.Abonus, &ss.Total,
 			&ss.SP, &ss.Tax, &ss.LaborFee, &ss.HealthFee, &ss.Welfare, &ss.CommercialFee, &ss.Other, &ss.TAmount, &ss.Description, &ss.Workday, &ss.Lock, &ss.ManagerBonus,
 			&ss.Code, &ManagerID); err != nil {
-			fmt.Println("err Scan " + err.Error())
+			fmt.Println("salaryM err Scan " + err.Error())
 			return nil
 		}
 
@@ -1844,7 +1844,7 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, (tmp.sr * cs.percent/100) bonus , tmp.remark , cs.branch, tmp.mdate  from salersalary ss
 				left join(
 					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100 - coalesce(c.fee,0)) sr, 
-					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') mdate, COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
+					r.arid, c.status ,  to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') mdate, COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid		
 					inner JOIN public.ar ar on ar.arid = c.arid	
@@ -2956,8 +2956,7 @@ func (salaryM *SalaryModel) RefreshNHISalary(bsid string) (err error) {
 	if err != nil {
 		return err
 	}
-	//fmt.Println("BSID:" + bs.BSid)
-	//fmt.Println(bs.Date)
+
 	res, err := sqldb.Exec(sql, bsid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {

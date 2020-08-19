@@ -136,19 +136,15 @@ func getTableHeader(mType int) []*TableStyle {
 		break
 	case BranchSalary:
 		h_data = SalaryTableHeader
-		fmt.Println("BranchSalary:")
 		break
 	case SalerSalary:
 		h_data = SalaryTableHeader
-		fmt.Println("SalerSalary:")
 		break
 	case Commission:
 		h_data = CommissionTableHeader
-		fmt.Println("Commission:")
 		break
 	case SalarCommission:
 		h_data = SalarCommissionTableHeader
-		fmt.Println("SalarCommission:")
 		break
 	case AgentSign:
 		h_data = AgentSignTableHeader

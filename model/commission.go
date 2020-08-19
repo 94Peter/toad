@@ -62,7 +62,7 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	//if invoiceno is null in Database return ""
 
 	const qsql = `SELECT c.sid, c.rid, r.date, c.item|| ' ' || ar.name, r.amount, c.sname, c.cpercent, ( r.amount * c.cpercent/100)  - coalesce(c.fee,0) sr, ( ( r.amount * c.cpercent/100)  - coalesce(c.fee,0) ) * cs.percent/100 bonus,
-	r.arid, c.status , cs.branch, cs.percent, to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) , coalesce(d.item,'')
+	r.arid, c.status , cs.branch, cs.percent, to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) , coalesce(d.item,'')
 	FROM public.commission c
 	inner JOIN public.receipt r on r.rid = c.rid
 	inner JOIN public.ar ar on ar.arid = c.arid

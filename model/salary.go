@@ -575,6 +575,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 		return errors.New("Invalid operation, CreateBranchSalary")
 	}
 
+	////將曾經排除的傭金加入
 	scsErr := salaryM.SetCommissionBSid(bs, cid)
 	if scsErr != nil {
 		return nil
@@ -866,17 +867,25 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 	const sql = `Update public.commission as com
 				set bsid = subquery.bsid, status = 'join'
 				from (
-				SELECT c.sid, c.rid, SS.bsid, to_char(r.date,'YYYY-MM')::varchar(50) date
+				SELECT c.sid, c.rid, SS.bsid
 				FROM public.receipt r
 				inner join public.commission c on c.rid = r.rid and 
 				extract(epoch from r.date) >= $1 and extract(epoch from Date - '1 month'::interval) <= $1 and c.bsid is null
-				inner join public.SalerSalary SS on SS.date = to_char(r.date,'YYYY-MM') and SS.Sid = C.sid
+				inner join public.SalerSalary SS on SS.date = to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM') and SS.Sid = C.sid
 				) AS subquery
 				where com.sid = subquery.sid and com.rid = subquery.rid	;	
 				`
 	/*
-		where c.rid = r.rid and extract(epoch from r.date) >= $2 and extract(epoch from Date - '1 month'::interval) <= $2 and c.bsid is null
-			to_timestamp(date_part('epoch',r.date)::int) >= $1 and to_timestamp(date_part('epoch',r.date)::int) < ( $1::date + '1 month'::interval)
+		Update public.commission as com
+				set bsid = subquery.bsid, status = 'join'
+				from (
+				SELECT c.sid, c.rid, SS.bsid, to_char(r.date,'YYYY-MM')::varchar(50) date
+				FROM public.receipt r
+				inner join public.commission c on c.rid = r.rid and
+				extract(epoch from r.date) >= $1 and extract(epoch from Date - '1 month'::interval) <= $1 and c.bsid is null
+				inner join public.SalerSalary SS on SS.date = to_char(r.date,'YYYY-MM') and SS.Sid = C.sid
+				) AS subquery
+				where com.sid = subquery.sid and com.rid = subquery.rid
 	*/
 	interdb := salaryM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
@@ -885,7 +894,9 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
+	b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
+	//fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
+	//b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
 	fmt.Println("UpdateCommissionBSidAndStatus:", bs.Date+"-01 =>", b.Unix())
 	res, err := sqldb.Exec(sql, b.Unix())
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)

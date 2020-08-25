@@ -101,8 +101,8 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 			fmt.Println("err Scan " + err.Error())
 		}
 
-		out2, _ := json.Marshal(c)
-		fmt.Println("exportCommissiontData c :", string(out2))
+		// out2, _ := json.Marshal(c)
+		// fmt.Println("exportCommissiontData c :", string(out2))
 
 		cDataList = append(cDataList, &c)
 	}
@@ -428,6 +428,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		text := ""
 		//放空白
 		if sameRow {
+
 			vs := &pdf.TableStyle{
 				Text:  text,
 				Bg:    pdf.ColorWhite,
@@ -513,6 +514,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
+		element.SR = round(float64(element.SR), 0) //對第一位小數 四捨五入
 		TotalSR += element.SR
 		text = pr.Sprintf("%.f", element.SR)
 		//text = fmt.Sprintf("%.f", element.SR)
@@ -525,7 +527,9 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
+		element.Bonus = round(float64(element.Bonus), 0) //對第一位小數 四捨五入
 		TotalBouns += element.Bonus
+
 		text = pr.Sprintf("%.f", element.Bonus)
 		//text = fmt.Sprintf("%.f", element.Bonus)
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 8)
@@ -581,6 +585,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
+
 	}
 	return tabel, TotalSR, TotalBouns
 }

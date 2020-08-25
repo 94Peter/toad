@@ -260,7 +260,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 	}
 
 	intSR := SR.Value
-	Salesamounts = int(round(float64(intSR)/1.05, 1))
+	Salesamounts = int(round(float64(intSR)/1.05, 0))
 	Businesstax = int(SR.Value) - Salesamounts
 
 	rows, err = db.Query(fmt.Sprintf(amorSql, curDate, branch))
@@ -329,14 +329,14 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 	}
 
 	var Pretax, Aftertax, BusinessIncomeTax, ManagerBonus int
-	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + Prepay + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 1)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)))
+	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + Prepay + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 0)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)))
 	if Pretax > 0 {
-		BusinessIncomeTax = int(round(float64(Pretax)*0.8, 1))
+		BusinessIncomeTax = int(round(float64(Pretax)*0.8, 0))
 	} else {
 		BusinessIncomeTax = 0
 	}
 	Aftertax = Pretax - BusinessIncomeTax
-	ManagerBonus = int(round(float64(Aftertax+lastloss+0)*0.2, 1))
+	ManagerBonus = int(round(float64(Aftertax+lastloss+0)*0.2, 0))
 	if ManagerBonus < 0 {
 		ManagerBonus = 0
 	}
@@ -353,8 +353,8 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 		Salary:        int(Salary.Value),
 		Prepay:        Prepay,
 		Pbonus:        int(Bonus.Value),
-		Annualbonus:   int(round(Annualratio*float64(SR.Value)/100, 1)),
-		Commercialfee: int(round(Commmercialfee*float64(Salary.Value+Bonus.Value)/100, 1)),
+		Annualbonus:   int(round(Annualratio*float64(SR.Value)/100, 0)),
+		Commercialfee: int(round(Commmercialfee*float64(Salary.Value+Bonus.Value)/100, 0)),
 	}
 	data := &IncomeStatement{
 		Aftertax:          Aftertax,

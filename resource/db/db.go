@@ -13,12 +13,12 @@ type interDoc interface {
 type InterDB interface {
 	C(c string) InterDB
 	Save(doc interDoc) error
-	CreateUser(phone, displayName, email, pwd, permission string) error
+	CreateUser(phone, displayName, email, pwd, permission, dbname string) error
 	DeleteUser(uid string) error
 	SetUserDisable(uid string, disable bool) error
 	ChangePwd(uid string, pwd string) error
 	UpdateState(uid string, state string) error
-	UpdateUser(uid, display, permission string) error
+	UpdateUser(uid, display, permission, dbname string) error
 	VerifyToken(idToken string) (string, error)
 	GetByID(id string, doc interface{}) error
 	GetUser(uid string) (map[string]interface{}, error)

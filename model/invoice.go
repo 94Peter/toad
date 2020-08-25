@@ -410,7 +410,7 @@ func (invoiceM *InvoiceModel) CustomizedInvoice(p *pdf.Pdf, Invoice *Invoice) {
 	p.NewLine(gap)
 	p.SetPdf_XY(25, -1)
 	p.FillText("銷售額", fontsize, pdf.ColorTableLine, pdf.AlignLeft, pdf.ValignMiddle, detail_w, pdf.TextHeight)
-	p.FillText(fmt.Sprintf("%.f", round(float64(Invoice.TotalAmount)/1.05, 1)), fontsize, pdf.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, detail_w+50, pdf.TextHeight)
+	p.FillText(fmt.Sprintf("%.f", round(float64(Invoice.TotalAmount)/1.05, 0)), fontsize, pdf.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, detail_w+50, pdf.TextHeight)
 
 }
 func (invoiceM *InvoiceModel) GetInvoicePDF(rid string, p *pdf.Pdf) {
@@ -471,8 +471,8 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice) (*Invoice, e
 	tmap["seller"] = storeID
 	tmap["buyer_name"] = "(" + r.CustomerType + "家)" + r.Name
 	tmap["buyer_uniform"] = iv.BuyerID
-	tmap["sales_amount"] = round(float64(r.Amount)/1.05, 1)    //對第一位小數 四捨五入
-	tmap["tax_amount"] = round(float64(r.Amount)/1.05*0.05, 1) //對第一位小數 四捨五入
+	tmap["sales_amount"] = round(float64(r.Amount)/1.05, 0)    //對第一位小數 四捨五入
+	tmap["tax_amount"] = round(float64(r.Amount)/1.05*0.05, 0) //對第一位小數 四捨五入
 	tmap["total_amount"] = r.Amount
 	tmap["tax_type"] = "1"    //應稅
 	tmap["is_exchange"] = "1" //需要到財政部確認發票

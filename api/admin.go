@@ -30,7 +30,7 @@ func (api AdminAPI) GetAPIs() *[]*APIHandler {
 		//&APIHandler{Path: "/v1/category", Next: api.t, Method: "POST", Auth: false, Group: permission.All},
 
 		&APIHandler{Path: "/v1/user", Next: api.getUserEndPoint, Method: "GET", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/user", Next: api.createUser, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user", Next: api.createUser, Method: "POST", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/user/{ID}", Next: api.deleteUserEndPoint, Method: "DELETE", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/user", Next: api.updateUserEndPoint, Method: "PUT", Auth: true, Group: permission.All},
 
@@ -48,6 +48,7 @@ type inputUser struct {
 	Name       string `json:"name"`
 	Permission string `json:"permission"`
 	Password   string `json:"password"`
+	Site       string `json:"site"`
 }
 
 type inputUpdateUser struct {
@@ -369,6 +370,7 @@ func (user *inputUser) GetUser() *model.User {
 		Permission: user.Permission,
 		Account:    user.Account,
 		Name:       user.Name,
+		Site:       user.Site,
 	}
 }
 

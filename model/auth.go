@@ -43,6 +43,7 @@ type User struct {
 	Account    string    `json:"account"`
 	Name       string    `json:"name"`
 	Permission string    `json:"permission"`
+	Site       string    `json:"site"`
 	Password   string    `json:"-"`
 	CreateDate time.Time `json:"createDate"`
 	Lasttime   time.Time `json:"lasttime"`
@@ -95,7 +96,7 @@ func (dc *categoryUser) test(phone, displayName, email, pwd, permission string) 
 //phone, displayName, email, pwd, permission string
 func (memM *memberModel) CreateUser(user *User) error {
 	//phone=>Account也用帶入。
-	err := memM.cu.db.CreateUser(user.Account, user.Name, user.Account, user.Password, user.Permission)
+	err := memM.cu.db.CreateUser(user.Account, user.Name, user.Account, user.Password, user.Permission, user.Site)
 	if err != nil {
 		fmt.Println("CreateUser:", err)
 		return err
@@ -226,7 +227,7 @@ func (memM *memberModel) UpdateState(uid string, state string) error {
 }
 
 func (memM *memberModel) UpdateUser(user *User) error {
-	err := memM.cu.db.UpdateUser(user.Account, user.Name, user.Permission)
+	err := memM.cu.db.UpdateUser(user.Account, user.Name, user.Permission, user.Site)
 	if err != nil {
 		fmt.Println(err)
 		return err

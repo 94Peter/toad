@@ -2215,7 +2215,7 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			element.Bonus = round(float64(element.Bonus), 1) //對第一位小數 四捨五入
+			element.Bonus = round(float64(element.Bonus), 0) //對第一位小數 四捨五入
 			T_Bonus += float64(int(element.Bonus))
 			tmp_Bonus += float64(int(element.Bonus))
 			text = pr.Sprintf("%d", int(element.Bonus))

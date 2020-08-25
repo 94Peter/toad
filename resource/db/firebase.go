@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"toad/util"
@@ -17,6 +18,7 @@ import (
 const (
 	ClaimState      = "state"
 	ClaimPermission = "permission"
+	ClaimDBName     = "dbname"
 )
 
 type firebaseDB struct {
@@ -82,7 +84,7 @@ func (db *firebaseDB) connectAuth() (*firebaseauth.Client, error) {
 	return db.authClient, err
 }
 
-func (db *firebaseDB) CreateUser(phone, displayName, email, pwd, permission string) error {
+func (db *firebaseDB) CreateUser(phone, displayName, email, pwd, permission, dbname string) error {
 	client, err := db.connectAuth()
 	if err != nil {
 		return err
@@ -96,7 +98,7 @@ func (db *firebaseDB) CreateUser(phone, displayName, email, pwd, permission stri
 		Disabled(false)
 	_, err = client.CreateUser(db.ctx, params)
 	if permission != "" {
-		db.UpdateUser(email, displayName, permission)
+		db.UpdateUser(email, displayName, permission, dbname)
 	}
 	return err
 }
@@ -163,16 +165,19 @@ func (db *firebaseDB) GetUser(uid string) (map[string]interface{}, error) {
 	if claim == nil {
 		claim = make(map[string]interface{})
 	}
-	//fmt.Println("claim:", claim)
-	// fmt.Println(record)
-	// out, err := json.Marshal(record)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(string(out))
+
+	fmt.Println("claim:", claim)
+	fmt.Println(record)
+	out, err := json.Marshal(record)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(out))
+
 	return claim, nil
 }
-func (db *firebaseDB) UpdateUser(uid, display, permission string) error {
+
+func (db *firebaseDB) UpdateUser(uid, display, permission, dbname string) error {
 	client, err := db.connectAuth()
 	if err != nil {
 		return err
@@ -189,11 +194,11 @@ func (db *firebaseDB) UpdateUser(uid, display, permission string) error {
 			return err
 		}
 
-		// out, err := json.Marshal(record)
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// fmt.Println(string(out))
+		out, err := json.Marshal(record)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(string(out))
 
 		//claim會取到null，解決方法 可能在firebase要設定
 		//所以null先init一個map。以免出錯
@@ -202,6 +207,7 @@ func (db *firebaseDB) UpdateUser(uid, display, permission string) error {
 			claim = make(map[string]interface{})
 		}
 		claim[ClaimPermission] = permission
+		claim[ClaimDBName] = dbname
 		params = params.CustomClaims(claim)
 	}
 

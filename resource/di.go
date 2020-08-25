@@ -95,7 +95,7 @@ func GetConf(env string, timezone string) *DI {
 		panic(err)
 	}
 
-	// myDI.Location = loc
+	myDI.Location = loc
 
 	myDI.Log.StartLog()
 	myDI.GetSQLDB() //for quickly check DB schema

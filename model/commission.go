@@ -505,7 +505,8 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
-		text = fmt.Sprintf("%.f%s", element.CPercent, "%")
+
+		text = fmt.Sprintf("%.1f%s", element.CPercent, "%")
 		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 6)
 		vs = &pdf.TableStyle{
 			Text:  text,

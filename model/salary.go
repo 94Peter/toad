@@ -2194,7 +2194,7 @@ func (salaryM *SalaryModel) addAgentSignInfoTable(table *pdf.DataTable, p *pdf.P
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			text = pr.Sprintf("%.f%s", element.CPercent, "%")
+			text = pr.Sprintf("%.1f%s", element.CPercent, "%")
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
 				Text:  text,
@@ -2373,7 +2373,7 @@ func (salaryM *SalaryModel) addSalerCommissionInfoTable(table *pdf.DataTable, p 
 			}
 			table.RawData = append(table.RawData, vs)
 			//
-			text = fmt.Sprintf("%.f", element.CPercent)
+			text = fmt.Sprintf("%.1f", element.CPercent)
 			pdf.ResizeWidth(table, p.GetTextWidth(text), 4)
 			vs = &pdf.TableStyle{
 				Text:  text,

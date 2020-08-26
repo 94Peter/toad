@@ -15,6 +15,7 @@ import (
 	"image/png"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -558,12 +559,20 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice) (*Invoice, e
 	return invoice, nil
 }
 
-func round(v float64, decimals int) float64 {
-	var pow float64 = 1
-	for i := 0; i < decimals; i++ {
-		pow *= 10
-	}
-	return float64(int((v*pow)+0.5)) / pow
+// func round(v float64, decimals int) float64 {
+// 	var pow float64 = 1
+// 	for i := 0; i < decimals; i++ {
+// 		pow *= 10
+// 	}
+// 	return float64(int((v*pow)+0.5)) / pow
+// }
+
+//原文網址：https://kknews.cc/news/val5oky.html
+//四捨五入 取精度
+func round(f float64, places int) float64 {
+	shift := math.Pow(10, float64(places))
+	fv := 0.0000000001 + f //對浮點數產生.xxx999999999 計算不准進行處理
+	return math.Floor(fv*shift+.5) / shift
 }
 
 func (invoiceM *InvoiceModel) GetInvoiceDataFromAPI(invoiceNo string) (*Invoice, error) {

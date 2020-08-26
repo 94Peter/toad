@@ -528,9 +528,9 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 		}
 		tabel.RawData = append(tabel.RawData, vs)
 		//
-		//fmt.Println("element.Bonus:", element.Bonus)
+		fmt.Println("element.Bonus:", element.Bonus)
 		element.Bonus = round(float64(element.Bonus), 0) //對第一位小數 四捨五入
-		//fmt.Println("@element.Bonus:", element.Bonus)
+		fmt.Println("@element.Bonus:", element.Bonus)
 		TotalBouns += element.Bonus
 
 		text = pr.Sprintf("%.f", element.Bonus)

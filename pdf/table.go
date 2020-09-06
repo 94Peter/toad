@@ -42,11 +42,12 @@ var (
 	Commission      = 4
 	AgentSign       = 5
 	SR              = 6
-	SalerSalary     = 7  //7.個人薪資明細 (要轉傳給員工的)
-	SalarCommission = 8  //8.個人佣金明細 (要轉傳給員工的)
-	Pocket          = 10 //10. 零用金
-	Prepay          = 11 //11. 代支費用
-	Amortization    = 12 //12. 設立成本分攤表
+	SalerSalary     = 7 //7.個人薪資明細 (要轉傳給員工的)
+	SalarCommission = 8 //8.個人佣金明細 (要轉傳給員工的)
+	//9.年度所得 excel
+	Pocket       = 10 //10. 零用金
+	Prepay       = 11 //11. 代支費用
+	Amortization = 12 //12. 設立成本分攤表
 
 	//
 	NHITableHeader = []string{"員工姓名", "健保投保薪資", "薪資", "績效", "獎金", "兼職(加保工會)", "合計薪資", "薪資差額(G-B)", "累計差額(H+上月H)", "4倍獎金", "補充保費((I-J)＞0=H)", "4倍獎金補充保費", "員工應扣4倍獎金補充保費", "員工應扣兼職補充保費", "代扣稅款5%", "職稱", "備註"}

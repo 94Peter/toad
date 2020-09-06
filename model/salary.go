@@ -10,6 +10,7 @@ import (
 	"toad/excel"
 	"toad/pdf"
 	"toad/resource/db"
+	"toad/txt"
 	"toad/util"
 
 	"golang.org/x/text/language"
@@ -118,6 +119,15 @@ type Expense struct {
 	SalerFee      int     `json:"salerFee"`
 }
 
+type TransferSalary struct {
+	Branch  string
+	Date    string
+	Account string
+	Amount  int
+	BankNo  string
+	IDNo    string
+}
+
 type Cid struct {
 	Sid string `json:"sid"`
 	Rid string `json:"rid"`
@@ -136,6 +146,8 @@ type SalaryModel struct {
 	NHISalaryList     []*NHISalary
 	IncomeExpenseList []*IncomeExpense
 	MailList          []*ConfigSaler
+
+	TransferSalaryList []*TransferSalary
 
 	SystemAccountList []*SystemAccount
 	CommissionList    []*Commission
@@ -420,6 +432,17 @@ func (salaryM *SalaryModel) EXCEL(mtype int) {
 		DataList := salaryM.addIncomeTaxReturnInfoTable(mtype)
 		ex.FillText(DataList)
 
+		break
+	}
+
+	return //p.GetBytesPdf()
+}
+
+func (salaryM *SalaryModel) TXT(mtype int) {
+	fmt.Println("TXT:", mtype)
+	switch mtype {
+	case txt.SalaryTransfer:
+		txt.Write(salaryM.makeTxtTransferSalary())
 		break
 	}
 
@@ -2986,4 +3009,60 @@ func (salaryM *SalaryModel) RefreshNHISalary(bsid string) (err error) {
 	}
 
 	return nil
+}
+
+//13 txt 薪資簡易版
+func (salaryM *SalaryModel) MakeTxtTransferSalary(bsid string) error {
+
+	const qspl = `SELECT s.branch, s.date, s.sid, s.tamount, c.bankaccount, '822' FROM public.salersalary s
+	INNER JOIN public.configsaler c on c.sid = s.sid 
+	where s.bsid = $1;`
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := salaryM.imr.GetSQLDB()
+	sqldb, err := db.ConnectSQLDB()
+	//fmt.Println(fmt.Sprintf(qspl, branch))
+	rows, err := sqldb.Query(qspl, bsid)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	var tList []*TransferSalary
+
+	for rows.Next() {
+		var t TransferSalary
+
+		if err := rows.Scan(&t.Branch, &t.Date, &t.IDNo, &t.Amount, &t.Account, &t.BankNo); err != nil {
+			fmt.Println("makeTxtTransferSalary err Scan " + err.Error())
+			return err
+		}
+
+		tList = append(tList, &t)
+	}
+
+	out, err := json.Marshal(tList)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(out))
+
+	salaryM.TransferSalaryList = tList
+
+	return nil
+}
+
+//轉文字
+func (salaryM *SalaryModel) makeTxtTransferSalary() (string, string) {
+	data := ""
+	branch_date := ""
+	for _, element := range salaryM.TransferSalaryList {
+		if data != "" {
+			data += "\n"
+		}
+		data += fmt.Sprintf("%016s%016d%s%11s", element.Account, element.Amount, element.BankNo, element.IDNo)
+	}
+	if len(salaryM.TransferSalaryList) > 0 {
+		text, _ := util.ADtoROC(salaryM.TransferSalaryList[0].Date, "file")
+		branch_date = salaryM.TransferSalaryList[0].Branch + text
+	}
+	return data, branch_date
 }

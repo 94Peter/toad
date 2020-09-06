@@ -13,6 +13,7 @@ import (
 	"toad/model"
 	"toad/pdf"
 	"toad/permission"
+	"toad/txt"
 	"toad/util"
 )
 
@@ -405,7 +406,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		SalaryM.SetSMTPConf(di.GetSMTPConf())
 		for _, element := range exportId.BSidList {
 			SalaryM.GetSalerCommission(element.BSid)
-			
+
 			//SalaryM.PDF(mExport, pdf.OriPdf)
 			SalaryM.PDF(mExport, pdf.NewPdf, send)
 		}
@@ -438,6 +439,29 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 	// 	amor := model.GetAmortizationModel(di) // 會使用到system model函式，預防崩潰，所以要初始化
 	// 	amor.GetAmortizationData("1980-01", "2280-01", "%")
 	// 	break
+	case txt.SalaryTransfer: //13
+		fmt.Println("transfer:", mExport)
+		//data := []*model.TransferSalary{}
+
+		for _, element := range exportId.BSidList {
+			fmt.Println(element.BSid)
+			err := SalaryM.MakeTxtTransferSalary(element.BSid)
+			if err != nil {
+				fmt.Println(err)
+				SalaryM.TransferSalaryList = []*model.TransferSalary{}
+				util.DeleteAllFile()
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+			SalaryM.TXT(mExport)
+		}
+
+		util.CompressTxtZip("download")
+		ReceiveFile(w, req, "download.zip")
+		util.DeleteAllFile()
+
+		return
 
 	case 0: //test
 

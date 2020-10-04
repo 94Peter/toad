@@ -153,7 +153,14 @@ func (api *ReceiptAPI) deleteReceiptEndpoint(w http.ResponseWriter, req *http.Re
 	fmt.Println(ID)
 	rm := model.GetRTModel(di)
 	if err := rm.DeleteReceiptData(ID); err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			break
+		}
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -184,7 +191,15 @@ func (api *ReceiptAPI) updateReceiptEndpoint(w http.ResponseWriter, req *http.Re
 
 	rm := model.GetRTModel(di)
 	if err := rm.UpdateReceiptData(iuRT.Amount, iuRT.Date, ID); err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusNotFound)
+
+			break
+		}
 		w.Write([]byte(err.Error()))
 		return
 	}

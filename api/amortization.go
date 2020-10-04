@@ -83,7 +83,14 @@ func (api *AmortizationAPI) deleteAmortizationEndpoint(w http.ResponseWriter, re
 
 	amorM := model.GetAmortizationModel(di)
 	if err := amorM.DeleteAmortization(ID); err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			break
+		}
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -160,10 +167,17 @@ func (api *AmortizationAPI) createAmortizationEndpoint(w http.ResponseWriter, re
 
 	amor := model.GetAmortizationModel(di)
 
-	_err := amor.CreateAmortization(iAmor.GetAmortization())
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error"))
+	err = amor.CreateAmortization(iAmor.GetAmortization())
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error:" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -208,6 +222,7 @@ func (iAmor *inputAmortization) isAmorValid() (bool, error) {
 }
 
 func (iAmor *inputAmortization) GetAmortization() *model.Amortization {
+	//date, _ := time.Parse(time.RFC3339, iAmor.Date+"T23:59:59+08:00") //預設成當天最後的時刻
 	date, _ := time.Parse(time.RFC3339, iAmor.Date)
 	var MonthlyAmortizationAmount = iAmor.GainCost / (iAmor.AmortizationYearLimit * 12)
 	var FirstAmortizationAmount = MonthlyAmortizationAmount + iAmor.GainCost%(iAmor.AmortizationYearLimit*12)

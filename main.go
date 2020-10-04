@@ -86,6 +86,7 @@ func main() {
 
 //golang 定时器，启动的时候执行一次，以后每天晚上12点执行
 func startTimer(myDI *resource.DI) {
+	model.GetSalaryModel(myDI)
 	const DATE_FORMAT = "2006-01-02"
 	go func() {
 		for {

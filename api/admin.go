@@ -29,15 +29,15 @@ func (api AdminAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/category", Next: api.getCategoryEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/category", Next: api.t, Method: "POST", Auth: false, Group: permission.All},
 
-		&APIHandler{Path: "/v1/user", Next: api.getUserEndPoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user", Next: api.getUserEndPoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/user", Next: api.createUser, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/user/{ID}", Next: api.deleteUserEndPoint, Method: "DELETE", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/user", Next: api.updateUserEndPoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user/{ID}", Next: api.deleteUserEndPoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/user", Next: api.updateUserEndPoint, Method: "PUT", Auth: false, Group: permission.All},
 
-		&APIHandler{Path: "/v1/user/pwd", Next: api.updatePwdEndPoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user/pwd", Next: api.updatePwdEndPoint, Method: "PUT", Auth: false, Group: permission.All},
 		//&APIHandler{Path: "/v1/user/pwd/{Email}", Next: api.resetPwdEndPoint, Method: "POST", Auth: false, Group: permission.All}, not work
-		&APIHandler{Path: "/v1/user/disable", Next: api.disableUserEndPoint, Method: "PUT", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/user/state", Next: api.updateStateEndPoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user/disable", Next: api.disableUserEndPoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/user/state", Next: api.updateStateEndPoint, Method: "PUT", Auth: false, Group: permission.All},
 	}
 }
 
@@ -49,12 +49,14 @@ type inputUser struct {
 	Permission string `json:"permission"`
 	Password   string `json:"password"`
 	Site       string `json:"site"`
+	Branch     string `json:"branch"`
 }
 
 type inputUpdateUser struct {
 	Account    string `json:"account"`
 	Name       string `json:"name"`
 	Permission string `json:"permission"`
+	Branch     string `json:"branch"`
 }
 
 type inputPwd struct {
@@ -250,6 +252,7 @@ func (api *AdminAPI) tokenEndpoint(w http.ResponseWriter, req *http.Request) {
 		"token":      token,
 		"state":      user.State,
 		"permission": user.Permission,
+		"branch":     user.Branch,
 	})
 
 }
@@ -357,6 +360,9 @@ func permissionCheck(perm string) error {
 	if perm == permission.Admin {
 		return nil
 	}
+	if perm == permission.Accountant {
+		return nil
+	}
 	if perm == "" {
 		return errors.New("permission is empty")
 	}
@@ -371,6 +377,7 @@ func (user *inputUser) GetUser() *model.User {
 		Account:    user.Account,
 		Name:       user.Name,
 		Site:       user.Site,
+		Branch:     user.Branch,
 	}
 }
 
@@ -380,6 +387,7 @@ func (user *inputUpdateUser) GetUser() *model.User {
 		Permission: user.Permission,
 		Account:    user.Account,
 		Name:       user.Name,
+		Branch:     user.Branch,
 	}
 }
 

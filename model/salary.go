@@ -18,13 +18,14 @@ import (
 )
 
 type BranchSalary struct {
-	BSid    string `json:"BSid"`
-	Branch  string `json:"branch"`
-	strDate string `json:"-"` //建立string Date
-	Date    string `json:"date"`
-	Name    string `json:"name"`
-	Total   string `json:"total"`
-	Lock    string `json:"lock"`
+	BSid     string    `json:"BSid"`
+	Branch   string    `json:"branch"`
+	StrDate  string    `json:"-"` //建立string Date
+	Date     time.Time `json:"date"`
+	LastDate time.Time `json:"date"` //上次建立薪資的日期隔天
+	Name     string    `json:"name"`
+	Total    string    `json:"total"`
+	Lock     string    `json:"lock"`
 	//SalerSalaryList []*SalerSalary `json:"commissionList"`
 }
 
@@ -133,6 +134,14 @@ type Cid struct {
 	Rid string `json:"rid"`
 }
 
+type CloseAccount struct {
+	id        string    `json:"-"`
+	Date      time.Time `json:"date"`
+	CloseDate time.Time `json:"closeDate"`
+	Uid       string    `json:"uid"`
+	Status    string    `json:"-"`
+}
+
 var (
 	salaryM *SalaryModel
 	pr      = message.NewPrinter(language.English)
@@ -153,6 +162,8 @@ type SalaryModel struct {
 	CommissionList    []*Commission
 	FnamePdf          string
 	SMTPConf          util.SendMail
+
+	CloseAccount CloseAccount
 }
 
 func GetSalaryModel(imr interModelRes) *SalaryModel {
@@ -175,11 +186,12 @@ func (salaryM *SalaryModel) SetSMTPConf(conf util.SendMail) {
 
 func (salaryM *SalaryModel) GetBranchSalaryData(date string) []*BranchSalary {
 
-	const spl = `SELECT bsid, to_timestamp(bsid::int), branch, name, total, lock FROM public.branchsalary
-				where date Like '%s' order by bsid;`
+	sql := "SELECT bsid, to_timestamp(bsid::int), branch, name, total, lock FROM public.branchsalary" +
+		" where date Like '%" + date + "%' order by bsid;"
 
 	db := salaryM.imr.GetSQLDB()
-	rows, err := db.SQLCommand(fmt.Sprintf(spl, date))
+	rows, err := db.SQLCommand(sql)
+
 	if err != nil {
 		return nil
 	}
@@ -207,6 +219,8 @@ func (salaryM *SalaryModel) GetBranchSalaryData(date string) []*BranchSalary {
 
 func (salaryM *SalaryModel) Json(config string) ([]byte, error) {
 	switch config {
+	case "AccountSettlement":
+		return json.Marshal(salaryM.CloseAccount)
 	case "BranchSalary":
 		return json.Marshal(salaryM.branchSalaryList)
 	case "SalerSalary":
@@ -527,6 +541,32 @@ func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
 
 	return nil
 }
+func (salaryM *SalaryModel) getNextDayFromLastTimeSalary() (mtime time.Time, err error) {
+	mtime = time.Now()
+	interdb := salaryM.imr.GetSQLDB()
+
+	const sql = `SELECT max(date) FROM public.BranchSalary;`
+
+	rows, err := interdb.SQLCommand(fmt.Sprintf(sql))
+	if err != nil {
+		return
+	}
+	strTime := "2000-01-01"
+
+	for rows.Next() {
+		if err := rows.Scan(&strTime); err != nil {
+			fmt.Println("getLastTimeSalaty err Scan " + err.Error())
+		}
+	}
+
+	mtime, err = time.Parse(time.RFC3339, strTime+"T00:00:00+08:00")
+
+	year, month, day := mtime.Date()
+	loc, _ := time.LoadLocation("Asia/Taipei")
+	mtime = time.Date(year, month, day+1, 0, 0, 0, 0, loc)
+
+	return
+}
 
 /**
 *確認是否可以建立薪資
@@ -536,11 +576,24 @@ func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
 *更新分店總表數值
 **/
 func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err error) {
+
 	err = salaryM.isOK_CreateSalary()
 	if err != nil {
 		fmt.Println("CreateSalary err:" + err.Error())
 		return err
 	}
+
+	fmt.Println(bs.Date)
+	fmt.Println(bs.StrDate)
+
+	_, err = salaryM.CheckValidCloseDate(bs.Date)
+	if err != nil {
+		return
+	}
+
+	t, err := salaryM.getNextDayFromLastTimeSalary()
+	bs.LastDate = t
+	fmt.Println("bs.LastDate:", bs.LastDate)
 
 	// const sql = `INSERT INTO public.branchsalary
 	// 			(BSid, date, branch, name)
@@ -580,7 +633,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 	fakeId := time.Now().Unix()
 	bs.BSid = strconv.Itoa(int(fakeId))
 
-	res, err := sqldb.Exec(sql, fakeId, bs.Date, bs.Name, bs.Date+"-01")
+	res, err := sqldb.Exec(sql, fakeId, bs.StrDate, bs.Name, bs.Date)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)
@@ -628,6 +681,54 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 */
 func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err error) {
 
+	// const sql = `INSERT INTO public.salersalary
+	// (bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
+	// SELECT BS.bsid, A.sid, COALESCE(C.dateID, $1) dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0) Pbonus,
+	// COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary) total, ROUND(A.InsuredAmount*CP.LI*0.2/100) LaborFee,ROUND(A.PayrollBracket*CP.nhi*0.3/100) HealthFee,
+	// ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) Welfare,  ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) ) commercialFee,
+	// $3 ,
+	// (CASE WHEN A.salary = 0 and A.association = 1 then 0
+	// 	WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0
+	//    WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) * cp.nhi2nd / 100
+	//    else
+	// 	   ( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+	//    end
+	//   ) sp ,
+	//   (COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) - ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) - ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) )
+	//   -  ROUND(A.InsuredAmount*CP.LI*0.2/100) - ROUND(A.PayrollBracket*CP.nhi*0.3/100) ) -
+	//  (CASE WHEN A.salary = 0 and A.association = 1 then 0
+	// 	 WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0
+	// 	WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) * cp.nhi2nd / 100
+	// 	else
+	// 		( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+	// 	end
+	//    ) Tamount
+	// FROM public.ConfigSaler A
+	// Inner Join (
+	// 	select sid, max(zerodate) zerodate from public.configsaler cs
+	// 	where now() > zerodate
+	// 	group by sid
+	// ) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+	// left join (
+	// SELECT c.sid , to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','YYYY-MM')::varchar(50) dateID, sum(c.bonus) Pbonus
+	// FROM public.receipt r, public.commission c
+	// where c.rid = r.rid and extract(epoch from r.date) >= $2 and extract(epoch from Date - '1 month'::interval) <= $2 and c.bsid is null
+	// group by dateID , c.sid
+	// ) C on C.sid = A.Sid
+	// cross join (
+	// 	select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
+	// 	inner join(
+	// 		select  max(date) date from public.ConfigParameter
+	// 	) A on A.date = C.date limit 1
+	// ) CP
+	// left join public.branchsalary BS on BS.branch = A.Branch and BS.date = $1
+
+	// left join(
+	// 	select branch , commercialFee from public.configbranch
+	// ) CB on CB.branch = A.branch
+	// where BS.bsid is not null
+	// ON CONFLICT (bsid,sid,date,branch) DO Nothing;
+	// `
 	const sql = `INSERT INTO public.salersalary
 	(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
 	SELECT BS.bsid, A.sid, COALESCE(C.dateID, $1) dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0) Pbonus, 
@@ -659,7 +760,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	left join (
 	SELECT c.sid , to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','YYYY-MM')::varchar(50) dateID, sum(c.bonus) Pbonus
 	FROM public.receipt r, public.commission c
-	where c.rid = r.rid and extract(epoch from r.date) >= $2 and extract(epoch from Date - '1 month'::interval) <= $2 and c.bsid is null	
+	where c.rid = r.rid and extract(epoch from r.date) >= $4 and extract(epoch from Date)  <= $2 and c.bsid is null	
 	group by dateID , c.sid 
 	) C on C.sid = A.Sid 
 	cross join (
@@ -676,14 +777,8 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	where BS.bsid is not null
 	ON CONFLICT (bsid,sid,date,branch) DO Nothing;	
 	`
-	/*
-		where c.rid = r.rid and to_timestamp(date_part('epoch',r.date)::int) >= $2::date and to_timestamp(date_part('epoch',r.date)::int) < ( $2::date + '1 month'::interval) and c.bsid is null
-	*/
-	/*left join (
-		select sum(bonus) bonus , bsid , sid from public.commission c
-		group by bsid , sid
-	) extra on extra.bsid = BS.bsid and A.sid = extra.sid*/
-	year := bs.Date[0:4]
+
+	year := bs.StrDate[0:4]
 	fmt.Println(year)
 
 	interdb := salaryM.imr.GetSQLDB()
@@ -695,9 +790,10 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	//fmt.Println(bs.Date)
 	//GCP local time zone是+0時區，預設前端丟進來的是+8時區
 
-	b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
-	fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
-	res, err := sqldb.Exec(sql, bs.Date, b.Unix(), year)
+	// b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
+	// fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
+
+	res, err := sqldb.Exec(sql, bs.StrDate, bs.Date.Unix(), year, bs.LastDate.Unix())
 
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -764,7 +860,7 @@ func (salaryM *SalaryModel) SetCommissionBSid(bs *BranchSalary, cid []*Cid) (err
 					) subQuery
 					where sid = $2 and rid = $3;`
 
-		year := bs.Date[0:4]
+		year := bs.StrDate[0:4]
 		fmt.Println(year)
 
 		interdb := salaryM.imr.GetSQLDB()
@@ -864,7 +960,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	res, err := sqldb.Exec(sql, bs.Date)
+	res, err := sqldb.Exec(sql, bs.StrDate)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)
@@ -875,7 +971,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 		fmt.Println("PG Affecte Wrong: ", err)
 		return err
 	}
-	fmt.Println("CreateIncomEexpense:", id, " bs.Date:", bs.Date)
+	fmt.Println("CreateIncomEexpense:", id, " bs.Date:", bs.StrDate)
 
 	if id == 0 {
 		fmt.Println("CreateIncomEexpense, no create anyone ")
@@ -893,23 +989,12 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 				SELECT c.sid, c.rid, SS.bsid
 				FROM public.receipt r
 				inner join public.commission c on c.rid = r.rid and 
-				extract(epoch from r.date) >= $1 and extract(epoch from Date - '1 month'::interval) <= $1 and c.bsid is null
+				extract(epoch from r.date) >= $1 and extract(epoch from Date - '1 month'::interval) <= $2 and c.bsid is null
 				inner join public.SalerSalary SS on SS.date = to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM') and SS.Sid = C.sid
 				) AS subquery
 				where com.sid = subquery.sid and com.rid = subquery.rid	;	
 				`
-	/*
-		Update public.commission as com
-				set bsid = subquery.bsid, status = 'join'
-				from (
-				SELECT c.sid, c.rid, SS.bsid, to_char(r.date,'YYYY-MM')::varchar(50) date
-				FROM public.receipt r
-				inner join public.commission c on c.rid = r.rid and
-				extract(epoch from r.date) >= $1 and extract(epoch from Date - '1 month'::interval) <= $1 and c.bsid is null
-				inner join public.SalerSalary SS on SS.date = to_char(r.date,'YYYY-MM') and SS.Sid = C.sid
-				) AS subquery
-				where com.sid = subquery.sid and com.rid = subquery.rid
-	*/
+
 	interdb := salaryM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
@@ -917,14 +1002,14 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
+	// b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
 	//fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
 	//b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
-	fmt.Println("UpdateCommissionBSidAndStatus:", bs.Date+"-01 =>", b.Unix())
-	res, err := sqldb.Exec(sql, b.Unix())
+	//fmt.Println("UpdateCommissionBSidAndStatus:", bs.Date+"-01 =>", b.Unix())
+	res, err := sqldb.Exec(sql, bs.LastDate.Unix(), bs.Date.Unix())
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
-		fmt.Println("[Insert err] ", err)
+		fmt.Println("[UpdateCommissionBSidAndStatus err] ", err)
 		return err
 	}
 	id, err := res.RowsAffected()
@@ -3065,4 +3150,176 @@ func (salaryM *SalaryModel) makeTxtTransferSalary() (string, string) {
 		branch_date = salaryM.TransferSalaryList[0].Branch + text
 	}
 	return data, branch_date
+}
+
+//Action:取得目前關帳日期
+func (salaryM *SalaryModel) GetAccountSettlement() (ca CloseAccount, err error) {
+	const sql = `SELECT id, uid, closedate, status, date
+					FROM public.accountsettlement Where status = '1';`
+
+	ca = CloseAccount{}
+	interdb := salaryM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return
+	}
+
+	rows, err := sqldb.Query(sql)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(&ca.id, &ca.Uid, &ca.CloseDate, &ca.Status, &ca.Date); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+	}
+	fmt.Println(ca)
+	fmt.Println(ca.CloseDate.Unix())
+	salaryM.CloseAccount = ca
+	return
+}
+
+//Action:測試刪除用
+func (salaryM *SalaryModel) DeleteAccountSettlement() (ca CloseAccount, err error) {
+	const sql = `delete FROM public.accountsettlement;`
+
+	ca = CloseAccount{}
+	interdb := salaryM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return
+	}
+
+	_, err = sqldb.Query(sql)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	return
+}
+
+//Action:會計關帳
+func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount) (err error) {
+
+	oriCa, err := salaryM.CheckValidCloseDate(ca.CloseDate)
+	if err != nil {
+		return
+	}
+
+	// oriCa, err := salaryM.GetAccountSettlement()
+	// if err != nil {
+	// 	return err
+	// }
+
+	ca.CloseDate = setDayEndDate(ca.CloseDate)
+
+	interdb := salaryM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	fakeId := time.Now().Unix()
+	/**條件敘述:
+	1.關帳基本上只能往以後的日期關。
+	2.Admin可往前關
+	(所以關帳日可能回朔，取最大closedate不行)=>多用status判斷
+	**/
+	//目前缺少權限判斷
+	id := int64(-1)
+	if oriCa.id != "" {
+		fmt.Println("case1 ca:", ca)
+		sql := `INSERT INTO public.accountsettlement(id, uid, closedate )
+					select $1, $2, $3 
+					where exists (
+						select * from accountsettlement where $4 > $5
+					   );  `
+		res, err := sqldb.Exec(sql, fakeId, ca.Uid, ca.CloseDate, ca.CloseDate, oriCa.CloseDate)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		id, err = res.RowsAffected()
+	} else {
+		fmt.Println("case2")
+		fmt.Println("case2 ca:", ca.CloseDate.Unix())
+		sql := `INSERT INTO public.accountsettlement(id, uid, closedate )
+					select $1, $2, to_timestamp($3);`
+		_, err := sqldb.Exec(sql, fakeId, ca.Uid, ca.CloseDate.Unix())
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		//不更改id 理論上必寫入
+	}
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	//更動status，紀錄目前關帳的日期
+	if id > 0 {
+		err = salaryM.updateAccountSettlementStatus(oriCa)
+		if err != nil {
+			return err
+		}
+	} else if id == -1 {
+		return nil
+	} else {
+		fmt.Println("[ERROR] CloseAccountSettlement id:", id)
+		return errors.New("CloseAccountSettlement")
+	}
+
+	return nil
+}
+
+//Action:會計關帳
+func (salaryM *SalaryModel) updateAccountSettlementStatus(oriCa *CloseAccount) error {
+
+	const sql = `update public.accountsettlement set status = '0' where id = $1	;`
+
+	interdb := salaryM.imr.GetSQLDB()
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	res, err := sqldb.Exec(sql, oriCa.id)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	if id == 0 {
+		fmt.Println("[ERROR] updateAccountSettlementStatus id:", id)
+		return errors.New("[ERROR] updateAccountSettlementStatus id:0")
+	}
+	return nil
+}
+
+func (salaryM *SalaryModel) CheckValidCloseDate(t time.Time) (*CloseAccount, error) {
+
+	//關帳日在建資料的時間點之後，不給建立
+	ca, _ := salaryM.GetAccountSettlement()
+	if ca.CloseDate.After(t) {
+		return nil, errors.New("關帳日期錯誤")
+	}
+	return &ca, nil
+}
+
+func setDayEndDate(t time.Time) time.Time {
+	loc, _ := time.LoadLocation("Asia/Taipei")
+	taipei := t.In(loc)
+	y, m, d := taipei.In(loc).Date()
+	fmt.Println("setEnd:", time.Date(y, m, d, 23, 59, 59, 99, loc).Unix())
+	return time.Date(y, m, d, 23, 59, 59, 99, loc)
+	//return t
 }

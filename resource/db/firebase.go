@@ -166,13 +166,13 @@ func (db *firebaseDB) GetUser(uid string) (map[string]interface{}, error) {
 		claim = make(map[string]interface{})
 	}
 
-	fmt.Println("claim:", claim)
+	fmt.Println("firebaseDB claim:", claim)
 	fmt.Println(record)
 	out, err := json.Marshal(record)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(string(out))
+	fmt.Println("firebaseDB out", string(out))
 
 	return claim, nil
 }

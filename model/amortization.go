@@ -90,8 +90,43 @@ func (amorM *AmortizationModel) Json() ([]byte, error) {
 	return json.Marshal(amorM.amortizationList)
 }
 
+func (amorM *AmortizationModel) getAmortizationDataByAmorID(id string) *Amortization {
+
+	const qspl = `SELECT amorid, Date FROM public.amortization where amorid = '%s';`
+	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := amorM.imr.GetSQLDB()
+	sql, err := db.ConnectSQLDB()
+	rows, err := sql.Query(fmt.Sprintf(qspl, id))
+	if err != nil {
+		return nil
+	}
+	amor := &Amortization{}
+
+	for rows.Next() {
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&amor.AmorId, &amor.Date); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+	}
+
+	return amor
+}
+
 func (amorM *AmortizationModel) DeleteAmortization(ID string) (err error) {
 	fmt.Println("DeleteAmortization")
+	delamor := amorM.getAmortizationDataByAmorID(ID)
+	if delamor.AmorId == "" {
+		err = errors.New("not found amortization")
+		return
+	}
+	_, err = salaryM.CheckValidCloseDate(delamor.Date)
+	if err != nil {
+		return
+	}
+
 	const sql = `
 				 delete from public.Amortization where Amorid = '%s';
 				 delete from public.amormap where Amorid = '%s';				 
@@ -123,6 +158,11 @@ func (amorM *AmortizationModel) DeleteAmortization(ID string) (err error) {
 }
 
 func (amorM *AmortizationModel) CreateAmortization(amor *Amortization) (err error) {
+
+	_, err = salaryM.CheckValidCloseDate(amor.Date)
+	if err != nil {
+		return
+	}
 
 	const sql = `INSERT INTO public.amortization
 	(AmorId , branch, date, itemname, gaincost, amortizationyearlimit, monthlyamortizationamount, firstamortizationamount, notAmortizationAmount)
@@ -176,21 +216,19 @@ func (amorM *AmortizationModel) CreateAmorMap(sqldb *sql.DB) (err error) {
 
 	const sql = `INSERT INTO public.amormap	
 	(amorid, date, cost)	
-	select amorid,  to_char(mydates,'YYYY-MM') CircleID, monthlyamortizationamount from amortization a
+	select amorid,  to_char(mydates at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') CircleID, monthlyamortizationamount from amortization a
 	CROSS JOIN generate_series(a.date,  a.date+(a.amortizationyearlimit * 12  -1 || ' months')::interval, '1 months') AS mydates
 	where notamortizationamount > 0  and mydates <= (date_trunc('month', now()) + interval '1 month' - interval '1 day')::date
 	ON CONFLICT (amorid,date) DO NOTHING
 	;`
-	/*const sql = `INSERT INTO public.amormap
-	(amorid, date, cost)
-	SELECT amorid, t.CircleID, (Case When hasamortizationamount = 0 then firstamortizationamount else monthlyamortizationamount end) as cost
-		FROM public.amortization a
-	right join (
-		select to_char(dates,'YYYY-MM') CircleID, dates from generate_series('2017-01-01'::timestamp, now(), '1 months') as gs(dates)
-	) t on t.dates >= to_char(a.date,'YYYY-MM-01')::timestamp
-	where a.date is not null and notamortizationamount > 0
-	ON CONFLICT (amorid,date) DO NOTHING
-	;`*/
+	// const sql = `INSERT INTO public.amormap
+	// (amorid, date, cost)
+	// select amorid,  to_char(mydates,'YYYY-MM') CircleID, monthlyamortizationamount from amortization a
+	// CROSS JOIN generate_series(a.date,  a.date+(a.amortizationyearlimit * 12  -1 || ' months')::interval, '1 months') AS mydates
+	// where notamortizationamount > 0  and mydates <= (date_trunc('month', now()) + interval '1 month' - interval '1 day')::date
+	// ON CONFLICT (amorid,date) DO NOTHING
+	// ;`
+
 	//ON CONFLICT (amorid,date) DO UPDATE SET cost = excluded.cost
 	res, err := sqldb.Exec(sql)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -221,7 +259,10 @@ func (amorM *AmortizationModel) InsertFirstAmortizationData(amor *Amortization, 
 				ON CONFLICT (amorid,date) DO NOTHING		
 				`
 
-	res, err := sqldb.Exec(sql, amor.AmorId, amor.Date.Format("2006-01-02")[0:7], amor.FirstAmortizationAmount)
+	loc, _ := time.LoadLocation("Asia/Taipei")
+	t := amor.Date.In(loc).Format("2006-01-02")[0:10]
+
+	res, err := sqldb.Exec(sql, amor.AmorId, t, amor.FirstAmortizationAmount)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)

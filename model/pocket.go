@@ -81,6 +81,29 @@ func (pocketM *PocketModel) GetPocketData(beginDate, endDate time.Time, branch s
 	return pocketM.pocketList
 }
 
+func (pocketM *PocketModel) getPocketDataByID(ID string) *Pocket {
+
+	const qspl = `SELECT Pid, Date FROM public.pocket where Pid = '%s';`
+
+	db := pocketM.imr.GetSQLDB()
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, ID))
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	pocket := &Pocket{}
+
+	for rows.Next() {
+
+		if err := rows.Scan(&pocket.Pid, &pocket.Date); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+	}
+
+	return pocket
+}
+
 func (pocketM *PocketModel) Json() ([]byte, error) {
 	return json.Marshal(pocketM.pocketList)
 }
@@ -109,6 +132,15 @@ func (pocketM *PocketModel) PDF() []byte {
 // ORDER BY date asc ;
 //
 func (pocketM *PocketModel) DeletePocket(ID string) (err error) {
+	p := pocketM.getPocketDataByID(ID)
+	if p.Pid == "" {
+		return errors.New("not found pocket")
+	}
+
+	_, err = salaryM.CheckValidCloseDate(p.Date)
+	if err != nil {
+		return
+	}
 
 	const sql = `Delete from public.pocket	where Pid = $1 ;`
 
@@ -201,6 +233,7 @@ func (pocketM *PocketModel) AddorUpdatePocketMonthBalance(sqldb *sql.DB) (err er
 }
 
 func (pocketM *PocketModel) UpdatePocketBalance(sqldb *sql.DB) (err error) {
+
 	const sql = ` UPDATE public.pocket 
 				SET balance = subquery.balance   
 				FROM (
@@ -232,6 +265,11 @@ func (pocketM *PocketModel) UpdatePocketBalance(sqldb *sql.DB) (err error) {
 }
 
 func (pocketM *PocketModel) CreatePocket(pocket *Pocket) (err error) {
+
+	_, err = salaryM.CheckValidCloseDate(pocket.Date)
+	if err != nil {
+		return
+	}
 
 	const sql = `INSERT INTO public.pocket
 	(Pid , date, CircleID, branch, itemname, description, income, fee)
@@ -272,11 +310,23 @@ func (pocketM *PocketModel) CreatePocket(pocket *Pocket) (err error) {
 }
 
 func (pocketM *PocketModel) UpdatePocket(ID string, pocket *Pocket) (err error) {
-	a, e := json.Marshal(pocket)
-	if e != nil {
-		fmt.Println(e)
+
+	p := pocketM.getPocketDataByID(ID)
+	if p.Pid == "" {
+		return errors.New("not found pocket")
 	}
-	fmt.Println(string(a))
+
+	_, err = salaryM.CheckValidCloseDate(p.Date)
+	if err != nil {
+		return
+	}
+
+	// a, e := json.Marshal(pocket)
+	// if e != nil {
+	// 	fmt.Println(e)
+	// }
+	// fmt.Println(string(a))
+
 	const sql = `UPDATE public.pocket
 				SET pid = $1 , date = to_timestamp($2,'YYYY-MM-DD'), branch=$3, itemname=$4, description=$5, circleid=$6, income=$7, fee=$8
 				WHERE pid= $9` // and Branch = $3;`
@@ -294,6 +344,7 @@ func (pocketM *PocketModel) UpdatePocket(ID string, pocket *Pocket) (err error) 
 	timein := pocket.Date.Add(time.Hour*time.Duration(h) +
 		time.Minute*time.Duration(m) + time.Second*time.Duration(s) + time.Nanosecond*time.Duration(n))
 	fakeId := timein.Unix()
+	//更新pid是為了靠Pid排出相關時間
 	res, err := sqldb.Exec(sql, fakeId, pocket.Date, pocket.Branch, pocket.ItemName, pocket.Description, pocket.CircleID, pocket.Income, pocket.Fee, ID)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {

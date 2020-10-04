@@ -109,10 +109,18 @@ func (api *DeductAPI) deleteDeductEndpoint(w http.ResponseWriter, req *http.Requ
 
 	DM := model.GetDecuctModel(di)
 
-	_err := DM.DeleteDeduct(ID)
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error,maybe id is not exist or status is not accepted"))
+	err := DM.DeleteDeduct(ID)
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error,maybe id is not exist or status is not accepted" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -140,10 +148,17 @@ func (api *DeductAPI) updateDeductEndpoint(w http.ResponseWriter, req *http.Requ
 
 	DM := model.GetDecuctModel(di)
 
-	_err := DM.UpdateDeduct(ID, iUD.Status, iUD.Date, iUD.CheckNumber)
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error" + _err.Error()))
+	err = DM.UpdateDeduct(ID, iUD.Status, iUD.Date, iUD.CheckNumber)
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -173,7 +188,15 @@ func (api *DeductAPI) updateDeductFeeEndpoint(w http.ResponseWriter, req *http.R
 
 	_err := DM.UpdateDeductFee(ID, iUD.Fee)
 	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
 		w.Write([]byte("[Error] " + _err.Error()))
 	} else {
 		w.Write([]byte("OK"))
@@ -196,10 +219,17 @@ func (api *DeductAPI) updateDeductItemEndpoint(w http.ResponseWriter, req *http.
 
 	DM := model.GetDecuctModel(di)
 
-	_err := DM.UpdateDeductItem(ID, iUD.Item)
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error" + _err.Error()))
+	err = DM.UpdateDeductItem(ID, iUD.Item)
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -221,10 +251,17 @@ func (api *DeductAPI) updateDeductSalesEndpoint(w http.ResponseWriter, req *http
 
 	DM := model.GetDecuctModel(di)
 
-	_err := DM.UpdateDeductSales(ID, iUD.SalerList)
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error" + _err.Error()))
+	err = DM.UpdateDeductSales(ID, iUD.SalerList)
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}

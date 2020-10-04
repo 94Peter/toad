@@ -109,6 +109,33 @@ func (prepayM *PrePayModel) GetPrePayData(startDate, endDate time.Time) []*PrePa
 	return prepayM.prepayList
 }
 
+func (prepayM *PrePayModel) getPrePayDataByID(ID string) *PrePay {
+
+	const PrePayspl = `SELECT PPid, Date  FROM public.PrePay where PPid = '%s';`
+	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
+	db := prepayM.imr.GetSQLDB()
+	sqldb, err := db.ConnectSQLDB()
+
+	rows, err := sqldb.Query(fmt.Sprintf(PrePayspl, ID))
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	prepay := &PrePay{}
+
+	for rows.Next() {
+
+		if err := rows.Scan(&prepay.PPid, &prepay.Date); err != nil {
+			fmt.Println("err Scan " + err.Error())
+			return nil
+		}
+
+	}
+
+	return prepay
+}
+
 func (prepayM *PrePayModel) Json() ([]byte, error) {
 	return json.Marshal(prepayM.prepayList)
 }
@@ -151,6 +178,16 @@ func (prepayM *PrePayModel) PDF() []byte {
 }
 
 func (prepayM *PrePayModel) DeletePrePay(ID string) (err error) {
+
+	u := prepayM.getPrePayDataByID(ID)
+	if u.PPid == "" {
+		return errors.New("not found prepay")
+	}
+	_, err = salaryM.CheckValidCloseDate(u.Date)
+	if err != nil {
+		return
+	}
+
 	const sql = `
 				delete from public.PrePay where PPid = '%s';
 				delete from public.BranchPrePay where PPid = '%s';				
@@ -181,6 +218,11 @@ func (prepayM *PrePayModel) DeletePrePay(ID string) (err error) {
 }
 
 func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay) (err error) {
+
+	_, err = salaryM.CheckValidCloseDate(prepay.Date)
+	if err != nil {
+		return
+	}
 
 	const sql = `INSERT INTO public.prepay
 	(ppid, date, itemname, description, fee)
@@ -249,6 +291,15 @@ func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay) (err error) {
 }
 
 func (prepayM *PrePayModel) UpdatePrePay(ID string, prepay *PrePay) (err error) {
+
+	u := prepayM.getPrePayDataByID(ID)
+	if u.PPid == "" {
+		return errors.New("not found prepay")
+	}
+	_, err = salaryM.CheckValidCloseDate(u.Date)
+	if err != nil {
+		return
+	}
 
 	const sql = `UPDATE public.prepay
 	SET date= $2, itemname= $3, description= $4, fee=$5

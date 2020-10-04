@@ -49,15 +49,18 @@ func (api *PrePayAPI) deletePrePayEndpoint(w http.ResponseWriter, req *http.Requ
 	fmt.Println(ID)
 	PrePayM := model.GetPrePayModel(di)
 	if err := PrePayM.DeletePrePay(ID); err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			break
+		}
 		w.Write([]byte(err.Error()))
 		return
 	}
-	// if err := memberModel.Quit(phone); err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	w.Write([]byte(err.Error()))
-	// 	return
-	// }
+
 	w.Write([]byte("ok"))
 	return
 }
@@ -137,10 +140,17 @@ func (api *PrePayAPI) createPrePayEndpoint(w http.ResponseWriter, req *http.Requ
 
 	PrePayM := model.GetPrePayModel(di)
 
-	_err := PrePayM.CreatePrePay(iPrePay.GetPrePay())
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error"))
+	err = PrePayM.CreatePrePay(iPrePay.GetPrePay())
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error:" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -169,10 +179,17 @@ func (api *PrePayAPI) updatePrePayEndpoint(w http.ResponseWriter, req *http.Requ
 
 	PrePayM := model.GetPrePayModel(di)
 
-	_err := PrePayM.UpdatePrePay(ID, iPrePay.GetPrePay())
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error:" + _err.Error()))
+	err = PrePayM.UpdatePrePay(ID, iPrePay.GetPrePay())
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			break
+		}
+		w.Write([]byte("Error:" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}

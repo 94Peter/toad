@@ -232,7 +232,8 @@ func (sdb *sqlDB) CreateAccountTable() error {
 			"name character varying(50) not NULL,"+
 			"permission character varying(50) not NULL, "+
 			//"email character varying(50) not NULL, "+ // 信箱
-			//"phone character varying(50) DEFAULT '', "+ // 信箱
+			//"phone character varying(50) DEFAULT '', "+ //
+			"branch character varying(50) DEFAULT '', "+ // 店家
 			"createdate timestamp(0) DEFAULT now(), "+
 			"lasttime timestamp(0) DEFAULT NULL, "+
 			"state character varying(50) not NULL, "+ // 狀態
@@ -335,7 +336,7 @@ func (sdb *sqlDB) CreateSalerSalaryTable() error {
 			"BSid character varying(50) ,"+
 			"SName character varying(50) ,"+
 			//"Date timestamp(0) without time zone not NULL, "+
-			"Date character varying(7) not NULL, "+
+			"Date character varying(10) not NULL, "+
 			"Branch character varying(50),"+
 			"Salary integer DEFAULT 0, "+
 			"Pbonus integer DEFAULT 0, "+
@@ -523,7 +524,7 @@ func (sdb *sqlDB) CreateAmorMapTable() error {
 		"CREATE TABLE public.AmorMap "+
 			"( "+
 			"Amorid character varying(50) ,"+
-			"Date character varying(7) ,"+
+			"Date character varying(10) ,"+
 			//"Bsid character varying(50) ,"+
 			"Cost integer DEFAULT 0, "+
 			"PRIMARY KEY (Amorid,Date) "+
@@ -803,6 +804,30 @@ func (sdb *sqlDB) CreateCommissionTable() error {
 	return nil
 }
 
+func (sdb *sqlDB) CreateAccountSettlementTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.accountsettlement "+
+			"( "+
+			"id character varying(50) ,"+
+			"uid character varying(50) ,"+
+			"closedate timestamp(0) without time zone not NULL, "+ //關帳日
+			"date timestamp(0) without time zone not NULL default now(), "+ //操作人員動作時間
+			"status character varying(50) default '1',"+
+			"PRIMARY KEY (id)"+
+			") "+
+			"WITH ( OIDS = FALSE);"+
+			"ALTER TABLE public.commission "+
+			"OWNER to %s; ", sdb.user))
+
+	if err != nil {
+		fmt.Println("CreateCommissionTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateCommissionTable Done")
+	return nil
+}
+
 //收入支出 (紅利店長表)
 func (sdb *sqlDB) CreateIncomeExpenseTable() error {
 
@@ -856,30 +881,31 @@ func (sdb *sqlDB) InitTable() error {
 	}
 	//mapTable
 	var mT = map[string]bool{
-		"ar":              false,
-		"receipt":         false,
-		"deduct":          false,
-		"commission":      false,
-		"amortization":    false,
-		"amormap":         false,
-		"pocket":          false,
-		"branchprepay":    false,
-		"prepay":          false,
-		"accountitem":     false,
-		"configbranch":    false,
-		"configsaler":     false,
-		"configsalary":    false,
-		"configparameter": false,
-		"invoice":         false,
-		"armap":           false,
-		"deductmap":       false,
-		"salersalary":     false,
-		"branchsalary":    false,
-		"nhisalary":       false,
-		"incomeexpense":   false,
-		"housego":         false,
-		"account":         false,
-		"eventlog":        false,
+		"ar":                false,
+		"receipt":           false,
+		"deduct":            false,
+		"commission":        false,
+		"amortization":      false,
+		"amormap":           false,
+		"pocket":            false,
+		"branchprepay":      false,
+		"prepay":            false,
+		"accountitem":       false,
+		"configbranch":      false,
+		"configsaler":       false,
+		"configsalary":      false,
+		"configparameter":   false,
+		"invoice":           false,
+		"armap":             false,
+		"deductmap":         false,
+		"salersalary":       false,
+		"branchsalary":      false,
+		"nhisalary":         false,
+		"incomeexpense":     false,
+		"housego":           false,
+		"account":           false,
+		"eventlog":          false,
+		"accountsettlement": false, //關帳日
 	}
 
 	for rows.Next() {
@@ -960,6 +986,9 @@ func (sdb *sqlDB) InitTable() error {
 			break
 		case "eventlog":
 			mT["eventlog"] = true
+			break
+		case "accountsettlement":
+			mT["accountsettlement"] = true
 			break
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
@@ -1043,6 +1072,9 @@ func (sdb *sqlDB) InitTable() error {
 				break
 			case "deductmap":
 				err = sdb.CreateDeductMAPTable()
+				break
+			case "accountsettlement":
+				err = sdb.CreateAccountSettlementTable()
 				break
 			default:
 				fmt.Printf("unknown table %s.\n", tableName)

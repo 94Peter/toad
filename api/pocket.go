@@ -86,15 +86,18 @@ func (api *PocketAPI) deletePocketEndpoint(w http.ResponseWriter, req *http.Requ
 	fmt.Println(ID)
 	PocketM := model.GetPocketModel(di)
 	if err := PocketM.DeletePocket(ID); err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			break
+		}
 		w.Write([]byte(err.Error()))
 		return
 	}
-	// if err := memberModel.Quit(phone); err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	w.Write([]byte(err.Error()))
-	// 	return
-	// }
+
 	w.Write([]byte("ok"))
 	return
 }
@@ -164,10 +167,17 @@ func (api *PocketAPI) updatePocketEndpoint(w http.ResponseWriter, req *http.Requ
 
 	PocketM := model.GetPocketModel(di)
 
-	_err := PocketM.UpdatePocket(ID, iPocket.GetPocket())
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(_err.Error()))
+	err = PocketM.UpdatePocket(ID, iPocket.GetPocket())
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte(err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -193,10 +203,17 @@ func (api *PocketAPI) createPocketEndpoint(w http.ResponseWriter, req *http.Requ
 
 	PocketM := model.GetPocketModel(di)
 
-	_err := PocketM.CreatePocket(iPocket.GetPocket())
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error"))
+	err = PocketM.CreatePocket(iPocket.GetPocket())
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error:" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}

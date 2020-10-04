@@ -20,6 +20,7 @@ type APIconf struct {
 }
 
 const DateFormat = "2006-01-02"
+const ERROR_CloseDate = "關帳日期錯誤"
 
 type APIHandler struct {
 	Path       string

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"toad/permission"
 	"toad/resource/db"
 	"toad/util"
 
@@ -26,6 +25,10 @@ type interModelRes interface {
 	GetDB() db.InterDB //firebase
 
 }
+
+var (
+	memM *memberModel
+)
 
 type memberModel struct {
 	cu *categoryUser
@@ -50,6 +53,7 @@ type User struct {
 	State      string    `json:"state"`
 	Disable    bool      `json:"disable"`
 	Category   string    `json:"-"`
+	Branch     string    `json:"branch"`
 }
 
 func GetMemberModel(mr interModelRes) *memberModel {
@@ -59,9 +63,10 @@ func GetMemberModel(mr interModelRes) *memberModel {
 	}
 	cu.load()
 
-	return &memberModel{
+	memM = &memberModel{
 		cu: cu,
 	}
+	return memM
 }
 
 func (dc *categoryUser) GetID() string {
@@ -111,14 +116,14 @@ func (memM *memberModel) CreateUser(user *User) error {
 	* Local DB 資訊儲存
 	 */
 	const sql = `INSERT INTO public.account
-	(account , name, permission, state)
-	VALUES ($1, $2, $3, $4)	;`
+	(account , name, permission, state , branch)
+	VALUES ($1, $2, $3, $4, $5)	;`
 	sqldb, err := memM.cu.sqldb.ConnectSQLDB()
 	if err != nil {
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, user.Account, user.Name, user.Permission, UserStateInit)
+	res, err := sqldb.Exec(sql, user.Account, user.Name, user.Permission, UserStateInit, user.Branch)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -235,13 +240,13 @@ func (memM *memberModel) UpdateUser(user *User) error {
 	/*
 	* Local DB 資訊儲存
 	 */
-	const sql = `UPDATE public.account SET name = $2 , permission = $3 WHERE account = $1`
+	const sql = `UPDATE public.account SET name = $2 , permission = $3 , branch = $4 WHERE account = $1`
 	sqldb, err := memM.cu.sqldb.ConnectSQLDB()
 	if err != nil {
 		return err
 	}
 
-	res, err := sqldb.Exec(sql, user.Account, user.Name, user.Permission)
+	res, err := sqldb.Exec(sql, user.Account, user.Name, user.Permission, user.Branch)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -278,18 +283,24 @@ func (memM *memberModel) VerifyToken(ftoken string) *User {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+
 	//convert map[string] to struct
 	user := User{}
 	mapstructure.Decode(claim, &user)
-	user.Permission = permission.Office
+	//user.Permission = permission.Office
 	user.State = "OK"
+
+	ubranch, err := memM.GetAccountUserDataByID(uid)
+	if err == nil {
+		user.Branch = ubranch.Branch
+	}
 
 	return &user
 }
 
 func (memM *memberModel) GetAccountUserData() ([]*User, error) {
 
-	const qspl = `SELECT account, name, permission, createdate, lasttime, state, disable FROM public.account;`
+	const qspl = `SELECT account, name, permission, createdate, lasttime, state, disable, branch FROM public.account;`
 	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := memM.cu.sqldb
@@ -306,7 +317,7 @@ func (memM *memberModel) GetAccountUserData() ([]*User, error) {
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&user.Account, &user.Name, &user.Permission, &user.CreateDate, &lasttime, &user.State, &disable); err != nil {
+		if err := rows.Scan(&user.Account, &user.Name, &user.Permission, &user.CreateDate, &lasttime, &user.State, &disable, &user.Branch); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 		user.Lasttime = lasttime.Time
@@ -323,6 +334,7 @@ func (memM *memberModel) GetAccountUserData() ([]*User, error) {
 }
 
 func (u *User) GetToken(jwtConf *util.JwtConf) (string, error) {
+
 	token, err := jwtConf.GetToken(map[string]interface{}{
 		"sub": u.Account,
 		"nam": u.Name,
@@ -333,4 +345,39 @@ func (u *User) GetToken(jwtConf *util.JwtConf) (string, error) {
 		return "", err
 	}
 	return *token, nil
+}
+
+func (memM *memberModel) GetAccountUserDataByID(account string) (*User, error) {
+
+	const qspl = `SELECT account, name, permission, createdate, lasttime, state, disable, branch FROM public.account where account = '%s';`
+	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
+	//const qspl = `SELECT arid,sales	FROM public.ar;`
+	db := memM.cu.sqldb
+
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, account))
+	if err != nil {
+		return nil, err
+	}
+	user := &User{}
+
+	for rows.Next() {
+
+		var lasttime NullTime
+		var disable = 0
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&user.Account, &user.Name, &user.Permission, &user.CreateDate, &lasttime, &user.State, &disable, &user.Branch); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		user.Lasttime = lasttime.Time
+	}
+
+	// out, err := json.Marshal(arList)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
+
+	return user, nil
 }

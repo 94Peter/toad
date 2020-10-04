@@ -21,7 +21,7 @@ type SalaryAPI bool
 
 type inputBranchSalary struct {
 	//Branch string `json:"branch"`
-	Date  string       `json:"date"`
+	Date  time.Time    `json:"date"`
 	Name  string       `json:"name"`
 	CList []*model.Cid `json:"commissionList"`
 	//Total  string `json:"total"`
@@ -64,6 +64,11 @@ type exportBranchId struct {
 	} `json:"idList"`
 }
 
+type inputCloseAccount struct {
+	CloseDate time.Time `json:"closeDate"`
+	Uid       string    `json:"uid"`
+}
+
 func (api SalaryAPI) Enable() bool {
 	return bool(api)
 }
@@ -88,6 +93,10 @@ func (api SalaryAPI) GetAPIs() *[]*APIHandler {
 
 		&APIHandler{Path: "/v1/managerBonus/{bsID}", Next: api.getManagerBonusEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/managerBonus/{bsID}", Next: api.updateManagerBonusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+
+		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.closeAccountSettlementEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.getCloseAccountSettlementEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.deleteCloseAccountSettlementEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 	}
 
 }
@@ -111,7 +120,14 @@ func (api *SalaryAPI) lockSalaryEndpoint(w http.ResponseWriter, req *http.Reques
 		w.Write([]byte("lock shoud be 已完成 or 未完成"))
 	}
 	if err := SalaryM.LockBranchSalary(ID, lock.Lock); err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			break
+		}
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -131,15 +147,18 @@ func (api *SalaryAPI) deleteSalaryEndpoint(w http.ResponseWriter, req *http.Requ
 	SalaryM := model.GetSalaryModel(di)
 
 	if err := SalaryM.DeleteSalary(ID); err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			break
+		}
 		w.Write([]byte(err.Error()))
 		return
 	}
-	// if err := memberModel.Quit(phone); err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	w.Write([]byte(err.Error()))
-	// 	return
-	// }
+
 	w.Write([]byte("ok"))
 	return
 }
@@ -500,10 +519,17 @@ func (api *SalaryAPI) createBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		fmt.Println("sid:", cid.Sid)
 	}
 
-	_err := SalaryM.CreateSalary(iBS.GetBranchSalary(), iBS.CList)
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("[Error]" + _err.Error()))
+	err = SalaryM.CreateSalary(iBS.GetBranchSalary(), iBS.CList)
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("[Error]" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -515,14 +541,14 @@ func (iBS *inputBranchSalary) isBranchSalaryValid() (bool, error) {
 	if iBS.Name == "" {
 		return false, errors.New("name is empty")
 	}
-	if iBS.Date == "" {
-		return false, errors.New("date is empty")
-	}
+	// if iBS.Date == "" {
+	// 	return false, errors.New("date is empty")
+	// }
 
-	_, err := time.ParseInLocation("2006-01-02", iBS.Date+"-01", time.Local)
-	if err != nil {
-		return false, errors.New("[" + iBS.Date + "]date is not valid" + err.Error())
-	}
+	// _, err := time.ParseInLocation("2006-01-02", iBS.Date+"-01", time.Local)
+	// if err != nil {
+	// 	return false, errors.New("[" + iBS.Date + "]date is not valid" + err.Error())
+	// }
 
 	return true, nil
 }
@@ -571,11 +597,26 @@ func (iIE *inputIncomeExpense) inpuIncomeExpenseValid() (bool, error) {
 	return true, nil
 }
 
+func (iCA *inputCloseAccount) inputCloseAccountValid() (bool, error) {
+
+	if iCA.Uid == "" {
+		return false, errors.New("uid is empty")
+	}
+
+	return true, nil
+}
+
 func (iBS *inputBranchSalary) GetBranchSalary() *model.BranchSalary {
+	loc, _ := time.LoadLocation("Asia/Taipei")
+	t := iBS.Date.In(loc)
+	y, m, d := t.Date()
+	t = time.Date(y, m, d, 23, 59, 59, 99, loc)
 	//time, _ := time.ParseInLocation("2006-01-02", iBS.Date, time.Local)
+	strDate := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
 	return &model.BranchSalary{
-		Date: iBS.Date,
-		Name: iBS.Name,
+		Date:    t,
+		Name:    iBS.Name,
+		StrDate: strDate,
 	}
 }
 
@@ -591,6 +632,14 @@ func (iSS *inputSalerSalary) GetSalerSalary() *model.SalerSalary {
 		Welfare:     iSS.Welfare,
 		SP:          iSS.SP,
 		Workday:     iSS.Workday,
+	}
+}
+
+func (iCA *inputCloseAccount) GetCloseAccount() *model.CloseAccount {
+	//time, _ := time.ParseInLocation("2006-01-02", iBS.Date, time.Local)
+	return &model.CloseAccount{
+		CloseDate: iCA.CloseDate,
+		Uid:       iCA.Uid,
 	}
 }
 
@@ -663,10 +712,17 @@ func (api *SalaryAPI) updateSalerSalaryEndpoint(w http.ResponseWriter, req *http
 
 	SalaryM := model.GetSalaryModel(di)
 
-	_err := SalaryM.UpdateSalerSalaryData(iSS.GetSalerSalary(), bsID)
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error" + _err.Error()))
+	err = SalaryM.UpdateSalerSalaryData(iSS.GetSalerSalary(), bsID)
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -694,12 +750,80 @@ func (api *SalaryAPI) updateManagerBonusEndpoint(w http.ResponseWriter, req *htt
 
 	SalaryM := model.GetSalaryModel(di)
 
-	_err := SalaryM.UpdateIncomeExpenseData(iIE.GetIncomeExpense(), bsID)
-	if _err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error" + _err.Error()))
+	err = SalaryM.UpdateIncomeExpenseData(iIE.GetIncomeExpense(), bsID)
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("Error" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
 
+}
+
+func (api *SalaryAPI) closeAccountSettlementEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+
+	iCA := inputCloseAccount{}
+	err := json.NewDecoder(req.Body).Decode(&iCA)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := iCA.inputCloseAccountValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	SalaryM := model.GetSalaryModel(di)
+
+	err = SalaryM.CloseAccountSettlement(iCA.GetCloseAccount())
+	if err != nil {
+		switch err.Error() {
+		case ERROR_CloseDate:
+			w.WriteHeader(http.StatusLocked)
+			break
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			break
+		}
+		w.Write([]byte("[Error]" + err.Error()))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+
+func (api *SalaryAPI) getCloseAccountSettlementEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	SalaryM := model.GetSalaryModel(di)
+
+	SalaryM.GetAccountSettlement()
+	//data, err := json.Marshal(result)
+	data, err := SalaryM.Json("AccountSettlement")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+
+func (api *SalaryAPI) deleteCloseAccountSettlementEndpoint(w http.ResponseWriter, req *http.Request) {
+
+	SalaryM := model.GetSalaryModel(di)
+
+	SalaryM.DeleteAccountSettlement()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("OK"))
 }

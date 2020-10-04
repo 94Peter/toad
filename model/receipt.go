@@ -43,6 +43,17 @@ func GetRTModel(imr interModelRes) *RTModel {
 }
 
 func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid string) error {
+
+	r := rm.GetReceiptDataByRid(Rid)
+	if r.Rid == "" {
+		return errors.New("not found receipt")
+	}
+
+	_, err := salaryM.CheckValidCloseDate(r.Date)
+	if err != nil {
+		return err
+	}
+
 	fmt.Println("UpdateReceiptData")
 
 	const sql = `Update public.receipt set amount = $1 ,date = $2 where Rid = $3;`
@@ -75,6 +86,16 @@ func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid string) error {
 
 func (rm *RTModel) DeleteReceiptData(Rid string) error {
 
+	r := rm.GetReceiptDataByRid(Rid)
+	if r.Rid == "" {
+		return errors.New("not found receipt")
+	}
+
+	_, err := salaryM.CheckValidCloseDate(r.Date)
+	if err != nil {
+		return err
+	}
+
 	fmt.Println("DeleteReceiptData:")
 
 	const sql = `Delete FROM public.receipt where Rid = $1;`
@@ -106,6 +127,7 @@ func (rm *RTModel) DeleteReceiptData(Rid string) error {
 	return nil
 }
 
+//包含invoice
 func (rm *RTModel) GetReceiptDataByID(rid string) *Receipt {
 
 	//if invoiceno is null in Database return ""
@@ -227,6 +249,10 @@ func (rm *RTModel) Json() ([]byte, error) {
 }
 
 func (rm *RTModel) CreateReceipt(rt *Receipt) (err error) {
+	_, err = salaryM.CheckValidCloseDate(rt.Date)
+	if err != nil {
+		return
+	}
 	fmt.Println("CreateReceipt : arid is ", rt.ARid)
 	/*
 	*前端時間 會送 yyyy-mm-dd 16:00:00 的UTC時間，方便計算，此地直接 加8小。

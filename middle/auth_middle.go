@@ -73,6 +73,7 @@ func (am AuthMiddle) GetMiddleWare() func(f http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 			auth := isAuth(path, r.Method)
+			//fmt.Println(auth)
 			if auth {
 				authToken := r.Header.Get("Auth-Token")
 				if authToken == "" {

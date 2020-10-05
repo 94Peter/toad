@@ -94,8 +94,8 @@ func (api SalaryAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/managerBonus/{bsID}", Next: api.getManagerBonusEndpoint, Method: "GET", Auth: false, Group: permission.All},
 		&APIHandler{Path: "/v1/managerBonus/{bsID}", Next: api.updateManagerBonusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
 
-		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.closeAccountSettlementEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.getCloseAccountSettlementEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.closeAccountSettlementEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.getCloseAccountSettlementEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.deleteCloseAccountSettlementEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
 	}
 
@@ -768,8 +768,9 @@ func (api *SalaryAPI) updateManagerBonusEndpoint(w http.ResponseWriter, req *htt
 }
 
 func (api *SalaryAPI) closeAccountSettlementEndpoint(w http.ResponseWriter, req *http.Request) {
+	per := req.Header.Get("AuthPerm")
+	fmt.Println(per)
 	//Get params from body
-
 	iCA := inputCloseAccount{}
 	err := json.NewDecoder(req.Body).Decode(&iCA)
 	if err != nil {
@@ -786,7 +787,7 @@ func (api *SalaryAPI) closeAccountSettlementEndpoint(w http.ResponseWriter, req 
 
 	SalaryM := model.GetSalaryModel(di)
 
-	err = SalaryM.CloseAccountSettlement(iCA.GetCloseAccount())
+	err = SalaryM.CloseAccountSettlement(iCA.GetCloseAccount(), per)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:

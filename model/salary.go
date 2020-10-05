@@ -9,6 +9,7 @@ import (
 
 	"toad/excel"
 	"toad/pdf"
+	"toad/permission"
 	"toad/resource/db"
 	"toad/txt"
 	"toad/util"
@@ -931,8 +932,9 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	    SELECT  branch , sum(cost) thismonthamor FROM public.amortization amor
 		inner join (
 			SELECT amorid, date, cost FROM public.amormap
+			where date >= $2 and date <= $1
 		) amormap on amormap.amorid = amor.amorid
-		where isover = 0 and amormap.date = $1
+		where isover = 0 
 		group by  amor.branch		
 	) amorTable on amorTable.branch = BS.branch
 	left join(
@@ -958,9 +960,14 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	if err != nil {
 		return err
 	}
+	////////////
+	loc, _ := time.LoadLocation("Asia/Taipei")
+	t := bs.LastDate.In(loc)
+	lastDate := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
+	///////////
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	res, err := sqldb.Exec(sql, bs.StrDate)
+	res, err := sqldb.Exec(sql, bs.StrDate, lastDate)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)
@@ -3203,10 +3210,10 @@ func (salaryM *SalaryModel) DeleteAccountSettlement() (ca CloseAccount, err erro
 }
 
 //Action:會計關帳
-func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount) (err error) {
+func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per string) (err error) {
 
 	oriCa, err := salaryM.CheckValidCloseDate(ca.CloseDate)
-	if err != nil {
+	if err != nil && per != permission.Admin {
 		return
 	}
 
@@ -3230,7 +3237,20 @@ func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount) (err error)
 	**/
 	//目前缺少權限判斷
 	id := int64(-1)
-	if oriCa.id != "" {
+	fmt.Println(oriCa)
+	if oriCa.id == "" || per == permission.Admin {
+		//資料庫預設空的，直接設定
+		fmt.Println("case2 ca:", ca.CloseDate.Unix())
+		sql := `INSERT INTO public.accountsettlement(id, uid, closedate )
+					select $1, $2, to_timestamp($3);`
+		_, err := sqldb.Exec(sql, fakeId, ca.Uid, ca.CloseDate.Unix())
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		//不更改id 理論上必寫入
+	} else {
+		//資料庫有數據。
 		fmt.Println("case1 ca:", ca)
 		sql := `INSERT INTO public.accountsettlement(id, uid, closedate )
 					select $1, $2, $3 
@@ -3243,17 +3263,6 @@ func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount) (err error)
 			return err
 		}
 		id, err = res.RowsAffected()
-	} else {
-		fmt.Println("case2")
-		fmt.Println("case2 ca:", ca.CloseDate.Unix())
-		sql := `INSERT INTO public.accountsettlement(id, uid, closedate )
-					select $1, $2, to_timestamp($3);`
-		_, err := sqldb.Exec(sql, fakeId, ca.Uid, ca.CloseDate.Unix())
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-		//不更改id 理論上必寫入
 	}
 
 	if err != nil {
@@ -3310,7 +3319,7 @@ func (salaryM *SalaryModel) CheckValidCloseDate(t time.Time) (*CloseAccount, err
 	//關帳日在建資料的時間點之後，不給建立
 	ca, _ := salaryM.GetAccountSettlement()
 	if ca.CloseDate.After(t) {
-		return nil, errors.New("關帳日期錯誤")
+		return &ca, errors.New("關帳日期錯誤")
 	}
 	return &ca, nil
 }

@@ -89,12 +89,12 @@ func GetConf(env string, timezone string) *DI {
 
 	//没有 tzdata 就会从$GOROOT/中找。对于没有安装go环境的windows系统来说，就没办法通过 LoadLocation 设置时区。
 	//// os.Setenv("ZONEINFO", "conf/%s/data.zip")
-	// loc, err := time.LoadLocation(timezone)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		panic(err)
+	}
 
-	// myDI.Location = loc
+	myDI.Location = loc
 
 	myDI.Log.StartLog()
 	myDI.GetSQLDB() //for quickly check DB schema

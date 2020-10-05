@@ -552,7 +552,7 @@ func (salaryM *SalaryModel) getNextDayFromLastTimeSalary() (mtime time.Time, err
 	if err != nil {
 		return
 	}
-	strTime := "2000-01-01"
+	strTime := "2020-01-01" //開發系統時間，預設值太早會抓入太多的攤提費用
 
 	for rows.Next() {
 		if err := rows.Scan(&strTime); err != nil {
@@ -3237,7 +3237,7 @@ func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per string)
 	**/
 	//目前缺少權限判斷
 	id := int64(-1)
-	fmt.Println(oriCa)
+
 	if oriCa.id == "" || per == permission.Admin {
 		//資料庫預設空的，直接設定
 		fmt.Println("case2 ca:", ca.CloseDate.Unix())

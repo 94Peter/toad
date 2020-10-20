@@ -218,9 +218,10 @@ func (rm *RTModel) GetReceiptDataByRid(rid string) *Receipt {
 	//left join public.invoice I on  I.Rid = R.rid
 	//
 	fmt.Println("GetReceiptDataByRid:", rid)
-	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(R.invoiceno, null),'')
+	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(iv.invoiceno, null),'')
 					FROM public.receipt R
-					inner join public.ar AR on AR.arid = R.arid					
+					inner join public.ar AR on AR.arid = R.arid	
+					LEFT join public.invoice iv on iv.rid = R.rid				
 					where R.rid = '%s' `
 	db := rm.imr.GetSQLDB()
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, rid))

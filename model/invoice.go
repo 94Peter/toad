@@ -36,7 +36,7 @@ var (
 	storeID = "25077808"
 	//復升
 	ivURL   = "https://ranking.numax.com.tw/test/einvoice/api/invoice"
-	auth_iv = "A2dC56TZfkpra6TCIuo5UQW870L/0=mazjT0g7=s5Do0K9z"
+	auth_iv = "4/00OB50qLc==rNPi+eE+8+8fWi/i5AK65Mz7NTsxFJem3q" //"A2dC56TZfkpra6TCIuo5UQW870L/0=mazjT0g7=s5Do0K9z"
 )
 
 // type Invoice struct {
@@ -141,8 +141,9 @@ func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice) (string, erro
 	fmt.Println(Rid)
 
 	receipt := rm.GetReceiptDataByRid(Rid)
-	fmt.Println("get receipt")
+
 	if receipt == nil {
+		fmt.Println("receipt is null")
 		return "", errors.New("Invalid operation, maybe not found the receipt")
 	}
 

@@ -920,12 +920,12 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	left join (
 		SELECT sum(cost) prepay , branch FROM public.prepay PP 
 		inner join public.BranchPrePay BPP on PP.ppid = BPP.ppid 	
-		where to_char(date ,'YYYY-MM') = $1
+		where  extract(epoch from date) >= $3 and extract(epoch from date) <= $4
 		group by branch
 	) prepayTable on prepayTable.branch = BS.branch
 	left join(
 		SELECT sum(fee) pocket , branch FROM public.Pocket 		
-		where circleid = $1
+		where extract(epoch from date) >= $3 and extract(epoch from date) <= $4
 		group by branch
 	) pocketTable on pocketTable.branch = BS.branch
 	left join(
@@ -967,7 +967,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	///////////
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	res, err := sqldb.Exec(sql, bs.StrDate, lastDate)
+	res, err := sqldb.Exec(sql, bs.StrDate, lastDate, bs.LastDate.Unix(), bs.Date.Unix())
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)

@@ -70,6 +70,11 @@ type inputConfigBranch struct {
 	AnnualRatio   float64 `json:"annualRatio"`
 	Sid           string  `json:"sid"`
 }
+type inputInvoiceConfig struct {
+	SellerID string `json:"sellerID"`
+	Auth     string `json:"auth"`
+	Branch   string `json:"branch"`
+}
 
 func (api ConfigAPI) Enable() bool {
 	return bool(api)
@@ -77,43 +82,47 @@ func (api ConfigAPI) Enable() bool {
 
 func (api ConfigAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/config/item", Next: api.getAccountItemEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/item", Next: api.createAccountItemEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/item/{ItemName}", Next: api.updateAccountItemEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/item/{ItemName}", Next: api.deleteAccountItemEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/item", Next: api.getAccountItemEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/item", Next: api.createAccountItemEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/item/{ItemName}", Next: api.updateAccountItemEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/item/{ItemName}", Next: api.deleteAccountItemEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/config/branch", Next: api.getConfigBranchEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		//&APIHandler{Path: "/v1/config/branch", Next: api.createConfigBranchEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/branch", Next: api.createConfigBranchEndpointWithStringArray, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/branch/{Branch}", Next: api.updateConfigBranchEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/branch/{Branch}", Next: api.deleteConfigBranchEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/branch", Next: api.getConfigBranchEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		//&APIHandler{Path: "/v1/config/branch", Next: api.createConfigBranchEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/branch", Next: api.createConfigBranchEndpointWithStringArray, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/branch/{Branch}", Next: api.updateConfigBranchEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/branch/{Branch}", Next: api.deleteConfigBranchEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/config/parameter", Next: api.getConfigParameterEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/parameter", Next: api.createConfigParameterEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/parameter/{id}", Next: api.updateConfigParameterEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/parameter/{id}", Next: api.deleteConfigParameterEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/parameter", Next: api.getConfigParameterEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/parameter", Next: api.createConfigParameterEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/parameter/{id}", Next: api.updateConfigParameterEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/parameter/{id}", Next: api.deleteConfigParameterEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/config/saler/check", Next: api.checkConfigSalerEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler/check", Next: api.checkConfigSalerEndpoint, Method: "POST", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/config/saler", Next: api.getConfigSalerEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/saler", Next: api.createConfigSalerEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/saler/{id}", Next: api.updateConfigSalerEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/saler/{id}", Next: api.deleteConfigSalerEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler", Next: api.getConfigSalerEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler", Next: api.createConfigSalerEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler/{id}", Next: api.updateConfigSalerEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler/{id}", Next: api.deleteConfigSalerEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/config/salary", Next: api.createConfigSalaryEndpoint, Method: "POST", Auth: false, Group: permission.All}, //內建PUT更改
-		&APIHandler{Path: "/v1/config/salary", Next: api.getConfigSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/config/salary/{id}", Next: api.deleteConfigSalaryEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/config/salary", Next: api.createConfigSalaryEndpoint, Method: "POST", Auth: true, Group: permission.All}, //內建PUT更改
+		&APIHandler{Path: "/v1/config/salary", Next: api.getConfigSalaryEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/salary/{id}", Next: api.deleteConfigSalaryEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
+
+		&APIHandler{Path: "/v1/config/invoice", Next: api.createInvoiceConfigEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/invoice/{branch}", Next: api.deleteInvoiceConfigEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/invoice", Next: api.getInvoiceConfigEndpoint, Method: "GET", Auth: true, Group: permission.All},
 	}
 }
 
 func (api *ConfigAPI) getAccountItemEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	configM := model.GetConfigModel(di)
 	var queryDate time.Time
 	today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
-	configM.GetAccountItemData(today, end)
+	configM.GetAccountItemData(today, end, dbname)
 	//data, err := json.Marshal(result)
 	data, err := configM.Json("AccountItem")
 	if err != nil {
@@ -126,7 +135,7 @@ func (api *ConfigAPI) getAccountItemEndpoint(w http.ResponseWriter, req *http.Re
 
 func (api *ConfigAPI) createAccountItemEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iAItem := inputAccountItem{}
 	err := json.NewDecoder(req.Body).Decode(&iAItem)
 	if err != nil {
@@ -143,7 +152,7 @@ func (api *ConfigAPI) createAccountItemEndpoint(w http.ResponseWriter, req *http
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.CreateAccountItem(iAItem.GetAccountItem())
+	_err := configM.CreateAccountItem(iAItem.GetAccountItem(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe already exist"))
@@ -157,7 +166,7 @@ func (api *ConfigAPI) updateAccountItemEndpoint(w http.ResponseWriter, req *http
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ItemName"})
 	oldItemName := vars["ItemName"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iAItem := inputAccountItem{}
 	err := json.NewDecoder(req.Body).Decode(&iAItem)
 	if err != nil {
@@ -174,7 +183,7 @@ func (api *ConfigAPI) updateAccountItemEndpoint(w http.ResponseWriter, req *http
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.UpdateAccountItem(oldItemName, iAItem.GetAccountItem())
+	_err := configM.UpdateAccountItem(oldItemName, dbname, iAItem.GetAccountItem())
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe already exist"))
@@ -188,10 +197,10 @@ func (api *ConfigAPI) deleteAccountItemEndpoint(w http.ResponseWriter, req *http
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ItemName"})
 	oldItemName := vars["ItemName"].(string)
-
+	dbname := req.Header.Get("dbname")
 	configM := model.GetConfigModel(di)
 
-	_err := configM.DeleteAccountItem(oldItemName)
+	_err := configM.DeleteAccountItem(oldItemName, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe is not exist"))
@@ -207,8 +216,8 @@ func (api *ConfigAPI) getConfigBranchEndpoint(w http.ResponseWriter, req *http.R
 	var queryDate time.Time
 	today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
-
-	configM.GetConfigBranchData(today, end)
+	dbname := req.Header.Get("dbname")
+	configM.GetConfigBranchData(today, end, dbname)
 	//data, err := json.Marshal(result)
 	data, err := configM.Json("ConfigBranch")
 	if err != nil {
@@ -220,6 +229,7 @@ func (api *ConfigAPI) getConfigBranchEndpoint(w http.ResponseWriter, req *http.R
 }
 
 func (api *ConfigAPI) createConfigBranchEndpointWithStringArray(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
 	//取得body
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -248,7 +258,7 @@ func (api *ConfigAPI) createConfigBranchEndpointWithStringArray(w http.ResponseW
 	fmt.Println(branchList)
 
 	configM := model.GetConfigModel(di)
-	err = configM.CreateConfigBranch(branchList)
+	err = configM.CreateConfigBranch(branchList, dbname)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -260,10 +270,10 @@ func (api *ConfigAPI) createConfigBranchEndpointWithStringArray(w http.ResponseW
 func (api *ConfigAPI) deleteConfigBranchEndpoint(w http.ResponseWriter, req *http.Request) {
 	vars := util.GetPathVars(req, []string{"Branch"})
 	Branch := vars["Branch"].(string)
-
+	dbname := req.Header.Get("dbname")
 	configM := model.GetConfigModel(di)
 
-	_err := configM.DeleteConfigBranch(Branch)
+	_err := configM.DeleteConfigBranch(Branch, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error() + ",maybe Branch is not exist"))
@@ -274,7 +284,7 @@ func (api *ConfigAPI) deleteConfigBranchEndpoint(w http.ResponseWriter, req *htt
 
 func (api *ConfigAPI) createConfigBranchEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iCBranch := inputConfigBranch{}
 	err := json.NewDecoder(req.Body).Decode(&iCBranch)
 	if err != nil {
@@ -291,7 +301,7 @@ func (api *ConfigAPI) createConfigBranchEndpoint(w http.ResponseWriter, req *htt
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.CreateConfigBranchWithManager(iCBranch.GetConfigBranch(isCreate))
+	_err := configM.CreateConfigBranchWithManager(iCBranch.GetConfigBranch(isCreate), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe already exist or Saler is not exist or Branch not match"))
@@ -306,7 +316,7 @@ func (api *ConfigAPI) updateConfigBranchEndpoint(w http.ResponseWriter, req *htt
 
 	vars := util.GetPathVars(req, []string{"Branch"})
 	Branch := vars["Branch"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iCBranch := inputConfigBranch{}
 	err := json.NewDecoder(req.Body).Decode(&iCBranch)
 	if err != nil {
@@ -323,7 +333,7 @@ func (api *ConfigAPI) updateConfigBranchEndpoint(w http.ResponseWriter, req *htt
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.UpdateConfigBranch(Branch, iCBranch.GetConfigBranch(isUpdate))
+	_err := configM.UpdateConfigBranch(Branch, dbname, iCBranch.GetConfigBranch(isUpdate))
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error() + ",maybe Saler is not exist or Branch not match"))
@@ -337,7 +347,7 @@ func (api *ConfigAPI) deleteConfigParameterEndpoint(w http.ResponseWriter, req *
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"id"})
 	id := vars["id"].(string)
-
+	dbname := req.Header.Get("dbname")
 	configM := model.GetConfigModel(di)
 
 	// time, err := time.ParseInLocation("2006-01-02", Date, time.Local)
@@ -347,7 +357,7 @@ func (api *ConfigAPI) deleteConfigParameterEndpoint(w http.ResponseWriter, req *
 	// 	return
 	// }
 
-	_err := configM.DeleteConfigParameter(id)
+	_err := configM.DeleteConfigParameter(id, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe is not exist"))
@@ -358,13 +368,13 @@ func (api *ConfigAPI) deleteConfigParameterEndpoint(w http.ResponseWriter, req *
 }
 
 func (api *ConfigAPI) getConfigParameterEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	configM := model.GetConfigModel(di)
 	var queryDate time.Time
 	today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
-	configM.GetConfigParameterData(today, end)
+	configM.GetConfigParameterData(today, end, dbname)
 	//data, err := json.Marshal(result)
 	data, err := configM.Json("ConfigParameter")
 	if err != nil {
@@ -377,7 +387,7 @@ func (api *ConfigAPI) getConfigParameterEndpoint(w http.ResponseWriter, req *htt
 
 func (api *ConfigAPI) createConfigParameterEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	//iCParam := []*inputConfigParameter{}
 	iCParam := inputConfigParameter{}
 	err := json.NewDecoder(req.Body).Decode(&iCParam)
@@ -395,7 +405,7 @@ func (api *ConfigAPI) createConfigParameterEndpoint(w http.ResponseWriter, req *
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.CreateConfigParameter(iCParam.GetConfigParameter())
+	_err := configM.CreateConfigParameter(iCParam.GetConfigParameter(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe already exist"))
@@ -408,7 +418,7 @@ func (api *ConfigAPI) createConfigParameterEndpoint(w http.ResponseWriter, req *
 func (api *ConfigAPI) updateConfigParameterEndpoint(w http.ResponseWriter, req *http.Request) {
 	vars := util.GetPathVars(req, []string{"id"})
 	id := vars["id"].(string)
-
+	dbname := req.Header.Get("dbname")
 	//Get params from body
 	//iCParam := []*inputConfigParameter{}
 	iCParam := inputConfigParameter{}
@@ -427,7 +437,7 @@ func (api *ConfigAPI) updateConfigParameterEndpoint(w http.ResponseWriter, req *
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.UpdateConfigParameter(iCParam.GetConfigParameter(), id)
+	_err := configM.UpdateConfigParameter(iCParam.GetConfigParameter(), id, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
@@ -440,7 +450,7 @@ func (api *ConfigAPI) updateConfigParameterEndpoint(w http.ResponseWriter, req *
 func (api *ConfigAPI) getConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	configM := model.GetConfigModel(di)
-
+	dbname := req.Header.Get("dbname")
 	// var queryDate time.Time
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	// end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
@@ -457,7 +467,7 @@ func (api *ConfigAPI) getConfigSalerEndpoint(w http.ResponseWriter, req *http.Re
 	// }
 	//text := time.Now().Format("2006-01-02")
 
-	configM.GetConfigSalerData(branch)
+	configM.GetConfigSalerData(branch, dbname)
 	//data, err := json.Marshal(result)
 	data, err := configM.Json("ConfigSaler")
 	if err != nil {
@@ -471,7 +481,7 @@ func (api *ConfigAPI) getConfigSalerEndpoint(w http.ResponseWriter, req *http.Re
 func (api *ConfigAPI) getConfigSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	configM := model.GetConfigModel(di)
-
+	dbname := req.Header.Get("dbname")
 	queryVar := util.GetQueryValue(req, []string{"id"}, true)
 
 	sid := (*queryVar)["id"].(string)
@@ -479,7 +489,7 @@ func (api *ConfigAPI) getConfigSalaryEndpoint(w http.ResponseWriter, req *http.R
 		sid = "%"
 	}
 
-	configM.GetConfigSalaryData(sid)
+	configM.GetConfigSalaryData(sid, dbname)
 	//data, err := json.Marshal(result)
 	data, err := configM.Json("ConfigSalary")
 	if err != nil {
@@ -492,7 +502,7 @@ func (api *ConfigAPI) getConfigSalaryEndpoint(w http.ResponseWriter, req *http.R
 
 func (api *ConfigAPI) checkConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iCSaler := inputConfigSaler{}
 	err := json.NewDecoder(req.Body).Decode(&iCSaler)
 	if err != nil {
@@ -509,7 +519,7 @@ func (api *ConfigAPI) checkConfigSalerEndpoint(w http.ResponseWriter, req *http.
 
 	configM := model.GetConfigModel(di)
 
-	r, _err := configM.CheckConfigSaler(iCSaler.IdentityNum, iCSaler.ZeroDate)
+	r, _err := configM.CheckConfigSaler(iCSaler.IdentityNum, iCSaler.ZeroDate, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error()))
@@ -521,7 +531,7 @@ func (api *ConfigAPI) checkConfigSalerEndpoint(w http.ResponseWriter, req *http.
 
 func (api *ConfigAPI) createConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iCSaler := inputConfigSaler{}
 	err := json.NewDecoder(req.Body).Decode(&iCSaler)
 	if err != nil {
@@ -538,7 +548,7 @@ func (api *ConfigAPI) createConfigSalerEndpoint(w http.ResponseWriter, req *http
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.CreateConfigSaler(iCSaler.GetConfigSaler())
+	_err := configM.CreateConfigSaler(iCSaler.GetConfigSaler(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe already exist"))
@@ -551,7 +561,7 @@ func (api *ConfigAPI) createConfigSalerEndpoint(w http.ResponseWriter, req *http
 //借用同樣的結構(inputConfigSaler)建立ConfigSalary結構
 func (api *ConfigAPI) createConfigSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iCSaler := inputConfigSaler{}
 	err := json.NewDecoder(req.Body).Decode(&iCSaler)
 	if err != nil {
@@ -568,7 +578,7 @@ func (api *ConfigAPI) createConfigSalaryEndpoint(w http.ResponseWriter, req *htt
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.CreateConfigSalary(iCSaler.GetConfigSalary())
+	_err := configM.CreateConfigSalary(iCSaler.GetConfigSalary(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error"))
@@ -582,7 +592,7 @@ func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"id"})
 	id := vars["id"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iCSaler := inputConfigSaler{}
 	err := json.NewDecoder(req.Body).Decode(&iCSaler)
 	if err != nil {
@@ -599,7 +609,7 @@ func (api *ConfigAPI) updateConfigSalerEndpoint(w http.ResponseWriter, req *http
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.UpdateConfigSaler(iCSaler.GetConfigSaler(), id)
+	_err := configM.UpdateConfigSaler(iCSaler.GetConfigSaler(), id, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
@@ -613,10 +623,10 @@ func (api *ConfigAPI) deleteConfigSalerEndpoint(w http.ResponseWriter, req *http
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"id"})
 	id := vars["id"].(string)
-
+	dbname := req.Header.Get("dbname")
 	configM := model.GetConfigModel(di)
 
-	_err := configM.DeleteConfigSaler(id)
+	_err := configM.DeleteConfigSaler(id, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
@@ -630,7 +640,7 @@ func (api *ConfigAPI) deleteConfigSalaryEndpoint(w http.ResponseWriter, req *htt
 	//Get path from body
 	vars := util.GetPathVars(req, []string{"id"})
 	id := vars["id"].(string)
-
+	dbname := req.Header.Get("dbname")
 	queryVar := util.GetQueryValue(req, []string{"zerodate"}, true)
 
 	zerodate := (*queryVar)["zerodate"].(string)
@@ -642,13 +652,73 @@ func (api *ConfigAPI) deleteConfigSalaryEndpoint(w http.ResponseWriter, req *htt
 
 	configM := model.GetConfigModel(di)
 
-	_err := configM.DeleteConfigSalary(id, zerodate)
+	_err := configM.DeleteConfigSalary(id, zerodate, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error:" + _err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
+
+}
+
+func (api *ConfigAPI) deleteInvoiceConfigEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
+	vars := util.GetPathVars(req, []string{"branch"})
+	branchid := vars["branch"].(string)
+
+	iv := model.GetInvoiceModel(di)
+	if err := iv.DeleteInvoiceConfig(branchid, dbname); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Write([]byte("ok"))
+}
+
+func (api *ConfigAPI) createInvoiceConfigEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
+
+	//Get params from body
+	inputInvoiceConfig := inputInvoiceConfig{}
+
+	err := json.NewDecoder(req.Body).Decode(&inputInvoiceConfig)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := inputInvoiceConfig.isInvoiceConfigValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	iv := model.GetInvoiceModel(di)
+
+	_err := iv.CreateInvoiceConfig(inputInvoiceConfig.GetInvoiceConfig(), dbname)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(_err.Error()))
+	} else {
+		w.Write([]byte("ok"))
+	}
+}
+
+func (api *ConfigAPI) getInvoiceConfigEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
+
+	iv := model.GetInvoiceModel(di)
+	data, err := iv.GetInvoiceConfig("%", dbname)
+	result, err := json.Marshal(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(result)
 
 }
 
@@ -978,5 +1048,26 @@ func (iCParam *inputConfigParameter) GetConfigParameter() *model.ConfigParameter
 		MMW:    iCParam.MMW,
 		LI:     iCParam.LI,
 		//AnnualRatio: iCParam.AnnualRatio,
+	}
+}
+
+func (iInoviceConfig *inputInvoiceConfig) isInvoiceConfigValid() (bool, error) {
+	if iInoviceConfig.Auth == "" {
+		return false, errors.New("auth is empty")
+	}
+	if iInoviceConfig.Branch == "" {
+		return false, errors.New("branch is empty")
+	}
+	if iInoviceConfig.SellerID != "" && len(iInoviceConfig.SellerID) != 8 {
+		return false, errors.New("SellerID is not valid (length should be 8)")
+	}
+
+	return true, nil
+}
+func (iInoviceConfig *inputInvoiceConfig) GetInvoiceConfig() *model.InvoiceConfig {
+	return &model.InvoiceConfig{
+		SellerID: iInoviceConfig.SellerID,
+		Auth:     iInoviceConfig.Auth,
+		Branch:   iInoviceConfig.Branch,
 	}
 }

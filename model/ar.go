@@ -118,7 +118,7 @@ type ARModel struct {
 	hgList    []*HouseGo
 }
 
-func (am *ARModel) GetSalerData(branch string) []*Saler {
+func (am *ARModel) GetSalerData(branch, dbname string) []*Saler {
 
 	const qspl = `SELECT A.sid, A.sname, A.branch, A.percent, A.title
 					FROM public.ConfigSaler A 
@@ -129,7 +129,7 @@ func (am *ARModel) GetSalerData(branch string) []*Saler {
 					) B on A.sid=B.sid and A.zeroDate = B.zeroDate
 					where A.branch like '%s';`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := am.imr.GetSQLDB()
+	db := am.imr.GetSQLDBwithDbname(dbname)
 	//fmt.Println(fmt.Sprintf(qspl, branch))
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch))
 	if err != nil {
@@ -160,7 +160,7 @@ func (am *ARModel) GetSalerData(branch string) []*Saler {
 	return am.salerList
 }
 
-func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
+func (am *ARModel) GetARData(today, end time.Time, key, dbname string) []*AR {
 
 	// const sql = `SELECT
 	// 			ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount,
@@ -183,7 +183,7 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 	*but I do with r.Balance = r.Amount - r.RA
 	 */
 
-	db := am.imr.GetSQLDB()
+	db := am.imr.GetSQLDBwithDbname(dbname)
 	//fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
 
@@ -271,7 +271,7 @@ func (am *ARModel) GetARData(today, end time.Time, key string) []*AR {
 
 }
 
-func (am *ARModel) GetHouseGoData(today, end time.Time, key string) []*HouseGo {
+func (am *ARModel) GetHouseGoData(today, end time.Time, key, dbname string) []*HouseGo {
 
 	//index := "%" + key + "%"
 	sql := "SELECT arid, id, data FROM public.housego"
@@ -282,7 +282,7 @@ func (am *ARModel) GetHouseGoData(today, end time.Time, key string) []*HouseGo {
 	 */
 
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := am.imr.GetSQLDB()
+	db := am.imr.GetSQLDBwithDbname(dbname)
 	//fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
 
@@ -327,7 +327,7 @@ func (am *ARModel) Json(mtype string) ([]byte, error) {
 	return nil, nil
 }
 
-func (am *ARModel) UpdateAccountReceivable(amount int, ID string, salerList []*MAPSaler) (err error) {
+func (am *ARModel) UpdateAccountReceivable(amount int, ID, dbname string, salerList []*MAPSaler) (err error) {
 	fmt.Println("UpdateAccountReceivable")
 	const sql = `Update public.ar t1
 					set	amount = $1
@@ -340,7 +340,7 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID string, salerList []*M
 				)as t2 
 				where t1.arid = $2  and  sunreceipt <= $1 ;`
 
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -362,14 +362,14 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID string, salerList []*M
 		return errors.New("[ERROR]: Maybe id is not found or amount is not allowed. (amount should be greater then sum of receive amount)")
 	}
 	//刪除ARMAP 重建
-	am.DeleteARandDeductMAP(ID)
+	am.DeleteARandDeductMAP(ID, dbname)
 	am.SaveARMAP(salerList, ID, sqldb)
 	am.SaveDeductMAP(ID, sqldb)
 	//連動更改ARMAP TABLE的數值 (目前重新建立，不須連動了)
 	//am.UpdateAccountReceivableSalerProportion(salerList, ID)
 
 	//連動更改傭金明細TABLE的數值
-	am.RefreshCommissionBonus(ID)
+	am.RefreshCommissionBonus(ID, dbname)
 
 	return nil
 }
@@ -420,11 +420,11 @@ func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
 
 //;
 
-func (am *ARModel) DeleteARandDeductMAP(ID string) (err error) {
+func (am *ARModel) DeleteARandDeductMAP(ID, dbname string) (err error) {
 	fmt.Println("DeleteARandDeductMAP")
 	sql := `delete from public.armap where arid = $1`
 
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -444,12 +444,12 @@ func (am *ARModel) DeleteARandDeductMAP(ID string) (err error) {
 	return nil
 }
 
-func (am *ARModel) UpdateAccountReceivableSalerProportion(salerList []*MAPSaler, ID string) (err error) {
+func (am *ARModel) UpdateAccountReceivableSalerProportion(salerList []*MAPSaler, ID, dbname string) (err error) {
 	fmt.Println("UpdateAccountReceivable")
 	const sql = `Update public.armap set proportion = $1				
 				where arid = $2 and sid = $3`
 
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -473,7 +473,7 @@ func (am *ARModel) UpdateAccountReceivableSalerProportion(salerList []*MAPSaler,
 	return nil
 }
 
-func (am *ARModel) RefreshCommissionBonus(ID string) (err error) {
+func (am *ARModel) RefreshCommissionBonus(ID, dbname string) (err error) {
 
 	const sql = `Update public.commission t1
 					set cpercent = t2.proportion, sr= (t2.amount - t2.fee)*t2.proportion/100, bonus= (t2.amount - t2.fee)*t2.proportion/100*t2.percent /100
@@ -485,7 +485,7 @@ func (am *ARModel) RefreshCommissionBonus(ID string) (err error) {
 						inner join public.armap map on map.sid = c.sid  and map.arid = r.arid and map.arid = $1
 						WHERE c.bsid is null
 				) as t2 where t1.sid = t2.sid and t1.rid = t2.rid `
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -512,7 +512,7 @@ func (am *ARModel) RefreshCommissionBonus(ID string) (err error) {
 	return nil
 }
 
-func (am *ARModel) DeleteAccountReceivable(ID string) (err error) {
+func (am *ARModel) DeleteAccountReceivable(ID, dbname string) (err error) {
 	fmt.Println("DeleteAccountReceivable")
 	const sql = `
 				delete from public.ar where arid = '%s';
@@ -523,7 +523,7 @@ func (am *ARModel) DeleteAccountReceivable(ID string) (err error) {
 				delete from public.armap where arid = '%s';			
 				`
 
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -547,10 +547,10 @@ func (am *ARModel) DeleteAccountReceivable(ID string) (err error) {
 	return nil
 }
 
-func (am *ARModel) DeleteHouseGo(ID string) (err error) {
+func (am *ARModel) DeleteHouseGo(ID, dbname string) (err error) {
 	const sql = `DELETE FROM public.housego where id = '%s';`
 
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -574,7 +574,7 @@ func (am *ARModel) DeleteHouseGo(ID string) (err error) {
 	return nil
 }
 
-func (am *ARModel) CreateAccountReceivable(receivable *AR, json string) (err error) {
+func (am *ARModel) CreateAccountReceivable(receivable *AR, json, dbname string) (err error) {
 	fmt.Println("CreateAccountReceivable")
 
 	const sql = `INSERT INTO public.ar(
@@ -590,7 +590,7 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR, json string) (err err
 	// 	Name = excluded.Name,
 	// 	Amount = excluded.Amount
 
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -659,13 +659,13 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR, json string) (err err
 		}
 	}
 	if id == 0 {
-		am.CreateHouseGoDuplicate(fakeId, json)
+		am.CreateHouseGoDuplicate(fakeId, json, dbname)
 		return errors.New("duplicate data")
 	}
 	return nil
 }
 
-func (am *ARModel) CreateHouseGoDuplicate(ID, data string) (err error) {
+func (am *ARModel) CreateHouseGoDuplicate(ID, data, dbname string) (err error) {
 
 	//不知道為什麼用$字號 放入數字會報錯。
 	const sql = `INSERT INTO public.housego
@@ -673,7 +673,7 @@ func (am *ARModel) CreateHouseGoDuplicate(ID, data string) (err error) {
 				VALUES ('%d', '%s', '%s');
 				`
 
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -714,7 +714,7 @@ func (rt *Receipt) setRid(id string) {
 
 //not used now (move to public model)
 //建立 修改 刪除 收款單時，需要更改應收款項計算項目
-func (am *ARModel) UpdateARInfo(arid string) (err error) {
+func (am *ARModel) UpdateARInfo(arid, dbname string) (err error) {
 	//https://stackoverflow.com/questions/2334712/how-do-i-update-from-a-select-in-sql-server
 	const sql = `Update public.ar
 				 set
@@ -723,7 +723,7 @@ func (am *ARModel) UpdateARInfo(arid string) (err error) {
 					 select sum(amount) from public.receipt where arid = $1 group by arid  
 				)as t2 where ar.arid = $1`
 
-	interdb := am.imr.GetSQLDB()
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -770,7 +770,7 @@ func (am *ARModel) UpdateARInfo(arid string) (err error) {
 // func fetchSales(sale *sale) error {
 
 // }
-func (am *ARModel) UpgradeARInfo(arid string) (err error) {
+func (am *ARModel) UpgradeARInfo(arid, dbname string) (err error) {
 
 	select_sql := "SELECT arid, id, data FROM public.housego where arid = '" + arid + "';"
 
@@ -780,7 +780,7 @@ func (am *ARModel) UpgradeARInfo(arid string) (err error) {
 	 */
 
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := am.imr.GetSQLDB()
+	db := am.imr.GetSQLDBwithDbname(dbname)
 	//fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
 
@@ -810,17 +810,17 @@ func (am *ARModel) UpgradeARInfo(arid string) (err error) {
 		return err
 	}
 	fmt.Println(iGoAR)
-	am.DeleteAccountReceivable(Oldarid + "_b")
-	am.DeleteAccountReceivable(Oldarid + "_s")
-	am.DeleteHouseGo(Oldarid)
+	am.DeleteAccountReceivable(Oldarid+"_b", dbname)
+	am.DeleteAccountReceivable(Oldarid+"_s", dbname)
+	am.DeleteHouseGo(Oldarid, dbname)
 	ar := iGoAR.GetAR(ACTION_BUY)
-	err = am.CreateAccountReceivable(ar, data)
+	err = am.CreateAccountReceivable(ar, data, dbname)
 	if err != nil {
 		fmt.Println(err)
 		return nil
 	}
 	ar = iGoAR.GetAR(ACTION_SELL)
-	err = am.CreateAccountReceivable(ar, data)
+	err = am.CreateAccountReceivable(ar, data, dbname)
 	if err != nil {
 		fmt.Println(err)
 		return nil

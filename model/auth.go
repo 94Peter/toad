@@ -23,7 +23,7 @@ const (
 type interModelRes interface {
 	GetSQLDB() db.InterSQLDB
 	GetDB() db.InterDB //firebase
-
+	GetSQLDBwithDbname(string) db.InterSQLDB
 }
 
 var (
@@ -31,6 +31,7 @@ var (
 )
 
 type memberModel struct {
+	di interModelRes
 	cu *categoryUser
 	Cu *categoryUser
 }
@@ -46,7 +47,7 @@ type User struct {
 	Account    string    `json:"account"`
 	Name       string    `json:"name"`
 	Permission string    `json:"permission"`
-	Site       string    `json:"site"`
+	Dbname     string    `json:"-"`
 	Password   string    `json:"-"`
 	CreateDate time.Time `json:"createDate"`
 	Lasttime   time.Time `json:"lasttime"`
@@ -58,13 +59,14 @@ type User struct {
 
 func GetMemberModel(mr interModelRes) *memberModel {
 	cu := &categoryUser{
-		db:    mr.GetDB(),
-		sqldb: mr.GetSQLDB(),
+		db: mr.GetDB(),
+		//sqldb: mr.GetSQLDB(),
 	}
 	cu.load()
 
 	memM = &memberModel{
 		cu: cu,
+		di: mr,
 	}
 	return memM
 }
@@ -100,8 +102,9 @@ func (dc *categoryUser) test(phone, displayName, email, pwd, permission string) 
 
 //phone, displayName, email, pwd, permission string
 func (memM *memberModel) CreateUser(user *User) error {
+	//user.Dbname = "test"
 	//phone=>Account也用帶入。
-	err := memM.cu.db.CreateUser(user.Account, user.Name, user.Account, user.Password, user.Permission, user.Site)
+	err := memM.cu.db.CreateUser(user.Account, user.Name, user.Account, user.Password, user.Permission, user.Dbname)
 	if err != nil {
 		fmt.Println("CreateUser:", err)
 		return err
@@ -118,10 +121,16 @@ func (memM *memberModel) CreateUser(user *User) error {
 	const sql = `INSERT INTO public.account
 	(account , name, permission, state , branch)
 	VALUES ($1, $2, $3, $4, $5)	;`
-	sqldb, err := memM.cu.sqldb.ConnectSQLDB()
+
+	sqldb, err := memM.di.GetSQLDBwithDbname(user.Dbname).ConnectSQLDB()
 	if err != nil {
 		return err
 	}
+
+	// sqldb, err := memM.cu.sqldb.ConnectSQLDB()
+	// if err != nil {
+	// 	return err
+	// }
 
 	res, err := sqldb.Exec(sql, user.Account, user.Name, user.Permission, UserStateInit, user.Branch)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -142,7 +151,7 @@ func (memM *memberModel) CreateUser(user *User) error {
 	return nil
 }
 
-func (memM *memberModel) DeleteUser(uid string) error {
+func (memM *memberModel) DeleteUser(uid, dbname string) error {
 	err := memM.cu.db.DeleteUser(uid)
 	if err != nil {
 		fmt.Println(err)
@@ -152,10 +161,16 @@ func (memM *memberModel) DeleteUser(uid string) error {
 	* Local DB 資訊儲存
 	 */
 	const sql = `DELETE FROM public.account WHERE account = $1`
-	sqldb, err := memM.cu.sqldb.ConnectSQLDB()
+
+	sqldb, err := memM.di.GetSQLDBwithDbname(dbname).ConnectSQLDB()
 	if err != nil {
 		return err
 	}
+
+	// sqldb, err := memM.cu.sqldb.ConnectSQLDB()
+	// if err != nil {
+	// 	return err
+	// }
 
 	res, err := sqldb.Exec(sql, uid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -175,7 +190,7 @@ func (memM *memberModel) DeleteUser(uid string) error {
 	return nil
 }
 
-func (memM *memberModel) SetUserDisable(uid string, disable bool) error {
+func (memM *memberModel) SetUserDisable(uid, dbname string, disable bool) error {
 	err := memM.cu.db.SetUserDisable(uid, disable)
 	if err != nil {
 		fmt.Println(err)
@@ -184,11 +199,15 @@ func (memM *memberModel) SetUserDisable(uid string, disable bool) error {
 	/*
 	* Local DB 資訊儲存
 	 */
-	const sql = `UPDATE public.account SET disable = $2 WHERE account = $1`
-	sqldb, err := memM.cu.sqldb.ConnectSQLDB()
+	sqldb, err := memM.di.GetSQLDBwithDbname(dbname).ConnectSQLDB()
 	if err != nil {
 		return err
 	}
+	const sql = `UPDATE public.account SET disable = $2 WHERE account = $1`
+	// sqldb, err := memM.cu.sqldb.ConnectSQLDB()
+	// if err != nil {
+	// 	return err
+	// }
 	setAble := 0
 	if disable {
 		setAble = 1
@@ -231,8 +250,20 @@ func (memM *memberModel) UpdateState(uid string, state string) error {
 	return nil
 }
 
-func (memM *memberModel) UpdateUser(user *User) error {
-	err := memM.cu.db.UpdateUser(user.Account, user.Name, user.Permission, user.Site)
+func (memM *memberModel) UpdateDbname(uid string, dbname string) error {
+	err := memM.cu.db.UpdateDbname(uid, dbname)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	db := memM.di.GetSQLDBwithDbname(dbname)
+	db.InitDB()
+
+	return nil
+}
+
+func (memM *memberModel) UpdateUser(user *User, dbname string) error {
+	err := memM.cu.db.UpdateUser(user.Account, user.Name, user.Permission, dbname)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -241,7 +272,9 @@ func (memM *memberModel) UpdateUser(user *User) error {
 	* Local DB 資訊儲存
 	 */
 	const sql = `UPDATE public.account SET name = $2 , permission = $3 , branch = $4 WHERE account = $1`
-	sqldb, err := memM.cu.sqldb.ConnectSQLDB()
+
+	//sqldb, err := memM.cu.sqldb.ConnectSQLDB()
+	sqldb, err := memM.di.GetSQLDBwithDbname(dbname).ConnectSQLDB()
 	if err != nil {
 		return err
 	}
@@ -289,8 +322,7 @@ func (memM *memberModel) VerifyToken(ftoken string) *User {
 	mapstructure.Decode(claim, &user)
 	//user.Permission = permission.Office
 	user.State = "OK"
-
-	ubranch, err := memM.GetAccountUserDataByID(uid)
+	ubranch, err := memM.GetAccountUserDataByID(uid, user.Dbname)
 	if err == nil {
 		user.Branch = ubranch.Branch
 	}
@@ -298,12 +330,14 @@ func (memM *memberModel) VerifyToken(ftoken string) *User {
 	return &user
 }
 
-func (memM *memberModel) GetAccountUserData() ([]*User, error) {
+func (memM *memberModel) GetAccountUserData(dbname string) ([]*User, error) {
 
 	const qspl = `SELECT account, name, permission, createdate, lasttime, state, disable, branch FROM public.account;`
 	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := memM.cu.sqldb
+	//db := memM.cu.sqldb
+	db := memM.di.GetSQLDBwithDbname(dbname)
+
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {
 		return nil, err
@@ -336,10 +370,11 @@ func (memM *memberModel) GetAccountUserData() ([]*User, error) {
 func (u *User) GetToken(jwtConf *util.JwtConf) (string, error) {
 
 	token, err := jwtConf.GetToken(map[string]interface{}{
-		"sub": u.Account,
-		"nam": u.Name,
-		"per": u.Permission,
-		"cat": u.Category,
+		"sub":    u.Account,
+		"nam":    u.Name,
+		"per":    u.Permission,
+		"cat":    u.Category,
+		"dbname": u.Dbname,
 	})
 	if err != nil {
 		return "", err
@@ -347,12 +382,14 @@ func (u *User) GetToken(jwtConf *util.JwtConf) (string, error) {
 	return *token, nil
 }
 
-func (memM *memberModel) GetAccountUserDataByID(account string) (*User, error) {
+func (memM *memberModel) GetAccountUserDataByID(account, dbname string) (*User, error) {
 
 	const qspl = `SELECT account, name, permission, createdate, lasttime, state, disable, branch FROM public.account where account = '%s';`
 	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := memM.cu.sqldb
+
+	//db := memM.cu.sqldb
+	db := memM.di.GetSQLDBwithDbname(dbname)
 
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, account))
 	if err != nil {

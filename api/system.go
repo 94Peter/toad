@@ -30,9 +30,9 @@ func (api SystemAPI) Enable() bool {
 
 func (api SystemAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/system/branch", Next: api.getBranchDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/system/branch", Next: api.getBranchDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/system/account", Next: api.getAccountDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/system/account", Next: api.getAccountDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/system/account", Next: api.updateAccountDataEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/system/account/password", Next: api.updateAccountPasswordEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/system/account/{account}", Next: api.deleteAccountDataEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
@@ -43,6 +43,7 @@ func (api SystemAPI) GetAPIs() *[]*APIHandler {
 func (api *SystemAPI) createAccountDataEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	iSA := inputSystemAccount{}
+	dbname := req.Header.Get("dbname")
 	err := json.NewDecoder(req.Body).Decode(&iSA)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -58,7 +59,7 @@ func (api *SystemAPI) createAccountDataEndpoint(w http.ResponseWriter, req *http
 
 	systemM := model.GetSystemModel(di)
 
-	_err := systemM.CreateSystemAccount(iSA.GetAccount())
+	_err := systemM.CreateSystemAccount(iSA.GetAccount(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe already exist"))
@@ -71,10 +72,10 @@ func (api *SystemAPI) deleteAccountDataEndpoint(w http.ResponseWriter, req *http
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"account"})
 	account := vars["account"].(string)
-
+	dbname := req.Header.Get("dbname")
 	systemM := model.GetSystemModel(di)
 
-	_err := systemM.DeleteSystemAccount(account)
+	_err := systemM.DeleteSystemAccount(account, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe is not exist"))
@@ -87,6 +88,7 @@ func (api *SystemAPI) deleteAccountDataEndpoint(w http.ResponseWriter, req *http
 func (api *SystemAPI) updateAccountDataEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	iSA := inputSystemAccount{}
+	dbname := req.Header.Get("dbname")
 	err := json.NewDecoder(req.Body).Decode(&iSA)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -102,7 +104,7 @@ func (api *SystemAPI) updateAccountDataEndpoint(w http.ResponseWriter, req *http
 
 	systemM := model.GetSystemModel(di)
 
-	_err := systemM.UpdateSystemAccount(iSA.GetAccount())
+	_err := systemM.UpdateSystemAccount(iSA.GetAccount(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Error,maybe password wrong"))
@@ -114,6 +116,7 @@ func (api *SystemAPI) updateAccountDataEndpoint(w http.ResponseWriter, req *http
 func (api *SystemAPI) updateAccountPasswordEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	iSA := inputSystemAccount{}
+	dbname := req.Header.Get("dbname")
 	err := json.NewDecoder(req.Body).Decode(&iSA)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -129,7 +132,7 @@ func (api *SystemAPI) updateAccountPasswordEndpoint(w http.ResponseWriter, req *
 
 	systemM := model.GetSystemModel(di)
 
-	_err := systemM.UpdateSystemAccountPassword(iSA.NewPassword, iSA.GetAccount())
+	_err := systemM.UpdateSystemAccountPassword(iSA.NewPassword, dbname, iSA.GetAccount())
 	if _err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Error,maybe old password wrong"))
@@ -146,9 +149,9 @@ func (api *SystemAPI) getAccountDataEndpoint(w http.ResponseWriter, req *http.Re
 	// if branch == "" {
 	// 	branch = "all"
 	// }
-
+	dbname := req.Header.Get("dbname")
 	//data, err := json.Marshal(result)
-	systemM.GetAccountData()
+	systemM.GetAccountData(dbname)
 	data, err := systemM.Json("account")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -161,8 +164,8 @@ func (api *SystemAPI) getAccountDataEndpoint(w http.ResponseWriter, req *http.Re
 func (api *SystemAPI) getBranchDataEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	systemM := model.GetSystemModel(di)
-
-	data, err := systemM.GetBranchData()
+	dbname := req.Header.Get("dbname")
+	data, err := systemM.GetBranchData(dbname)
 	//data, err := json.Marshal(result)
 	//data, err := systemM.Json("branch")
 	if err != nil {

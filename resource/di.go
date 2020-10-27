@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"time"
@@ -67,6 +68,28 @@ func (d *DI) GetLocation() *time.Location {
 func (d *DI) GetSQLDB() mdb.InterSQLDB {
 	return d.DBconf.GetSQLDB()
 }
+func (d *DI) GetSQLDBwithDbname(dbname string) mdb.InterSQLDB {
+	fmt.Println("GetSQLDBwithDbname:", dbname)
+	//dbname = "toad"
+	SqlDBConf := &mdb.SqldbConf{
+		DatabaseURL: d.DBconf.SqlDBConf.DatabaseURL,
+		Port:        d.DBconf.SqlDBConf.Port,
+		User:        d.DBconf.SqlDBConf.User,
+		Password:    d.DBconf.SqlDBConf.Password,
+		DB:          dbname,
+	}
+
+	Sqldb := &mdb.SqlDB{
+		Ctx:      context.Background(),
+		Dburl:    SqlDBConf.DatabaseURL,
+		User:     SqlDBConf.User,
+		Password: SqlDBConf.Password,
+		Db:       SqlDBConf.DB,
+		Port:     SqlDBConf.Port,
+	}
+
+	return Sqldb
+}
 
 func (d *DI) GetDB() mdb.InterDB {
 	return d.DBconf.GetDB()
@@ -89,12 +112,12 @@ func GetConf(env string, timezone string) *DI {
 
 	//没有 tzdata 就会从$GOROOT/中找。对于没有安装go环境的windows系统来说，就没办法通过 LoadLocation 设置时区。
 	//// os.Setenv("ZONEINFO", "conf/%s/data.zip")
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		panic(err)
-	}
+	// loc, err := time.LoadLocation(timezone)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	myDI.Location = loc
+	// myDI.Location = loc
 
 	myDI.Log.StartLog()
 	myDI.GetSQLDB() //for quickly check DB schema

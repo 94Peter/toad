@@ -70,6 +70,12 @@ type Invoice struct {
 	Right_qrcode string `json:"right_qrcode"`
 }
 
+type InvoiceConfig struct {
+	SellerID string `json:"sellerID"`
+	Auth     string `json:"auth"`
+	Branch   string `json:"branch"`
+}
+
 type Detail struct {
 	//ProductID string `json:"product_id"`
 	Name     string `json:"product_name"`
@@ -100,10 +106,10 @@ func GetInvoiceModel(imr interModelRes) *InvoiceModel {
 	return invoiceM
 }
 
-func (invoiceM *InvoiceModel) GetInvoiceData(rid string) *Invoice {
+func (invoiceM *InvoiceModel) GetInvoiceData(rid, dbname string) *Invoice {
 
 	const qspl = `SELECT rid, invoiceno, buyerID, sellerID, randomnum, title, date, amount, left_qrcode, right_qrcode FROM public.Invoice where rid = '%s';`
-	db := invoiceM.imr.GetSQLDB()
+	db := invoiceM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, rid))
 	if err != nil {
 		return nil
@@ -135,12 +141,112 @@ func (invoiceM *InvoiceModel) Json() ([]byte, error) {
 	return json.Marshal(invoiceM.invoiceList)
 }
 
-func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice) (string, error) {
+func (invoiceM *InvoiceModel) GetInvoiceConfig(branch, dbname string) ([]*InvoiceConfig, error) {
+	const invoiceSql = `Select sellerid, auth, branch from public.invoiceconfig where branch like $1;`
+
+	interdb := invoiceM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, _ := interdb.ConnectSQLDB()
+
+	rows, _ := sqldb.Query(invoiceSql, branch)
+	InvoiceConfigList := []*InvoiceConfig{}
+	for rows.Next() {
+		var InvoiceConfig InvoiceConfig
+		if err := rows.Scan(&InvoiceConfig.SellerID, &InvoiceConfig.Auth, &InvoiceConfig.Branch); err != nil {
+			fmt.Println("err Scan " + err.Error())
+			return nil, err
+		}
+		InvoiceConfigList = append(InvoiceConfigList, &InvoiceConfig)
+	}
+
+	return InvoiceConfigList, nil
+}
+
+func (invoiceM *InvoiceModel) GetCommissionBranchByRid(rid, dbname string) ([]*Commission, error) {
+	const invoiceSql = `SELECT c.sid, cs.branch, c.sr from public.commission c
+	inner join public.configSaler cs on c.sid = cs.sid
+	 where rid = $1;`
+
+	interdb := invoiceM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, _ := interdb.ConnectSQLDB()
+
+	rows, _ := sqldb.Query(invoiceSql, rid)
+	var cDataList []*Commission
+
+	for rows.Next() {
+		var c Commission
+		if err := rows.Scan(&c.Sid, &c.Branch, &c.SR); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		cDataList = append(cDataList, &c)
+
+	}
+	return cDataList, nil
+}
+
+func (invoiceM *InvoiceModel) CreateInvoiceConfig(inputInvoiceConfig *InvoiceConfig, dbname string) error {
+
+	InvoiceConfigList, err := invoiceM.GetInvoiceConfig(inputInvoiceConfig.Branch, dbname)
+	for _, data := range InvoiceConfigList {
+		if data.Auth != "" && data.Branch == inputInvoiceConfig.Branch {
+			return errors.New("delete old setting first")
+		}
+	}
+
+	const invoiceSql = `INSERT INTO public.invoiceconfig(auth, SellerID ,Branch) 
+		VALUES ($1, $2, $3);`
+
+	interdb := invoiceM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+
+	res, err := sqldb.Exec(invoiceSql, inputInvoiceConfig.Auth, inputInvoiceConfig.SellerID, inputInvoiceConfig.Branch)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("[ERROR CreateInvoiceConfig]", err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("CreateInvoiceConfig Error")
+	}
+	return nil
+}
+
+func (invoiceM *InvoiceModel) DeleteInvoiceConfig(branch, dbname string) error {
+	const sql = `Delete FROM public.invoiceconfig where branch = $1`
+
+	interdb := invoiceM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	res, err := sqldb.Exec(sql, branch)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("[ERROR DeleteInvoiceConfig]", err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("DeleteInvoiceConfig Error")
+	}
+	return nil
+}
+
+func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice, dbname string) (string, error) {
 	Rid := inputInvoice.Rid
 
 	fmt.Println(Rid)
-
-	receipt := rm.GetReceiptDataByRid(Rid)
+	result := ""
+	receipt := rm.GetReceiptDataByRid(Rid, dbname)
 
 	if receipt == nil {
 		fmt.Println("receipt is null")
@@ -152,70 +258,76 @@ func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice) (string, erro
 	}
 
 	fmt.Println("Allow to CreateInvoice")
-
-	invoice, err := invoiceM.CreateInvoiceDataFromAPI(inputInvoice)
-	if err != nil {
-		fmt.Println("[CreateInvoiceDataFromAPI ERR:", err)
-		return "", err
+	dataList, _ := invoiceM.GetCommissionBranchByRid(Rid, dbname)
+	ivconfigList, _ := invoiceM.GetInvoiceConfig("%", dbname)
+	count := 0
+	mybranch := ""
+	for _, data := range dataList {
+		mybranch += data.Branch + " "
+		for _, config := range ivconfigList {
+			if data.Branch == config.Branch && config.Auth != "" && config.SellerID != "" {
+				count++
+			}
+		}
 	}
-	if invoice.InvoiceNo == "" {
-		fmt.Println(err)
-		return "", errors.New("第三方API 建立發票失敗")
-	}
+	fmt.Println("count:", count)
 
-	// const sql = `Update public.receipt set invoiceNo = $1 where Rid = $2;`
-	// fmt.Println("%s %s", invoice.InvoiceNo, Rid)
-	// interdb := invoiceM.imr.GetSQLDB()
-	// sqldb, err := interdb.ConnectSQLDB()
-	// if err != nil {
-	// 	return "", err
-	// }
-	// res, err := sqldb.Exec(sql, invoice.InvoiceNo, Rid)
-	// //res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return "", err
-	// }
-	// id, err := res.RowsAffected()
-	// if err != nil {
-	// 	fmt.Println("PG Affecte Wrong: ", err)
-	// 	return "", err
-	// }
-	// fmt.Println(id)
-
-	// if id == 0 {
-	// 	return "", errors.New("Invalid operation, maybe not found the receipt")
-	// }
-	////////////////////////////////////////////////////////////////////////////////
-
-	const invoiceSql = `INSERT INTO public.invoice(
-		rid, invoiceno, buyerid, sellerid, randomnum, title, date, amount, left_qrcode, right_qrcode)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
-
-	interdb := invoiceM.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return "", err
-	}
-	fmt.Println(Rid, invoice.InvoiceNo, inputInvoice.BuyerID, storeID, invoice.RandNum, inputInvoice.Title, invoice.Date, invoice.TotalAmount, invoice.Left_qrcode, invoice.Right_qrcode)
-	res, err := sqldb.Exec(invoiceSql, Rid, invoice.InvoiceNo, inputInvoice.BuyerID, storeID, invoice.RandNum, inputInvoice.Title, invoice.Date, invoice.TotalAmount, invoice.Left_qrcode, invoice.Right_qrcode)
-	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-	if err != nil {
-		fmt.Println("[ERROR CreateInvoice]", err)
-		return "", err
-	}
-	id, err := res.RowsAffected()
-	if err != nil {
-		fmt.Println("PG Affecte Wrong: ", err)
-		return "", err
-	}
-	fmt.Println(id)
-
-	if id == 0 {
-		return "", errors.New("CreateInvoice Error")
+	if count != len(dataList) {
+		return "", errors.New("invoice setting error, plesse check " + mybranch + " setting")
 	}
 
-	return invoice.InvoiceNo, nil
+	for _, data := range dataList {
+
+		auth := ""
+		sellerID := ""
+		for _, config := range ivconfigList {
+			if data.Branch == config.Branch && config.Auth != "" && config.SellerID != "" {
+				auth = config.Auth
+				sellerID = config.SellerID
+				break
+			}
+		}
+		//invoice, err := invoiceM.CreateInvoiceDataFromAPI(inputInvoice, data.Branch, dbname)
+		invoice, err := invoiceM.CreateInvoiceDataFromAPI_V2(inputInvoice, data, sellerID, auth, dbname)
+		if err != nil {
+			fmt.Println("[CreateInvoiceDataFromAPI ERR:", err)
+			return "", err
+		}
+		if invoice.InvoiceNo == "" {
+			fmt.Println(err)
+			return "", errors.New("第三方API 建立發票失敗")
+		}
+
+		const invoiceSql = `INSERT INTO public.invoice(
+		rid, invoiceno, buyerid, sellerid, randomnum, title, date, amount, left_qrcode, right_qrcode, sid)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`
+
+		interdb := invoiceM.imr.GetSQLDBwithDbname(dbname)
+		sqldb, err := interdb.ConnectSQLDB()
+		if err != nil {
+			return "", err
+		}
+		fmt.Println(Rid, invoice.InvoiceNo, inputInvoice.BuyerID, storeID, invoice.RandNum, inputInvoice.Title, invoice.Date, invoice.TotalAmount, invoice.Left_qrcode, invoice.Right_qrcode)
+		res, err := sqldb.Exec(invoiceSql, Rid, invoice.InvoiceNo, inputInvoice.BuyerID, storeID, invoice.RandNum, inputInvoice.Title, invoice.Date, invoice.TotalAmount, invoice.Left_qrcode, invoice.Right_qrcode, data.Sid)
+		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		if err != nil {
+			fmt.Println("[ERROR CreateInvoice]", err)
+			return "", err
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+			return "", err
+		}
+		fmt.Println(id)
+
+		if id == 0 {
+			return "", errors.New("CreateInvoice Error")
+		}
+		result += invoice.InvoiceNo
+
+	}
+	return result, nil
 }
 
 func (invoiceM *InvoiceModel) MakeQRcodeImageFile(Invoice *Invoice) error {
@@ -415,9 +527,9 @@ func (invoiceM *InvoiceModel) CustomizedInvoice(p *pdf.Pdf, Invoice *Invoice) {
 	p.FillText(fmt.Sprintf("%.f", round(float64(Invoice.TotalAmount)/1.05, 0)), fontsize, pdf.ColorTableLine, pdf.AlignRight, pdf.ValignMiddle, detail_w+50, pdf.TextHeight)
 
 }
-func (invoiceM *InvoiceModel) GetInvoicePDF(rid string, p *pdf.Pdf) {
+func (invoiceM *InvoiceModel) GetInvoicePDF(rid, dbname string, p *pdf.Pdf) {
 
-	Invoice := invoiceM.GetInvoiceData(rid)
+	Invoice := invoiceM.GetInvoiceData(rid, dbname)
 	if Invoice == nil {
 		fmt.Println("Invoice is null")
 		return
@@ -438,13 +550,23 @@ func (invoiceM *InvoiceModel) GetInvoicePDF(rid string, p *pdf.Pdf) {
 	return
 }
 
-func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice) (*Invoice, error) {
+func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice, branch, dbname string) (*Invoice, error) {
 	fmt.Println("CreateInvoiceDataFromAPI")
 	if rm == nil {
 		fmt.Println("rm is null")
 		return nil, errors.New("rm is null")
 	}
-	r := rm.GetReceiptDataByID(iv.Rid)
+	r := rm.GetReceiptDataByID(iv.Rid, dbname)
+	ivdvList, err := invoiceM.GetInvoiceConfig(branch, dbname)
+
+	if len(ivdvList) == 0 {
+		return nil, errors.New("invoice setting error, cannot find " + branch)
+	}
+
+	ivdv := ivdvList[0]
+	if ivdv.Auth == "" {
+		return nil, errors.New("invoice setting error")
+	}
 
 	out2, err := json.Marshal(r)
 	if err != nil {
@@ -470,7 +592,7 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice) (*Invoice, e
 
 	deatils = append(deatils, deatil)
 	tmap["details"] = deatils
-	tmap["seller"] = storeID
+	tmap["seller"] = ivdv.SellerID
 	tmap["buyer_name"] = "(" + r.CustomerType + "家)" + r.Name
 	tmap["buyer_uniform"] = iv.BuyerID
 	tmap["sales_amount"] = round(float64(r.Amount)/1.05, 0)    //對第一位小數 四捨五入
@@ -506,7 +628,7 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice) (*Invoice, e
 		fmt.Println(err)
 	}
 
-	req.Header.Set("Authorization", auth_iv)
+	req.Header.Set("Authorization", ivdv.Auth)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -528,8 +650,130 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice) (*Invoice, e
 	var data map[string]interface{}
 	json.Unmarshal([]byte(result), &data)
 	//(just for print)從 map[string] 取 result 的json資料
-	InvoiceData := data["result"].(map[string]interface{})
-	fmt.Println("Out\n", InvoiceData)
+	if data["result"] != nil {
+		InvoiceData := data["result"].(map[string]interface{})
+		fmt.Println("Out\n", InvoiceData)
+	} else {
+		return nil, errors.New("api from 復升 failed:" + data["msg"].(string))
+	}
+
+	//發票資料結構
+	var invoice *Invoice
+	// mapstructure.Decode(InvoiceData, &invoice)
+	// out, err := json.Marshal(invoice)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return nil, err
+	// }
+	// fmt.Println("Out1\n" + string(out))
+
+	//從body取出key為result的json物件
+	value := gjson.Get(string(result), "result")
+	//將資料轉換為struct
+	err = json.Unmarshal([]byte(value.String()), &invoice)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	} else {
+		out, err := json.Marshal(invoice)
+		if err != nil {
+			fmt.Println(err)
+			return nil, err
+		}
+		fmt.Println("Out2\n" + string(out))
+	}
+
+	return invoice, nil
+}
+
+func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI_V2(iv *Invoice, commission *Commission, sellerID, auth, dbname string) (*Invoice, error) {
+	fmt.Println("CreateInvoiceDataFromAPI_V2")
+
+	if auth == "" {
+		return nil, errors.New("auth invoice setting error")
+	}
+	if sellerID == "" {
+		return nil, errors.New("sellerID invoice setting error")
+	}
+
+	r := rm.GetReceiptDataByID(iv.Rid, dbname)
+
+	tmap := make(map[string]interface{})
+	deatils := make([]map[string]interface{}, 0, 0)
+	var deatil = make(map[string]interface{})
+	deatil["product_id"] = r.CNo
+	deatil["quantity"] = 1
+	deatil["product_name"] = r.CaseName
+	deatil["unit"] = "件"
+	deatil["unit_price"] = commission.SR
+	deatil["amount"] = commission.SR
+
+	deatils = append(deatils, deatil)
+	tmap["details"] = deatils
+	tmap["seller"] = sellerID
+	tmap["buyer_name"] = "(" + r.CustomerType + "家)" + r.Name
+	tmap["buyer_uniform"] = iv.BuyerID
+	tmap["sales_amount"] = round(float64(commission.SR)/1.05, 0)    //對第一位小數 四捨五入
+	tmap["tax_amount"] = round(float64(commission.SR)/1.05*0.05, 0) //對第一位小數 四捨五入
+	tmap["total_amount"] = commission.SR
+	tmap["tax_type"] = "1"    //應稅
+	tmap["is_exchange"] = "1" //需要到財政部確認發票
+	tmap["carrier_type"] = "" //
+	tmap["carrier_id1"] = ""  //
+	tmap["carrier_id2"] = ""  //
+	tmap["remark"] = iv.Title //
+
+	//tmap["string"] = "Value 01"
+
+	out, err := json.MarshalIndent(tmap, "", "  ")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	fmt.Println(string(out))
+
+	client := &http.Client{}
+	//auth_token := "A2dC56TZfkpra6TCIuo5UQW870L/0=mazjT0g7=s5Do0K9z"
+	//url := "https://ranking.numax.com.tw/test/einvoice/api/invoice"
+	// detail := Detail{
+	// 	Name:      "項目一",
+	// 	Quantity:  2,
+	// 	UnitPrice: 15000,
+	// }
+
+	req, err := http.NewRequest("POST", ivURL, bytes.NewBuffer(out))
+	if err != nil {
+		// handle error
+		fmt.Println(err)
+	}
+
+	req.Header.Set("Authorization", auth)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		// handle error
+		fmt.Println(err)
+	}
+	defer resp.Body.Close()
+
+	//復升API回傳的Body
+	result, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil
+	}
+	//預防亂碼轉換
+	fmt.Println(string(result))
+	result = bytes.TrimPrefix(result, []byte("\xef\xbb\xbf"))
+
+	//解析至map[string]
+	var data map[string]interface{}
+	json.Unmarshal([]byte(result), &data)
+	//(just for print)從 map[string] 取 result 的json資料
+	if data["result"] != nil {
+		InvoiceData := data["result"].(map[string]interface{})
+		fmt.Println("Out\n", InvoiceData)
+	} else {
+		return nil, errors.New("api from 復升 failed:" + data["msg"].(string))
+	}
 
 	//發票資料結構
 	var invoice *Invoice

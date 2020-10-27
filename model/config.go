@@ -168,11 +168,11 @@ func GetConfigModel(imr interModelRes) *ConfigModel {
 	return configM
 }
 
-func (configM *ConfigModel) GetConfigBranchData(today, end time.Time) []*ConfigBranch {
+func (configM *ConfigModel) GetConfigBranchData(today, end time.Time, dbname string) []*ConfigBranch {
 
 	const qspl = `SELECT branch, rent, AgentSign, CommercialFee , Manager , Sid , annualratio FROM public.ConfigBranch;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := configM.imr.GetSQLDB()
+	db := configM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {
 		return nil
@@ -227,7 +227,7 @@ func (configM *ConfigModel) Json(config string) ([]byte, error) {
 	return json.Marshal(amorM.amortizationList)
 }
 
-func (configM *ConfigModel) CreateConfigBranch(data []string) (err error) {
+func (configM *ConfigModel) CreateConfigBranch(data []string, dbname string) (err error) {
 
 	sqlStr := "INSERT INTO public.ConfigBranch ( branch ) VALUES "
 	for _, row := range data {
@@ -239,7 +239,7 @@ func (configM *ConfigModel) CreateConfigBranch(data []string) (err error) {
 	sqlStr = sqlStr[0 : len(sqlStr)-2]
 	sqlStr += "ON CONFLICT (branch) DO Nothing ;"
 	fmt.Println(sqlStr)
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -265,7 +265,7 @@ func (configM *ConfigModel) CreateConfigBranch(data []string) (err error) {
 	return nil
 }
 
-func (configM *ConfigModel) CreateConfigBranchWithManager(cb *ConfigBranch) (err error) {
+func (configM *ConfigModel) CreateConfigBranchWithManager(cb *ConfigBranch, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.ConfigBranch
 	( branch, rent, agentsign, CommercialFee, manager, sid)
@@ -274,7 +274,7 @@ func (configM *ConfigModel) CreateConfigBranchWithManager(cb *ConfigBranch) (err
 	WHERE EXISTS (SELECT sid FROM public.configsaler where sid = $6 and branch = $1);
 	;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -300,7 +300,7 @@ func (configM *ConfigModel) CreateConfigBranchWithManager(cb *ConfigBranch) (err
 	return nil
 }
 
-func (configM *ConfigModel) UpdateConfigBranch(Branch string, cb *ConfigBranch) (err error) {
+func (configM *ConfigModel) UpdateConfigBranch(Branch, dbname string, cb *ConfigBranch) (err error) {
 
 	const sql = `UPDATE public.configbranch CB
 					SET rent=$2, agentsign=$3 ,CommercialFee=$4, manager = $5 , Sid = $6 , annualratio=$7
@@ -308,7 +308,7 @@ func (configM *ConfigModel) UpdateConfigBranch(Branch string, cb *ConfigBranch) 
 					SELECT sid FROM public.configsaler where sid = $6 and branch = $1
 					) CS Where CB.branch = $1;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -335,11 +335,11 @@ func (configM *ConfigModel) UpdateConfigBranch(Branch string, cb *ConfigBranch) 
 	return nil
 }
 
-func (configM *ConfigModel) DeleteConfigBranch(Branch string) (err error) {
+func (configM *ConfigModel) DeleteConfigBranch(Branch, dbname string) (err error) {
 
 	const sql = `DELETE FROM public.configbranch WHERE branch = $1;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -365,11 +365,11 @@ func (configM *ConfigModel) DeleteConfigBranch(Branch string) (err error) {
 	return nil
 }
 
-func (configM *ConfigModel) GetConfigParameterData(today, end time.Time) []*ConfigParameter {
+func (configM *ConfigModel) GetConfigParameterData(today, end time.Time, dbname string) []*ConfigParameter {
 
 	const qspl = `SELECT id, date, nhi, LI, nhi2nd, MMW  FROM public.ConfigParameter;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := configM.imr.GetSQLDB()
+	db := configM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {
 		return nil
@@ -398,13 +398,13 @@ func (configM *ConfigModel) GetConfigParameterData(today, end time.Time) []*Conf
 	return configM.ConfigParameterList
 }
 
-func (configM *ConfigModel) UpdateConfigParameter(cp *ConfigParameter, ID string) (err error) {
+func (configM *ConfigModel) UpdateConfigParameter(cp *ConfigParameter, ID, dbname string) (err error) {
 
 	const sql = `UPDATE public.configparameter
 				SET date=$1, nhi=$2, LI=$3, nhi2nd=$4, MMW=$5 
 				WHERE id=$6;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -431,11 +431,11 @@ func (configM *ConfigModel) UpdateConfigParameter(cp *ConfigParameter, ID string
 	return nil
 }
 
-func (configM *ConfigModel) DeleteConfigParameter(ID string) (err error) {
+func (configM *ConfigModel) DeleteConfigParameter(ID, dbname string) (err error) {
 
 	const sql = `DELETE FROM public.configparameter	WHERE id=$1;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -461,13 +461,13 @@ func (configM *ConfigModel) DeleteConfigParameter(ID string) (err error) {
 	return nil
 }
 
-func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err error) {
+func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.ConfigParameter
 	(id, date, nhi, LI, nhi2nd, MMW )
 	VALUES ($1, $2, $3, $4, $5, $6);`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -493,14 +493,14 @@ func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter) (err erro
 	return nil
 }
 
-func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
+func (configM *ConfigModel) GetConfigSalerData(branch, dbname string) []*ConfigSaler {
 
 	const qspl = `SELECT  sid, sname, branch, zerodate,  title, percent, 
 				  salary, insuredamount,  payrollbracket, enrollment, association, address, birth, identityNum , 
 				  bankAccount , email, phone , remark , code
 				  FROM public.ConfigSaler where branch like '%s' order by branch,code;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := configM.imr.GetSQLDB()
+	db := configM.imr.GetSQLDBwithDbname(dbname)
 
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch))
 	if err != nil {
@@ -533,12 +533,12 @@ func (configM *ConfigModel) GetConfigSalerData(branch string) []*ConfigSaler {
 	return configM.ConfigSalerList
 }
 
-func (configM *ConfigModel) CheckConfigSaler(identitynum, zeroDate string) (r string, err error) {
+func (configM *ConfigModel) CheckConfigSaler(identitynum, zeroDate, dbname string) (r string, err error) {
 
 	const sql = `SELECT zerodate, branch FROM public.configsaler where identitynum = '%s' group by branch, zerodate;;`
 	//and zerodate = '%s
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 
 	rows, err := interdb.SQLCommand(fmt.Sprintf(sql, identitynum))
 	if err != nil {
@@ -578,14 +578,14 @@ func (configM *ConfigModel) CheckConfigSaler(identitynum, zeroDate string) (r st
 	return "[Info]:" + r + "等店 存在重複業務", nil
 }
 
-func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
+func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.configsaler(
 		sid, sname, branch, zerodate,  title, percent,  salary, insuredamount,
 		 payrollbracket, enrollment, association, address, birth, identityNum, bankAccount,  email, phone, remark, code)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -609,15 +609,15 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler) (err error) {
 		return errors.New("Invalid operation, ConfigSaler")
 	}
 	//連動薪水 新增預設紀錄
-	configM.CreateConfigSalary(cs.GetConfigSalary())
+	configM.CreateConfigSalary(cs.GetConfigSalary(), dbname)
 	return nil
 }
 
-func (configM *ConfigModel) DeleteConfigSaler(sid string) (err error) {
+func (configM *ConfigModel) DeleteConfigSaler(sid, dbname string) (err error) {
 
 	const sql = `DELETE FROM public.configsaler	WHERE sid=$1 ;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -647,7 +647,7 @@ func (configM *ConfigModel) DeleteConfigSaler(sid string) (err error) {
 	return nil
 }
 
-func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err error) {
+func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid, dbname string) (err error) {
 
 	// const sql = `UPDATE public.configsaler
 	// SET zerodate=$2,  title=$3, percent=$4, salary=$5,
@@ -658,7 +658,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err 
 	SET	address=$2, birth=$3, bankaccount= $4 , email = $5 , code =$6
 	WHERE sid=$1`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -686,7 +686,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid string) (err 
 	return nil
 }
 
-func (configM *ConfigModel) GetConfigSalaryData(sid string) (err error) {
+func (configM *ConfigModel) GetConfigSalaryData(sid, dbname string) (err error) {
 
 	// const sql = `SELECT A.*
 	// 				FROM public.configsalary A
@@ -699,7 +699,7 @@ func (configM *ConfigModel) GetConfigSalaryData(sid string) (err error) {
 	const sql = `SELECT sid, sname, branch, zerodate, title, percent, salary, payrollbracket, insuredamount, enrollment, association,remark
 	  FROM public.configsalary where  sid like '%s' order by zeroDate desc;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := configM.imr.GetSQLDB()
+	db := configM.imr.GetSQLDBwithDbname(dbname)
 
 	rows, err := db.SQLCommand(fmt.Sprintf(sql, sid))
 	if err != nil {
@@ -731,7 +731,7 @@ func (configM *ConfigModel) GetConfigSalaryData(sid string) (err error) {
 	return nil
 }
 
-func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary) (err error) {
+func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.configsalary(
 		sid, sname, branch, zerodate, title, percent, salary, payrollbracket, insuredamount, enrollment, association, remark)
@@ -740,7 +740,7 @@ func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary) (err error) {
 		percent = excluded.percent, salary = excluded.salary, payrollbracket = excluded.payrollbracket, insuredamount = excluded.insuredamount,
 		enrollment = excluded.enrollment , association = excluded.association , remark = excluded.remark ;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -763,14 +763,14 @@ func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, CreateConfigSalary")
 	}
-	configM.WorkValidDate()
+	configM.WorkValidDate(dbname)
 	return nil
 }
-func (configM *ConfigModel) DeleteConfigSalary(sid, zerodate string) (err error) {
+func (configM *ConfigModel) DeleteConfigSalary(sid, zerodate, dbname string) (err error) {
 
 	const sql = `DELETE FROM public.configsalary WHERE sid=$1 and zerodate = $2;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -791,7 +791,7 @@ func (configM *ConfigModel) DeleteConfigSalary(sid, zerodate string) (err error)
 	if id == 0 {
 		return errors.New("Invalid operation, maybe not found the salary of saler ")
 	}
-	configM.WorkValidDate()
+	configM.WorkValidDate(dbname)
 	return nil
 }
 
@@ -801,7 +801,7 @@ TODO::
 *validdate != '0001-01-01' and validdate < now() 條件
 *因要寫入log，故不採用update from select 語句，採用使用for loop完成
 **/
-func (configM *ConfigModel) WorkValidDate() (err error) {
+func (configM *ConfigModel) WorkValidDate(dbname string) (err error) {
 
 	const sql = `UPDATE public.configsaler cs
 	SET sname=subquery.sname, branch=subquery.branch, zerodate=to_timestamp(subquery.zerodate,'YYYY-MM-DD'), title=subquery.title, percent=subquery.percent, 
@@ -818,7 +818,7 @@ func (configM *ConfigModel) WorkValidDate() (err error) {
 	) AS subquery
 	WHERE subquery.sid = cs.sid;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := configM.imr.GetSQLDB()
+	db := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := db.ConnectSQLDB()
 	res, err := sqldb.Exec(sql)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -836,11 +836,11 @@ func (configM *ConfigModel) WorkValidDate() (err error) {
 	return nil
 }
 
-func (configM *ConfigModel) GetAccountItemData(today, end time.Time) []*AccountItem {
+func (configM *ConfigModel) GetAccountItemData(today, end time.Time, dbname string) []*AccountItem {
 
 	const qspl = `SELECT AccountItemName, Valid FROM public.AccountItem;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := configM.imr.GetSQLDB()
+	db := configM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {
 		return nil
@@ -869,14 +869,14 @@ func (configM *ConfigModel) GetAccountItemData(today, end time.Time) []*AccountI
 	return configM.AccountItemList
 }
 
-func (configM *ConfigModel) CreateAccountItem(aitem *AccountItem) (err error) {
+func (configM *ConfigModel) CreateAccountItem(aitem *AccountItem, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.AccountItem
 	(AccountItemName)
 	VALUES ($1)
 	;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -902,14 +902,14 @@ func (configM *ConfigModel) CreateAccountItem(aitem *AccountItem) (err error) {
 	return nil
 }
 
-func (configM *ConfigModel) UpdateAccountItem(oldItemName string, aitem *AccountItem) (err error) {
+func (configM *ConfigModel) UpdateAccountItem(oldItemName, dbname string, aitem *AccountItem) (err error) {
 
 	const sql = `UPDATE public.AccountItem
 				SET AccountItemName=$2
 				WHERE AccountItemName=$1;
 				;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -934,11 +934,11 @@ func (configM *ConfigModel) UpdateAccountItem(oldItemName string, aitem *Account
 
 	return nil
 }
-func (configM *ConfigModel) DeleteAccountItem(ItemName string) (err error) {
+func (configM *ConfigModel) DeleteAccountItem(ItemName, dbname string) (err error) {
 
 	const sql = `DELETE FROM public.accountitem WHERE AccountItemName=$1;`
 
-	interdb := configM.imr.GetSQLDB()
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err

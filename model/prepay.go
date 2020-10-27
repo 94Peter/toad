@@ -48,13 +48,13 @@ func GetPrePayModel(imr interModelRes) *PrePayModel {
 	return prepayM
 }
 
-func (prepayM *PrePayModel) GetPrePayData(startDate, endDate time.Time) []*PrePay {
+func (prepayM *PrePayModel) GetPrePayData(startDate, endDate time.Time, dbname string) []*PrePay {
 
 	const PrePayspl = `SELECT PPid, Date, itemname, description, fee FROM public.PrePay
 		where extract(epoch from Date) >= '%d' and extract(epoch from Date - '1 month'::interval) < '%d'
 		order by Date;`
 	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
-	db := prepayM.imr.GetSQLDB()
+	db := prepayM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := db.ConnectSQLDB()
 
 	rows, err := sqldb.Query(fmt.Sprintf(PrePayspl, startDate.Unix(), endDate.Unix()))
@@ -109,11 +109,11 @@ func (prepayM *PrePayModel) GetPrePayData(startDate, endDate time.Time) []*PrePa
 	return prepayM.prepayList
 }
 
-func (prepayM *PrePayModel) getPrePayDataByID(ID string) *PrePay {
+func (prepayM *PrePayModel) getPrePayDataByID(ID, dbname string) *PrePay {
 
 	const PrePayspl = `SELECT PPid, Date  FROM public.PrePay where PPid = '%s';`
 	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
-	db := prepayM.imr.GetSQLDB()
+	db := prepayM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := db.ConnectSQLDB()
 
 	rows, err := sqldb.Query(fmt.Sprintf(PrePayspl, ID))
@@ -140,13 +140,13 @@ func (prepayM *PrePayModel) Json() ([]byte, error) {
 	return json.Marshal(prepayM.prepayList)
 }
 
-func (prepayM *PrePayModel) PDF() []byte {
+func (prepayM *PrePayModel) PDF(dbname string) []byte {
 	p := pdf.GetNewPDF()
 
 	table := pdf.GetDataTable(pdf.Prepay)
 
 	//取得現有店家
-	branchbyte, err := systemM.GetBranchData()
+	branchbyte, err := systemM.GetBranchData(dbname)
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -177,13 +177,13 @@ func (prepayM *PrePayModel) PDF() []byte {
 
 }
 
-func (prepayM *PrePayModel) DeletePrePay(ID string) (err error) {
+func (prepayM *PrePayModel) DeletePrePay(ID, dbname string) (err error) {
 
-	u := prepayM.getPrePayDataByID(ID)
+	u := prepayM.getPrePayDataByID(ID, dbname)
 	if u.PPid == "" {
 		return errors.New("not found prepay")
 	}
-	_, err = salaryM.CheckValidCloseDate(u.Date)
+	_, err = salaryM.CheckValidCloseDate(u.Date, dbname)
 	if err != nil {
 		return
 	}
@@ -193,7 +193,7 @@ func (prepayM *PrePayModel) DeletePrePay(ID string) (err error) {
 				delete from public.BranchPrePay where PPid = '%s';				
 				`
 
-	interdb := prepayM.imr.GetSQLDB()
+	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -217,9 +217,9 @@ func (prepayM *PrePayModel) DeletePrePay(ID string) (err error) {
 	return nil
 }
 
-func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay) (err error) {
+func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay, dbname string) (err error) {
 
-	_, err = salaryM.CheckValidCloseDate(prepay.Date)
+	_, err = salaryM.CheckValidCloseDate(prepay.Date, dbname)
 	if err != nil {
 		return
 	}
@@ -229,7 +229,7 @@ func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay) (err error) {
 	VALUES ($1, $2, $3, $4, $5)
 	;`
 
-	interdb := prepayM.imr.GetSQLDB()
+	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -290,13 +290,13 @@ func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay) (err error) {
 	return nil
 }
 
-func (prepayM *PrePayModel) UpdatePrePay(ID string, prepay *PrePay) (err error) {
+func (prepayM *PrePayModel) UpdatePrePay(ID, dbname string, prepay *PrePay) (err error) {
 
-	u := prepayM.getPrePayDataByID(ID)
+	u := prepayM.getPrePayDataByID(ID, dbname)
 	if u.PPid == "" {
 		return errors.New("not found prepay")
 	}
-	_, err = salaryM.CheckValidCloseDate(u.Date)
+	_, err = salaryM.CheckValidCloseDate(u.Date, dbname)
 	if err != nil {
 		return
 	}
@@ -306,7 +306,7 @@ func (prepayM *PrePayModel) UpdatePrePay(ID string, prepay *PrePay) (err error) 
 	WHERE ppid = $1;
 	;`
 
-	interdb := prepayM.imr.GetSQLDB()
+	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err

@@ -48,7 +48,7 @@ func GetAmortizationModel(imr interModelRes) *AmortizationModel {
 	return amorM
 }
 
-func (amorM *AmortizationModel) GetAmortizationData(beginDate, endDate time.Time, branch string) []*Amortization {
+func (amorM *AmortizationModel) GetAmortizationData(beginDate, endDate time.Time, branch, dbname string) []*Amortization {
 
 	const qspl = `SELECT amorid, branch, Date, itemname, gaincost, amortizationyearlimit, monthlyamortizationamount, firstamortizationamount, hasamortizationamount, notamortizationamount, isover
 				FROM public.amortization
@@ -57,7 +57,9 @@ func (amorM *AmortizationModel) GetAmortizationData(beginDate, endDate time.Time
 				order by Date;`
 	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := amorM.imr.GetSQLDB()
+	//db := amorM.imr.GetSQLDB()
+	db := amorM.imr.GetSQLDBwithDbname(dbname)
+
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch, beginDate.Unix(), endDate.Unix()))
 	if err != nil {
 		return nil
@@ -90,12 +92,13 @@ func (amorM *AmortizationModel) Json() ([]byte, error) {
 	return json.Marshal(amorM.amortizationList)
 }
 
-func (amorM *AmortizationModel) getAmortizationDataByAmorID(id string) *Amortization {
+func (amorM *AmortizationModel) getAmortizationDataByAmorID(id, dbname string) *Amortization {
 
 	const qspl = `SELECT amorid, Date FROM public.amortization where amorid = '%s';`
 	//(Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := amorM.imr.GetSQLDB()
+	//db := amorM.imr.GetSQLDB()
+	db := amorM.imr.GetSQLDBwithDbname(dbname)
 	sql, err := db.ConnectSQLDB()
 	rows, err := sql.Query(fmt.Sprintf(qspl, id))
 	if err != nil {
@@ -115,14 +118,14 @@ func (amorM *AmortizationModel) getAmortizationDataByAmorID(id string) *Amortiza
 	return amor
 }
 
-func (amorM *AmortizationModel) DeleteAmortization(ID string) (err error) {
+func (amorM *AmortizationModel) DeleteAmortization(ID, dbname string) (err error) {
 	fmt.Println("DeleteAmortization")
-	delamor := amorM.getAmortizationDataByAmorID(ID)
+	delamor := amorM.getAmortizationDataByAmorID(ID, dbname)
 	if delamor.AmorId == "" {
 		err = errors.New("not found amortization")
 		return
 	}
-	_, err = salaryM.CheckValidCloseDate(delamor.Date)
+	_, err = salaryM.CheckValidCloseDate(delamor.Date, dbname)
 	if err != nil {
 		return
 	}
@@ -133,7 +136,8 @@ func (amorM *AmortizationModel) DeleteAmortization(ID string) (err error) {
 				 `
 
 	del := fmt.Sprintf(sql, ID, ID)
-	interdb := amorM.imr.GetSQLDB()
+	//interdb := amorM.imr.GetSQLDB()
+	interdb := amorM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -157,9 +161,9 @@ func (amorM *AmortizationModel) DeleteAmortization(ID string) (err error) {
 	return nil
 }
 
-func (amorM *AmortizationModel) CreateAmortization(amor *Amortization) (err error) {
+func (amorM *AmortizationModel) CreateAmortization(amor *Amortization, dbname string) (err error) {
 
-	_, err = salaryM.CheckValidCloseDate(amor.Date)
+	_, err = salaryM.CheckValidCloseDate(amor.Date, dbname)
 	if err != nil {
 		return
 	}
@@ -169,7 +173,7 @@ func (amorM *AmortizationModel) CreateAmortization(amor *Amortization) (err erro
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $5)
 	;`
 
-	interdb := amorM.imr.GetSQLDB()
+	interdb := amorM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -299,9 +303,9 @@ func (amorM *AmortizationModel) UpdateAmortizationData(sqldb *sql.DB) (err error
 	return nil
 }
 
-func (amorM *AmortizationModel) RefreshAmortizationData() {
+func (amorM *AmortizationModel) RefreshAmortizationData(dbname string) {
 
-	interdb := amorM.imr.GetSQLDB()
+	interdb := amorM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		fmt.Println(err)

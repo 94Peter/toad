@@ -19,14 +19,15 @@ func (api IndexAPI) Enable() bool {
 
 func (api IndexAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/index/info", Next: api.getInfoDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/index/incomeStatement", Next: api.getBranchDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/index/info", Next: api.getInfoDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/index/incomeStatement", Next: api.getBranchDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
 	}
 }
 
 func (api *IndexAPI) getInfoDataEndpoint(w http.ResponseWriter, req *http.Request) {
 	queryVar := util.GetQueryValue(req, []string{"date"}, true)
 	by_m := (*queryVar)["date"].(string)
+	dbname := req.Header.Get("dbname")
 	date, err := time.Parse(time.RFC3339, by_m)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -35,7 +36,7 @@ func (api *IndexAPI) getInfoDataEndpoint(w http.ResponseWriter, req *http.Reques
 	}
 
 	indexM := model.GetIndexModel(di)
-	indexM.GetInfoData(date)
+	indexM.GetInfoData(date, dbname)
 	data, err := indexM.Json("info")
 	//data, err := json.Marshal(result)
 	//data, err := systemM.Json("branch")
@@ -50,7 +51,7 @@ func (api *IndexAPI) getInfoDataEndpoint(w http.ResponseWriter, req *http.Reques
 func (api *IndexAPI) getBranchDataEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	queryVar := util.GetQueryValue(req, []string{"branch", "date"}, true)
-
+	dbname := req.Header.Get("dbname")
 	by_m := (*queryVar)["date"].(string)
 
 	date, err := time.Parse(time.RFC3339, by_m)
@@ -68,7 +69,7 @@ func (api *IndexAPI) getBranchDataEndpoint(w http.ResponseWriter, req *http.Requ
 	}
 
 	indexM := model.GetIndexModel(di)
-	data, err := indexM.GetIncomeStatement(branch, date)
+	data, err := indexM.GetIncomeStatement(branch, dbname, date)
 	//data, err := indexM.Json("incomeStatement")
 	//data, err := json.Marshal(result)
 	//data, err := systemM.Json("branch")

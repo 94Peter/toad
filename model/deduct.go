@@ -59,7 +59,7 @@ type DeductModel struct {
 	deductList []*Deduct
 }
 
-func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype string) []*Deduct {
+func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, dbname string) []*Deduct {
 
 	// `SELECT D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , R.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D
 	// inner join public.ar as AR on AR.arid = D.arid
@@ -75,7 +75,7 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype string
 	//where D.rid = R.rid;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	//fmt.Println(fmt.Sprintf(qspl, by_m+"-01", ey_m+"-01", mtype, mtype))
-	db := decuctModel.imr.GetSQLDB()
+	db := decuctModel.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := db.ConnectSQLDB()
 	rows, err := sqldb.Query(fmt.Sprintf(qspl, by_m.Unix(), ey_m.Unix(), mtype, mtype))
 	if err != nil {
@@ -134,9 +134,9 @@ func (decuctModel *DeductModel) Json() ([]byte, error) {
 	return json.Marshal(decuctModel.deductList)
 }
 
-func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct) (err error) {
+func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct, dbname string) (err error) {
 
-	_, err = salaryM.CheckValidCloseDate(time.Now())
+	_, err = salaryM.CheckValidCloseDate(time.Now(), dbname)
 	if err != nil {
 		return
 	}
@@ -149,7 +149,8 @@ func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct) (err error) {
 				SELECT v.* , r.rid  FROM vals as v
 				Left join public.receipt AS r on r.date = (select MIN(Date) FROM public.receipt where arid = $2) and v.column2 = r.arid limit 1;`
 
-	interdb := decuctModel.imr.GetSQLDB()
+	//interdb := decuctModel.imr.GetSQLDB()
+	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -195,7 +196,7 @@ func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct) (err error) {
 	}
 
 	deduct.Did = fmt.Sprintf("%d", fakeid)
-	decuctModel.setFeeToCommission(sqldb, deduct.Did, deduct.ARid)
+	decuctModel.setFeeToCommission(sqldb, deduct.Did, deduct.ARid, dbname)
 
 	return nil
 }
@@ -206,8 +207,9 @@ func (decuctModel *DeductModel) setFeeToCommission(sqldb *sql.DB, Did, ARid stri
 
 	if ARid == "" {
 		const qspl = `SELECT D.Did, D.arid FROM public.deduct as D Where D.Did = '%s';`
-		db := decuctModel.imr.GetSQLDB()
-		rows, err := db.SQLCommand(fmt.Sprintf(qspl, Did))
+		//db := decuctModel.imr.GetSQLDBwithDbname(dbname)
+		rows, err := sqldb.Query(fmt.Sprintf(qspl, Did))
+		//rows, err := db.SQLCommand(fmt.Sprintf(qspl, Did))
 		if err != nil {
 			fmt.Println(err)
 			return "", nil
@@ -318,13 +320,13 @@ func (decuctModel *DeductModel) updateSRBonusToCommission(ARid string, sqldb *sq
 
 }
 
-func (decuctModel *DeductModel) DeleteDeduct(ID string) (err error) {
+func (decuctModel *DeductModel) DeleteDeduct(ID, dbname string, sqldb *sql.DB) (err error) {
 
-	d := decuctModel.getDeductByID(ID)
+	d := decuctModel.getDeductByID(ID, dbname, sqldb)
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
 	if err != nil {
 		return
 	}
@@ -332,11 +334,11 @@ func (decuctModel *DeductModel) DeleteDeduct(ID string) (err error) {
 	/*
 	* 邏輯是先取得ARID後刪除，然後從算傭金應扣。
 	 */
-	interdb := decuctModel.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
+	// interdb := decuctModel.imr.GetSQLDB()
+	// sqldb, err := interdb.ConnectSQLDB()
+	// if err != nil {
+	// 	return err
+	// }
 
 	//nothing 回傳arid用
 	arid, _ := decuctModel.setFeeToCommission(sqldb, ID, "", "nothing")
@@ -364,24 +366,24 @@ func (decuctModel *DeductModel) DeleteDeduct(ID string) (err error) {
 	return nil
 }
 
-func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber string) (err error) {
+func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber, dbname string) (err error) {
 
-	d := decuctModel.getDeductByID(Did)
+	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	d := decuctModel.getDeductByID(Did, dbname, sqldb)
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
 	if err != nil {
 		return
 	}
 
 	sql := fmt.Sprintf("UPDATE public.deduct Set status = $1, date = $2 , checkNumber = $3 Where did = $4")
-
-	interdb := decuctModel.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 
 	res, err := sqldb.Exec(sql, status, getNil(date), checkNumber, Did)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -403,24 +405,24 @@ func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber stri
 	return nil
 }
 
-func (decuctModel *DeductModel) UpdateDeductFee(Did string, fee int) (err error) {
+func (decuctModel *DeductModel) UpdateDeductFee(Did, dbname string, fee int) (err error) {
 
-	d := decuctModel.getDeductByID(Did)
+	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	d := decuctModel.getDeductByID(Did, dbname, sqldb)
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
 	if err != nil {
 		return
 	}
 
 	sql := fmt.Sprintf("UPDATE public.deduct Set fee = $1 Where did = $2 and status = '未支付'")
-
-	interdb := decuctModel.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 
 	res, err := sqldb.Exec(sql, fee, Did)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -442,24 +444,24 @@ func (decuctModel *DeductModel) UpdateDeductFee(Did string, fee int) (err error)
 	return nil
 }
 
-func (decuctModel *DeductModel) UpdateDeductItem(Did, item string) (err error) {
+func (decuctModel *DeductModel) UpdateDeductItem(Did, item, dbname string) (err error) {
 
-	d := decuctModel.getDeductByID(Did)
+	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	d := decuctModel.getDeductByID(Did, dbname, sqldb)
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
 	if err != nil {
 		return
 	}
 
 	sql := fmt.Sprintf("UPDATE public.deduct Set item = $1 Where did = $2")
-
-	interdb := decuctModel.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 
 	res, err := sqldb.Exec(sql, item, Did)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -480,7 +482,7 @@ func (decuctModel *DeductModel) UpdateDeductItem(Did, item string) (err error) {
 	return nil
 }
 
-func (decuctModel *DeductModel) UpdateDeductRid(ARid string) (err error) {
+func (decuctModel *DeductModel) UpdateDeductRid(ARid, dbname string) (err error) {
 	const sql = `Update public.deduct 
 				set rid = tmp.ReceiptID
 				FROM (
@@ -498,7 +500,7 @@ func (decuctModel *DeductModel) UpdateDeductRid(ARid string) (err error) {
 	// --where D.arid = '1566575681'
 	// and ( SELECT rid from public.deduct WHERE arid = '1566575681') is null
 
-	interdb := decuctModel.imr.GetSQLDB()
+	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -527,21 +529,24 @@ func (decuctModel *DeductModel) UpdateDeductRid(ARid string) (err error) {
 	return nil
 }
 
-func (decuctModel *DeductModel) UpdateDeductSales(Did string, salerList []*MAPSaler) (err error) {
+func (decuctModel *DeductModel) UpdateDeductSales(Did, dbname string, salerList []*MAPSaler) (err error) {
 
-	d := decuctModel.getDeductByID(Did)
+	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+
+	d := decuctModel.getDeductByID(Did, dbname, sqldb)
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
 	if err != nil {
 		return
 	}
 
 	fmt.Println("UpdateDeductSales")
-	interdb := decuctModel.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	decuctModel.DeleteDeductMAP(Did)
+	// interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	// sqldb, err := interdb.ConnectSQLDB()
+	decuctModel.DeleteDeductMAP(Did, sqldb)
 	decuctModel.SaveDeductMAP(salerList, Did, sqldb)
 
 	return nil
@@ -573,15 +578,10 @@ func (decuctModel *DeductModel) SaveDeductMAP(salerList []*MAPSaler, ID string, 
 	}
 }
 
-func (decuctModel *DeductModel) DeleteDeductMAP(Did string) {
+func (decuctModel *DeductModel) DeleteDeductMAP(Did string, sqldb *sql.DB) {
 
-	interdb := decuctModel.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		fmt.Println(err)
-	}
 	const sql = `delete from public.deductmap where did = $1`
-	_, err = sqldb.Exec(sql, Did)
+	sqldb.Exec(sql, Did)
 }
 
 func getNil(msg string) (response *string) {
@@ -592,12 +592,23 @@ func getNil(msg string) (response *string) {
 	}
 }
 
-func (decuctModel *DeductModel) getDeductByID(ID string) *Deduct {
+func (decuctModel *DeductModel) getDeductByID(ID, dbname string, sqldb *sql.DB) *Deduct {
 
 	const sql = `SELECT did, Date  FROM public.deduct where Did = '%s';`
 	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
-	db := prepayM.imr.GetSQLDB()
-	sqldb, err := db.ConnectSQLDB()
+	// db := prepayM.imr.GetSQLDB()
+	// sqldb, err := db.ConnectSQLDB()
+	f := false
+	if sqldb == nil {
+		fmt.Println("getDeductByID")
+		sqldb, _ = decuctModel.imr.GetSQLDBwithDbname(dbname).ConnectSQLDB()
+		f = true
+	}
+	if f {
+		if sqldb == nil {
+			fmt.Println("getDeductByID sqldb null")
+		}
+	}
 
 	rows, err := sqldb.Query(fmt.Sprintf(sql, ID))
 	if err != nil {

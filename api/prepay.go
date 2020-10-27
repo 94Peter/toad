@@ -33,22 +33,22 @@ func (api PrePayAPI) Enable() bool {
 
 func (api PrePayAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/prepay", Next: api.getPrePayEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/prepay", Next: api.createPrePayEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/prepay/{ID}", Next: api.deletePrePayEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/prepay/{ID}", Next: api.updatePrePayEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/prepay", Next: api.getPrePayEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/prepay", Next: api.createPrePayEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/prepay/{ID}", Next: api.deletePrePayEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/prepay/{ID}", Next: api.updatePrePayEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/prepay/export", Next: api.exportPrePayEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/prepay/export", Next: api.exportPrePayEndpoint, Method: "GET", Auth: true, Group: permission.All},
 	}
 }
 
 func (api *PrePayAPI) deletePrePayEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 	fmt.Println(ID)
 	PrePayM := model.GetPrePayModel(di)
-	if err := PrePayM.DeletePrePay(ID); err != nil {
+	if err := PrePayM.DeletePrePay(ID, dbname); err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
 			w.WriteHeader(http.StatusLocked)
@@ -72,7 +72,7 @@ func (api *PrePayAPI) exportPrePayEndpoint(w http.ResponseWriter, req *http.Requ
 	queryVar := util.GetQueryValue(req, []string{"date"}, true)
 	by_m := (*queryVar)["date"].(string)
 	ey_m := by_m
-
+	dbname := req.Header.Get("dbname")
 	if by_m == "" {
 		by_m = "1980-01-01T00:00:00.000Z"
 		ey_m = "2200-01-01T00:00:00.000Z"
@@ -89,8 +89,8 @@ func (api *PrePayAPI) exportPrePayEndpoint(w http.ResponseWriter, req *http.Requ
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	PrePayM.GetPrePayData(b, e)
-	w.Write(PrePayM.PDF())
+	PrePayM.GetPrePayData(b, e, dbname)
+	w.Write(PrePayM.PDF(dbname))
 }
 
 func (api *PrePayAPI) getPrePayEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -98,6 +98,7 @@ func (api *PrePayAPI) getPrePayEndpoint(w http.ResponseWriter, req *http.Request
 	PrePayM := model.GetPrePayModel(di)
 	queryVar := util.GetQueryValue(req, []string{"date"}, true)
 	by_m := (*queryVar)["date"].(string)
+	dbname := req.Header.Get("dbname")
 	//ey_m := by_m
 
 	if by_m == "" {
@@ -110,7 +111,7 @@ func (api *PrePayAPI) getPrePayEndpoint(w http.ResponseWriter, req *http.Request
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	PrePayM.GetPrePayData(b, b)
+	PrePayM.GetPrePayData(b, b, dbname)
 	//data, err := json.Marshal(result)
 	data, err := PrePayM.Json()
 	if err != nil {
@@ -123,7 +124,7 @@ func (api *PrePayAPI) getPrePayEndpoint(w http.ResponseWriter, req *http.Request
 
 func (api *PrePayAPI) createPrePayEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iPrePay := inputPrePay{}
 	err := json.NewDecoder(req.Body).Decode(&iPrePay)
 	if err != nil {
@@ -140,7 +141,7 @@ func (api *PrePayAPI) createPrePayEndpoint(w http.ResponseWriter, req *http.Requ
 
 	PrePayM := model.GetPrePayModel(di)
 
-	err = PrePayM.CreatePrePay(iPrePay.GetPrePay())
+	err = PrePayM.CreatePrePay(iPrePay.GetPrePay(), dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -158,6 +159,7 @@ func (api *PrePayAPI) createPrePayEndpoint(w http.ResponseWriter, req *http.Requ
 }
 
 func (api *PrePayAPI) updatePrePayEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
@@ -179,7 +181,7 @@ func (api *PrePayAPI) updatePrePayEndpoint(w http.ResponseWriter, req *http.Requ
 
 	PrePayM := model.GetPrePayModel(di)
 
-	err = PrePayM.UpdatePrePay(ID, iPrePay.GetPrePay())
+	err = PrePayM.UpdatePrePay(ID, dbname, iPrePay.GetPrePay())
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:

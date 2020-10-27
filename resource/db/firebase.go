@@ -96,6 +96,7 @@ func (db *firebaseDB) CreateUser(phone, displayName, email, pwd, permission, dbn
 		Password(pwd).
 		DisplayName(displayName).
 		Disabled(false)
+
 	_, err = client.CreateUser(db.ctx, params)
 	if permission != "" {
 		db.UpdateUser(email, displayName, permission, dbname)
@@ -133,20 +134,39 @@ func (db *firebaseDB) ChangePwd(uid string, pwd string) error {
 	return err
 }
 
-func (db *firebaseDB) UpdateState(uid string, state string) error {
+func (db *firebaseDB) UpdateState(uid, state string) error {
 	client, err := db.connectAuth()
 	if err != nil {
 		return err
 	}
 	record, err := client.GetUser(db.ctx, uid)
 	if err != nil {
-		return nil
+		return err
 	}
 	claim := record.CustomClaims
 	if claim == nil {
 		claim = make(map[string]interface{})
 	}
 	claim[ClaimState] = state
+	params := (&firebaseauth.UserToUpdate{}).CustomClaims(claim)
+	_, err = client.UpdateUser(db.ctx, uid, params)
+	return err
+}
+
+func (db *firebaseDB) UpdateDbname(uid, dbname string) error {
+	client, err := db.connectAuth()
+	if err != nil {
+		return err
+	}
+	record, err := client.GetUser(db.ctx, uid)
+	if err != nil {
+		return err
+	}
+	claim := record.CustomClaims
+	if claim == nil {
+		claim = make(map[string]interface{})
+	}
+	claim[ClaimDBName] = dbname
 	params := (&firebaseauth.UserToUpdate{}).CustomClaims(claim)
 	_, err = client.UpdateUser(db.ctx, uid, params)
 	return err
@@ -178,6 +198,7 @@ func (db *firebaseDB) GetUser(uid string) (map[string]interface{}, error) {
 }
 
 func (db *firebaseDB) UpdateUser(uid, display, permission, dbname string) error {
+	fmt.Println("dbname@", dbname)
 	client, err := db.connectAuth()
 	if err != nil {
 		return err
@@ -198,7 +219,7 @@ func (db *firebaseDB) UpdateUser(uid, display, permission, dbname string) error 
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(string(out))
+		fmt.Println("UpdateUser:" + string(out))
 
 		//claim會取到null，解決方法 可能在firebase要設定
 		//所以null先init一個map。以免出錯
@@ -208,6 +229,7 @@ func (db *firebaseDB) UpdateUser(uid, display, permission, dbname string) error 
 		}
 		claim[ClaimPermission] = permission
 		claim[ClaimDBName] = dbname
+		fmt.Println("UpdateUser claim:", claim)
 		params = params.CustomClaims(claim)
 	}
 

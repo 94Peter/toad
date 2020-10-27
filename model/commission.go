@@ -43,7 +43,7 @@ type Commission struct {
 	Checknumber string `json:"-"` //票號
 	DedectItem  string `json:"-"` //pdf 備註 >> dedeuct的Item
 	//
-	Code string `json:"-"`
+	//Code string `json:"-"`
 }
 
 func GetCModel(imr interModelRes) *CModel {
@@ -57,7 +57,7 @@ func GetCModel(imr interModelRes) *CModel {
 	return cm
 }
 
-func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
+func (cm *CModel) ExportCommissiontDataByBSid(bsid, dbname string) []*Commission {
 	fmt.Println("exportCommissiontData")
 	//if invoiceno is null in Database return ""
 
@@ -84,7 +84,7 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	where c.bsid = '%s' order by c.arid asc;` //根據案子分類
 
 	//left JOIN (select sum(fee) fee, count(rid) ,arid from public.deduct group by arid) as tmp on tmp.arid = r.arid
-	db := cm.imr.GetSQLDB()
+	db := cm.imr.GetSQLDBwithDbname(dbname)
 	var cDataList []*Commission
 
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, bsid))
@@ -114,7 +114,7 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid string) []*Commission {
 	return cm.cList
 }
 
-func (cm *CModel) GetCommissiontData(start, end time.Time, status string) []*Commission {
+func (cm *CModel) GetCommissiontData(start, end time.Time, status, dbname string) []*Commission {
 	fmt.Println("GetCommissiontData")
 	//if invoiceno is null in Database return ""
 	// where to_timestamp(date_part('epoch',r.date)::int) >= '%s' and to_timestamp(date_part('epoch',r.date)::int) < '%s'::date + '1 month'::interval
@@ -125,7 +125,7 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status string) []*Com
 				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
 				and c.status like '%s';`
 
-	db := cm.imr.GetSQLDB()
+	db := cm.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
 	fmt.Println("debug,", fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
 	if err != nil {
@@ -215,7 +215,7 @@ func (cm *CModel) PDF(isNew bool) {
 	return //p.GetBytesPdf()  這邊使用GetBytesPdf 會莫名其妙多一頁面
 }
 
-func (cm *CModel) CreateCommission(rt *Receipt) (err error) {
+func (cm *CModel) CreateCommission(rt *Receipt, dbname string) (err error) {
 	/**
 		預防薪資錯誤，若收款日期當月已建立薪資表，則自動將此傭金編入remove。#但不行，會造成傭金錯誤。
 		or armap.sid = cs.identityNum 條件查詢新增，因為住通串接，他們帶入的可能是身分證，本來使用的sid是電話號碼。
@@ -260,7 +260,7 @@ func (cm *CModel) CreateCommission(rt *Receipt) (err error) {
 	// inner join 	public.armap armap on armap.arid = ar.arid
 	// where ar.arid = $2 ;`
 
-	interdb := cm.imr.GetSQLDB()
+	interdb := cm.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -288,7 +288,7 @@ func (cm *CModel) CreateCommission(rt *Receipt) (err error) {
 	return nil
 }
 
-func (cm *CModel) UpdateCommission(com *Commission, rid, sid string) (err error) {
+func (cm *CModel) UpdateCommission(com *Commission, rid, sid, dbname string) (err error) {
 	/*
 	 * 更新原則: 比例換算，新值= 舊值 / 舊的比例 * 新的比例
 	 * 獎金比例使用舊的。
@@ -297,7 +297,7 @@ func (cm *CModel) UpdateCommission(com *Commission, rid, sid string) (err error)
 		SET cpercent= $1::double precision, sr= sr / cpercent * $1::double precision , bonus = bonus * $1::double precision / cpercent
 		WHERE sid= $3 and rid= $2 ;`
 
-	interdb := cm.imr.GetSQLDB()
+	interdb := cm.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -323,7 +323,7 @@ func (cm *CModel) UpdateCommission(com *Commission, rid, sid string) (err error)
 	return nil
 }
 
-func (cm *CModel) RefreshCommissionBonus(Sid, Rid, mtype string) (err error) {
+func (cm *CModel) RefreshCommissionBonus(Sid, Rid, mtype, dbname string) (err error) {
 	if strings.ToLower(mtype) == "all" {
 		Rid = "%"
 	}
@@ -344,7 +344,7 @@ func (cm *CModel) RefreshCommissionBonus(Sid, Rid, mtype string) (err error) {
 								)	cs  on cs.sid = c.sid
 								WHERE c.bsid is null
 				) as t2 where t1.sid = t2.sid and t1.rid = t2.rid and t1.sid = $1 and t1.rid like $2`
-	interdb := cm.imr.GetSQLDB()
+	interdb := cm.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -371,7 +371,7 @@ func (cm *CModel) RefreshCommissionBonus(Sid, Rid, mtype string) (err error) {
 	return nil
 }
 
-func (cm *CModel) UpdateCommissionStatus(rid, sid string) (err error) {
+func (cm *CModel) UpdateCommissionStatus(rid, sid, dbname string) (err error) {
 	/*
 	 * 更新原則: 比例換算，新值= 舊值 / 舊的比例 * 新的比例
 	 * 獎金比例使用舊的。
@@ -380,7 +380,7 @@ func (cm *CModel) UpdateCommissionStatus(rid, sid string) (err error) {
 		SET status = 'remove'
 		WHERE sid= $2 and rid= $1 and bsid is null;`
 
-	interdb := cm.imr.GetSQLDB()
+	interdb := cm.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err

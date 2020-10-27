@@ -15,16 +15,16 @@ import (
 
 //"google.golang.org/api/option"
 
-type sqlDB struct {
-	ctx context.Context
+type SqlDB struct {
+	Ctx context.Context
 
 	c        string
-	clinet   *sql.DB
-	port     int
-	dburl    string
-	user     string
-	password string
-	db       string
+	Clinet   *sql.DB
+	Port     int
+	Dburl    string
+	User     string
+	Password string
+	Db       string
 }
 
 // edb=# -- 依照 Session 設定
@@ -37,11 +37,11 @@ type sqlDB struct {
 // edb=# ALTER DATABASE edb SET timezone TO 'ROC';
 // ALTER DATABASE
 
-func (sdb *sqlDB) ConnectSQLDB() (*sql.DB, error) {
-
+func (sdb *SqlDB) ConnectSQLDB() (*sql.DB, error) {
+	fmt.Println(fmt.Sprintf("ConnectSQLDB:[%s]", sdb.Db))
 	//完整的資料格式連線如下
-	var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password, sdb.db)
-	//var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=ak47 sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password)
+	var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", sdb.Dburl, sdb.Port, sdb.User, sdb.Password, sdb.Db)
+	//var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=ak47 sslmode=disable", sdb.Dburl, sdb.port, sdb.User, sdb.password)
 	db, err := sql.Open("postgres", connectionString)
 
 	if err != nil {
@@ -57,40 +57,40 @@ func (sdb *sqlDB) ConnectSQLDB() (*sql.DB, error) {
 		//error message :[pq: database "dbname" does not exist]
 		foo := (strings.Index(err.Error(), "does not exist"))
 		if foo > 0 {
-			fmt.Println("database2 " + sdb.db + " does not exist")
-			var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=disable", sdb.dburl, sdb.port, sdb.user, sdb.password)
+			fmt.Println("database2 [" + sdb.Db + "] does not exist")
+			var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s sslmode=disable", sdb.Dburl, sdb.Port, sdb.User, sdb.Password)
 			db, err := sql.Open("postgres", connectionString)
 			err = db.Ping()
 			if err != nil {
 				fmt.Println("[Failed] ping2:" + err.Error())
 			} else {
 				fmt.Println("無指定DB 連線成功")
-				sdb.clinet = db
-				return sdb.clinet, err
+				sdb.Clinet = db
+				return sdb.Clinet, err
 			}
 		}
 		return nil, err
 	}
-	fmt.Println("toad 連線成功")
-	sdb.clinet = db
-	return sdb.clinet, err
+	fmt.Println(sdb.Db + " 連線成功")
+	sdb.Clinet = db
+	return sdb.Clinet, err
 }
 
-func (sdb *sqlDB) C(c string) InterSQLDB {
+func (sdb *SqlDB) C(c string) InterSQLDB {
 	sdb.c = c
 	return sdb
 }
 
-func (sdb *sqlDB) Close() error {
+func (sdb *SqlDB) Close() error {
 
-	if sdb.clinet == nil {
+	if sdb.Clinet == nil {
 		return nil
 	}
 	fmt.Println("close db")
 	return sdb.Close()
 }
 
-func (sdb *sqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
+func (sdb *SqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 
 	db, err := sdb.ConnectSQLDB()
 
@@ -116,14 +116,14 @@ func (sdb *sqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 	return rows, err
 }
 
-func (sdb *sqlDB) CreateDB() error {
+func (sdb *SqlDB) CreateDB() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE DATABASE %s "+
 			"WITH "+
 			"OWNER = %s "+
 			"ENCODING = 'UTF8' "+
-			"CONNECTION LIMIT = -1;", sdb.db, sdb.user))
+			"CONNECTION LIMIT = -1;", sdb.Db, sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateDB:" + err.Error())
@@ -132,7 +132,7 @@ func (sdb *sqlDB) CreateDB() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateDeductTable() error {
+func (sdb *SqlDB) CreateDeductTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.Deduct "+
@@ -150,7 +150,7 @@ func (sdb *sqlDB) CreateDeductTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.Deduct "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateDeductTable:" + err.Error())
@@ -160,7 +160,7 @@ func (sdb *sqlDB) CreateDeductTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateHouseGoTable() error {
+func (sdb *SqlDB) CreateHouseGoTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.housego "+
@@ -182,7 +182,7 @@ func (sdb *sqlDB) CreateHouseGoTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			" ALTER TABLE public.housego "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 	//"alter table public.ar alter column ra set default 0;"+
 	//"alter table public.ar alter column balance set default 0;"+
 
@@ -194,7 +194,7 @@ func (sdb *sqlDB) CreateHouseGoTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateEventLogTable() error {
+func (sdb *SqlDB) CreateEventLogTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.eventlog "+
@@ -210,7 +210,7 @@ func (sdb *sqlDB) CreateEventLogTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			" ALTER TABLE public.eventlog "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 	//"alter table public.ar alter column ra set default 0;"+
 	//"alter table public.ar alter column balance set default 0;"+
 
@@ -222,7 +222,7 @@ func (sdb *sqlDB) CreateEventLogTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateAccountTable() error {
+func (sdb *SqlDB) CreateAccountTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.account "+
@@ -242,7 +242,7 @@ func (sdb *sqlDB) CreateAccountTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			" ALTER TABLE public.account "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 	//"alter table public.ar alter column ra set default 0;"+
 	//"alter table public.ar alter column balance set default 0;"+
 
@@ -254,7 +254,7 @@ func (sdb *sqlDB) CreateAccountTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateARTable() error {
+func (sdb *SqlDB) CreateARTable() error {
 
 	// CREATE SEQUENCE public."generateID"
 	// INCREMENT 1
@@ -284,7 +284,7 @@ func (sdb *sqlDB) CreateARTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			" ALTER TABLE public.AR "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 	//"alter table public.ar alter column ra set default 0;"+
 	//"alter table public.ar alter column balance set default 0;"+
 
@@ -296,7 +296,7 @@ func (sdb *sqlDB) CreateARTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateNHISalaryTable() error {
+func (sdb *SqlDB) CreateNHISalaryTable() error {
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.NHISalary "+
 			"( "+
@@ -318,7 +318,7 @@ func (sdb *sqlDB) CreateNHISalaryTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.NHISalary "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateNHISalaryTable:" + err.Error())
@@ -328,7 +328,7 @@ func (sdb *sqlDB) CreateNHISalaryTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateSalerSalaryTable() error {
+func (sdb *SqlDB) CreateSalerSalaryTable() error {
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.SalerSalary "+
 			"( "+
@@ -358,7 +358,7 @@ func (sdb *sqlDB) CreateSalerSalaryTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.SalerSalary "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateSalerSalaryTable:" + err.Error())
@@ -368,7 +368,7 @@ func (sdb *sqlDB) CreateSalerSalaryTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateBranchSalaryTable() error {
+func (sdb *SqlDB) CreateBranchSalaryTable() error {
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.BranchSalary "+
 			"( "+
@@ -383,7 +383,7 @@ func (sdb *sqlDB) CreateBranchSalaryTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.BranchSalary "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateBranchSalaryTable:" + err.Error())
@@ -393,7 +393,7 @@ func (sdb *sqlDB) CreateBranchSalaryTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreatePrePayTable() error {
+func (sdb *SqlDB) CreatePrePayTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.PrePay "+
@@ -407,7 +407,7 @@ func (sdb *sqlDB) CreatePrePayTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.PrePay "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreatePrePayTable:" + err.Error())
@@ -417,7 +417,7 @@ func (sdb *sqlDB) CreatePrePayTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateBranchPrePayTable() error {
+func (sdb *SqlDB) CreateBranchPrePayTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.BranchPrePay "+
@@ -429,7 +429,7 @@ func (sdb *sqlDB) CreateBranchPrePayTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.BranchPrePay "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateBranchPrePayTable:" + err.Error())
@@ -439,7 +439,7 @@ func (sdb *sqlDB) CreateBranchPrePayTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreatePocketTable() error {
+func (sdb *SqlDB) CreatePocketTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.Pocket "+
@@ -457,7 +457,7 @@ func (sdb *sqlDB) CreatePocketTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.Pocket "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreatePocketTable:" + err.Error())
@@ -467,7 +467,7 @@ func (sdb *sqlDB) CreatePocketTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateAccountItemTable() error {
+func (sdb *SqlDB) CreateAccountItemTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.AccountItem "+
@@ -478,7 +478,7 @@ func (sdb *sqlDB) CreateAccountItemTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.AccountItem "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateAccountItemTable:" + err.Error())
@@ -488,7 +488,7 @@ func (sdb *sqlDB) CreateAccountItemTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateAmortizationTable() error {
+func (sdb *SqlDB) CreateAmortizationTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.amortization "+
@@ -508,7 +508,7 @@ func (sdb *sqlDB) CreateAmortizationTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.amortization "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateAmortizationTable:" + err.Error())
@@ -518,7 +518,7 @@ func (sdb *sqlDB) CreateAmortizationTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateAmorMapTable() error {
+func (sdb *SqlDB) CreateAmorMapTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.AmorMap "+
@@ -531,7 +531,7 @@ func (sdb *sqlDB) CreateAmorMapTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.AmorMap "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateAmorMapTable:" + err.Error())
@@ -541,12 +541,13 @@ func (sdb *sqlDB) CreateAmorMapTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateInvoiceTable() error {
+func (sdb *SqlDB) CreateInvoiceTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.Invoice "+
 			"( "+
 			"Rid character varying(50) ,"+
+			"Sid character varying(50) ,"+
 			"InvoiceNo character varying(20) ,"+
 			"BuyerID character varying(20) ,"+
 			"SellerID  character varying(20) ,"+
@@ -556,11 +557,11 @@ func (sdb *sqlDB) CreateInvoiceTable() error {
 			"Amount  integer not NULL, "+
 			"left_qrcode  character varying(200) DEFAULT NULL, "+
 			"right_qrcode character varying(200) DEFAULT NULL, "+
-			"PRIMARY KEY (Rid) "+
+			"PRIMARY KEY (Rid,Sid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.Invoice "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateInvoiceTable:" + err.Error())
@@ -570,7 +571,29 @@ func (sdb *sqlDB) CreateInvoiceTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateARMAPTable() error {
+func (sdb *SqlDB) CreateInvoiceConfigTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.InvoiceConfig "+
+			"( "+
+			"Branch character varying(50) ,"+
+			"SellerID character varying(50) ,"+
+			"Auth character varying(100) ,"+
+			"PRIMARY KEY (Branch) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.InvoiceConfig "+
+			"OWNER to %s; ", sdb.User))
+
+	if err != nil {
+		fmt.Println("CreateInvoiceConfigTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateInvoiceConfigTable Done")
+	return nil
+}
+
+func (sdb *SqlDB) CreateARMAPTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.ARMAP "+
@@ -583,7 +606,7 @@ func (sdb *sqlDB) CreateARMAPTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.ARMAP "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateARMAPTable:" + err.Error())
@@ -593,7 +616,7 @@ func (sdb *sqlDB) CreateARMAPTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateDeductMAPTable() error {
+func (sdb *SqlDB) CreateDeductMAPTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.DEDUCTMAP "+
@@ -606,7 +629,7 @@ func (sdb *sqlDB) CreateDeductMAPTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.DEDUCTMAP "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateDEDUCTMAPTable:" + err.Error())
@@ -616,7 +639,7 @@ func (sdb *sqlDB) CreateDeductMAPTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateReceiptTable() error {
+func (sdb *SqlDB) CreateReceiptTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.receipt "+
@@ -634,7 +657,7 @@ func (sdb *sqlDB) CreateReceiptTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.receipt "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateReceiptTable:" + err.Error())
@@ -644,7 +667,7 @@ func (sdb *sqlDB) CreateReceiptTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateConfigBranchTable() error {
+func (sdb *SqlDB) CreateConfigBranchTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.ConfigBranch "+
@@ -660,7 +683,7 @@ func (sdb *sqlDB) CreateConfigBranchTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.ConfigBranch "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateConfigBranchTable:" + err.Error())
@@ -670,7 +693,7 @@ func (sdb *sqlDB) CreateConfigBranchTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateConfigParameterTable() error {
+func (sdb *SqlDB) CreateConfigParameterTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.ConfigParameter "+
@@ -687,7 +710,7 @@ func (sdb *sqlDB) CreateConfigParameterTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.ConfigParameter "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateConfigParameterTable:" + err.Error())
@@ -697,7 +720,7 @@ func (sdb *sqlDB) CreateConfigParameterTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateConfigSalerTable() error {
+func (sdb *SqlDB) CreateConfigSalerTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.ConfigSaler "+
@@ -729,7 +752,7 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.ConfigSaler "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateConfigSalerTable:" + err.Error())
@@ -739,7 +762,7 @@ func (sdb *sqlDB) CreateConfigSalerTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateConfigSalaryTable() error {
+func (sdb *SqlDB) CreateConfigSalaryTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.ConfigSalary "+
@@ -760,7 +783,7 @@ func (sdb *sqlDB) CreateConfigSalaryTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
 			"ALTER TABLE public.ConfigSalary "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateConfigSalerTable:" + err.Error())
@@ -770,7 +793,7 @@ func (sdb *sqlDB) CreateConfigSalaryTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateCommissionTable() error {
+func (sdb *SqlDB) CreateCommissionTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.commission "+
@@ -794,7 +817,7 @@ func (sdb *sqlDB) CreateCommissionTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+
 			"ALTER TABLE public.commission "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateCommissionTable:" + err.Error())
@@ -804,7 +827,7 @@ func (sdb *sqlDB) CreateCommissionTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) CreateAccountSettlementTable() error {
+func (sdb *SqlDB) CreateAccountSettlementTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.accountsettlement "+
@@ -818,7 +841,7 @@ func (sdb *sqlDB) CreateAccountSettlementTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+
 			"ALTER TABLE public.commission "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateCommissionTable:" + err.Error())
@@ -829,7 +852,7 @@ func (sdb *sqlDB) CreateAccountSettlementTable() error {
 }
 
 //收入支出 (紅利店長表)
-func (sdb *sqlDB) CreateIncomeExpenseTable() error {
+func (sdb *SqlDB) CreateIncomeExpenseTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
 		"CREATE TABLE public.IncomeExpense "+
@@ -860,7 +883,7 @@ func (sdb *sqlDB) CreateIncomeExpenseTable() error {
 			") "+
 			"WITH ( OIDS = FALSE);"+
 			"ALTER TABLE public.IncomeExpense "+
-			"OWNER to %s; ", sdb.user))
+			"OWNER to %s; ", sdb.User))
 
 	if err != nil {
 		fmt.Println("CreateIncomeExpenseTable:" + err.Error())
@@ -870,7 +893,7 @@ func (sdb *sqlDB) CreateIncomeExpenseTable() error {
 	return nil
 }
 
-func (sdb *sqlDB) InitTable() error {
+func (sdb *SqlDB) InitTable() error {
 
 	rows, err := sdb.SQLCommand(`SELECT tablename FROM	pg_catalog.pg_tables 
 								WHERE 
@@ -896,6 +919,7 @@ func (sdb *sqlDB) InitTable() error {
 		"configsalary":      false,
 		"configparameter":   false,
 		"invoice":           false,
+		"invoiceconfig":     false,
 		"armap":             false,
 		"deductmap":         false,
 		"salersalary":       false,
@@ -959,6 +983,9 @@ func (sdb *sqlDB) InitTable() error {
 			break
 		case "invoice":
 			mT["invoice"] = true
+			break
+		case "invoiceconfig":
+			mT["invoiceconfig"] = true
 			break
 		case "armap":
 			mT["armap"] = true
@@ -1046,6 +1073,9 @@ func (sdb *sqlDB) InitTable() error {
 			case "invoice":
 				err = sdb.CreateInvoiceTable()
 				break
+			case "invoiceconfig":
+				err = sdb.CreateInvoiceConfigTable()
+				break
 			case "armap":
 				err = sdb.CreateARMAPTable()
 				break
@@ -1089,9 +1119,9 @@ func (sdb *sqlDB) InitTable() error {
 	return err
 }
 
-func (sdb *sqlDB) InitDB() bool {
+func (sdb *SqlDB) InitDB() bool {
 
-	rows, err := sdb.SQLCommand(fmt.Sprintf("SELECT datname FROM pg_database WHERE datname = '%s';", sdb.db))
+	rows, err := sdb.SQLCommand(fmt.Sprintf("SELECT datname FROM pg_database WHERE datname = '%s';", sdb.Db))
 
 	if err != nil {
 		return false

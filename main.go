@@ -99,10 +99,10 @@ func startTimer(myDI *resource.DI) {
 				fmt.Println("startTimer:", year, month, day)
 				//更新業務薪資
 				configM := model.GetConfigModel(myDI)
-				configM.WorkValidDate()
+				configM.WorkValidDate("nil") //待調整
 				//新增攤提費用
 				amorM := model.GetAmortizationModel(myDI)
-				amorM.RefreshAmortizationData()
+				amorM.RefreshAmortizationData("nil") //待調整
 			}
 			fmt.Println("WorkValidDate 距離下次執行時間:", nextMonth.Sub(now))
 

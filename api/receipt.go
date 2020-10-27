@@ -40,20 +40,13 @@ type inputInvoice struct {
 
 func (api ReceiptAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/receipt", Next: api.getReceiptEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/receipt/{ID}", Next: api.deleteReceiptEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/receipt/{ID}", Next: api.updateReceiptEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/receipt", Next: api.getReceiptEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/receipt/{ID}", Next: api.deleteReceiptEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/receipt/{ID}", Next: api.updateReceiptEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/invoice", Next: api.createInvoiceEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/invoice/export", Next: api.exportInvoiceEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/invoice/{ID}", Next: api.getInvoiceDetailEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		// &APIHandler{Path: "/v1/category", Next: api.createCategoryEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
-		// &APIHandler{Path: "/v1/category/{NAME}", Next: api.deleteCategoryEndpoint, Method: "DELETE", Auth: true, Group: permission.Backend},
-		// &APIHandler{Path: "/v1/user", Next: api.createUserEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
-		// &APIHandler{Path: "/v1/user", Next: api.getUserEndpoint, Method: "GET", Auth: true, Group: permission.Backend},
-		// &APIHandler{Path: "/v1/user/category", Next: api.updateUserCategoryEndpoint, Method: "PUT", Auth: true, Group: permission.Backend},
-		// &APIHandler{Path: "/v1/user/permission", Next: api.updateUserPemissionEndpoint, Method: "PUT", Auth: true, Group: permission.Backend},
-		// &APIHandler{Path: "/v1/user/{PHONE}", Next: api.deleteUserEndpoint, Method: "DELETE", Auth: true, Group: permission.Backend},
+		&APIHandler{Path: "/v1/invoice", Next: api.createInvoiceEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/invoice/export", Next: api.exportInvoiceEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/invoice/{ID}", Next: api.getInvoiceDetailEndpoint, Method: "GET", Auth: true, Group: permission.All},
 	}
 }
 
@@ -63,7 +56,7 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 	//var queryDate time.Time
 	//today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	//end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
-
+	dbname := req.Header.Get("dbname")
 	queryVar := util.GetQueryValue(req, []string{"begin", "end"}, true)
 	by_m := (*queryVar)["begin"].(string)
 	ey_m := (*queryVar)["end"].(string)
@@ -87,7 +80,7 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	rm.GetReceiptData(b, e)
+	rm.GetReceiptData(b, e, dbname)
 	//data, err := json.Marshal(result)
 	data, err := rm.Json()
 	if err != nil {
@@ -129,6 +122,7 @@ func (api *ReceiptAPI) exportInvoiceEndpoint(w http.ResponseWriter, req *http.Re
 
 	fmt.Println("exportInvoiceEndpoint")
 	exportId := exportReceiptId{}
+	dbname := req.Header.Get("dbname")
 	err := json.NewDecoder(req.Body).Decode(&exportId)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -141,18 +135,18 @@ func (api *ReceiptAPI) exportInvoiceEndpoint(w http.ResponseWriter, req *http.Re
 		if index != 0 {
 			p.NewPage()
 		}
-		im.GetInvoicePDF(element.Rid, p)
+		im.GetInvoicePDF(element.Rid, dbname, p)
 	}
 	util.DeleteAllFile()
 	w.Write(p.GetBytesPdf())
 }
 func (api *ReceiptAPI) deleteReceiptEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 	fmt.Println(ID)
 	rm := model.GetRTModel(di)
-	if err := rm.DeleteReceiptData(ID); err != nil {
+	if err := rm.DeleteReceiptData(ID, dbname); err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
 			w.WriteHeader(http.StatusLocked)
@@ -173,8 +167,9 @@ func (api *ReceiptAPI) deleteReceiptEndpoint(w http.ResponseWriter, req *http.Re
 
 	w.Write([]byte("ok"))
 }
-func (api *ReceiptAPI) updateReceiptEndpoint(w http.ResponseWriter, req *http.Request) {
 
+func (api *ReceiptAPI) updateReceiptEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 	fmt.Println(ID)
@@ -190,7 +185,7 @@ func (api *ReceiptAPI) updateReceiptEndpoint(w http.ResponseWriter, req *http.Re
 	fmt.Println("iuRT.Datedate", iuRT.Date)
 
 	rm := model.GetRTModel(di)
-	if err := rm.UpdateReceiptData(iuRT.Amount, iuRT.Date, ID); err != nil {
+	if err := rm.UpdateReceiptData(iuRT.Amount, iuRT.Date, ID, dbname); err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
 			w.WriteHeader(http.StatusLocked)
@@ -216,7 +211,7 @@ func (api *ReceiptAPI) updateReceiptEndpoint(w http.ResponseWriter, req *http.Re
 func (api *ReceiptAPI) createInvoiceEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
 	iInovice := inputInvoice{}
-
+	dbname := req.Header.Get("dbname")
 	err := json.NewDecoder(req.Body).Decode(&iInovice)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -233,7 +228,7 @@ func (api *ReceiptAPI) createInvoiceEndpoint(w http.ResponseWriter, req *http.Re
 	im := model.GetInvoiceModel(di)
 	model.GetRTModel(di) // init receipt model
 
-	data, _err := im.CreateInvoice(iInovice.GetInvoice())
+	data, _err := im.CreateInvoice(iInovice.GetInvoice(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error()))

@@ -47,19 +47,19 @@ type inputUpdateSales struct {
 
 func (api DeductAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/deduct", Next: api.getDeductEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		//&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.deleteDeductEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.updateDeductEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/deductFee/{ID}", Next: api.updateDeductFeeEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/deduct", Next: api.getDeductEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		//&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.deleteDeductEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.updateDeductEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/deductFee/{ID}", Next: api.updateDeductFeeEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/deduct/item/{ID}", Next: api.updateDeductItemEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/deduct/sales/{ID}", Next: api.updateDeductSalesEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/deduct/item/{ID}", Next: api.updateDeductItemEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/deduct/sales/{ID}", Next: api.updateDeductSalesEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 	}
 }
 
 func (api *DeductAPI) getDeductEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	dm := model.GetDecuctModel(di)
 	// var queryDate time.Time
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
@@ -91,7 +91,7 @@ func (api *DeductAPI) getDeductEndpoint(w http.ResponseWriter, req *http.Request
 	}
 
 	//fmt.Println("by_m:", by_m)
-	dm.GetDeductData(b, e, mtype)
+	dm.GetDeductData(b, e, mtype, dbname)
 	//data, err := json.Marshal(result)
 	data, err := dm.Json()
 	if err != nil {
@@ -106,10 +106,10 @@ func (api *DeductAPI) deleteDeductEndpoint(w http.ResponseWriter, req *http.Requ
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	DM := model.GetDecuctModel(di)
 
-	err := DM.DeleteDeduct(ID)
+	err := DM.DeleteDeduct(ID, dbname, nil)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -131,7 +131,7 @@ func (api *DeductAPI) updateDeductEndpoint(w http.ResponseWriter, req *http.Requ
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iUD := inputUpdateDeduct{}
 	err := json.NewDecoder(req.Body).Decode(&iUD)
 	if err != nil {
@@ -148,7 +148,7 @@ func (api *DeductAPI) updateDeductEndpoint(w http.ResponseWriter, req *http.Requ
 
 	DM := model.GetDecuctModel(di)
 
-	err = DM.UpdateDeduct(ID, iUD.Status, iUD.Date, iUD.CheckNumber)
+	err = DM.UpdateDeduct(ID, iUD.Status, iUD.Date, iUD.CheckNumber, dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -169,7 +169,7 @@ func (api *DeductAPI) updateDeductFeeEndpoint(w http.ResponseWriter, req *http.R
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iUD := inputUpdateDeduct{}
 	err := json.NewDecoder(req.Body).Decode(&iUD)
 	if err != nil {
@@ -186,7 +186,7 @@ func (api *DeductAPI) updateDeductFeeEndpoint(w http.ResponseWriter, req *http.R
 
 	DM := model.GetDecuctModel(di)
 
-	_err := DM.UpdateDeductFee(ID, iUD.Fee)
+	_err := DM.UpdateDeductFee(ID, dbname, iUD.Fee)
 	if _err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -208,7 +208,7 @@ func (api *DeductAPI) updateDeductItemEndpoint(w http.ResponseWriter, req *http.
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iUD := inputUpdateDeductItem{}
 	err := json.NewDecoder(req.Body).Decode(&iUD)
 	if err != nil {
@@ -219,7 +219,7 @@ func (api *DeductAPI) updateDeductItemEndpoint(w http.ResponseWriter, req *http.
 
 	DM := model.GetDecuctModel(di)
 
-	err = DM.UpdateDeductItem(ID, iUD.Item)
+	err = DM.UpdateDeductItem(ID, iUD.Item, dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -240,7 +240,7 @@ func (api *DeductAPI) updateDeductSalesEndpoint(w http.ResponseWriter, req *http
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iUD := inputUpdateSales{}
 	err := json.NewDecoder(req.Body).Decode(&iUD)
 	if err != nil {
@@ -251,7 +251,7 @@ func (api *DeductAPI) updateDeductSalesEndpoint(w http.ResponseWriter, req *http
 
 	DM := model.GetDecuctModel(di)
 
-	err = DM.UpdateDeductSales(ID, iUD.SalerList)
+	err = DM.UpdateDeductSales(ID, dbname, iUD.SalerList)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:

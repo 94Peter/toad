@@ -131,13 +131,13 @@ func (pocketM *PocketModel) PDF() []byte {
 // FROM   public.pocket
 // ORDER BY date asc ;
 //
-func (pocketM *PocketModel) DeletePocket(ID string) (err error) {
+func (pocketM *PocketModel) DeletePocket(ID, dbname string) (err error) {
 	p := pocketM.getPocketDataByID(ID)
 	if p.Pid == "" {
 		return errors.New("not found pocket")
 	}
 
-	_, err = salaryM.CheckValidCloseDate(p.Date)
+	_, err = salaryM.CheckValidCloseDate(p.Date, dbname)
 	if err != nil {
 		return
 	}
@@ -264,9 +264,9 @@ func (pocketM *PocketModel) UpdatePocketBalance(sqldb *sql.DB) (err error) {
 	return nil
 }
 
-func (pocketM *PocketModel) CreatePocket(pocket *Pocket) (err error) {
+func (pocketM *PocketModel) CreatePocket(pocket *Pocket, dbname string) (err error) {
 
-	_, err = salaryM.CheckValidCloseDate(pocket.Date)
+	_, err = salaryM.CheckValidCloseDate(pocket.Date, dbname)
 	if err != nil {
 		return
 	}
@@ -309,14 +309,14 @@ func (pocketM *PocketModel) CreatePocket(pocket *Pocket) (err error) {
 	return nil
 }
 
-func (pocketM *PocketModel) UpdatePocket(ID string, pocket *Pocket) (err error) {
+func (pocketM *PocketModel) UpdatePocket(ID, dbname string, pocket *Pocket) (err error) {
 
 	p := pocketM.getPocketDataByID(ID)
 	if p.Pid == "" {
 		return errors.New("not found pocket")
 	}
 
-	_, err = salaryM.CheckValidCloseDate(p.Date)
+	_, err = salaryM.CheckValidCloseDate(p.Date, dbname)
 	if err != nil {
 		return
 	}

@@ -75,28 +75,28 @@ func (api SalaryAPI) Enable() bool {
 
 func (api SalaryAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/download", Next: api.DownloadTest, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/download", Next: api.DownloadTest, Method: "GET", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/salary", Next: api.getBranchSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/salary", Next: api.createBranchSalaryEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/salary/{ID}", Next: api.lockSalaryEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/salary/{ID}", Next: api.deleteSalaryEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/salary", Next: api.getBranchSalaryEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/salary", Next: api.createBranchSalaryEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/salary/{ID}", Next: api.lockSalaryEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/salary/{ID}", Next: api.deleteSalaryEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/salary/export/{bsID}", Next: api.exportBranchSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/salary/export", Next: api.exportBranchSalaryEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/salary/export/{bsID}", Next: api.exportBranchSalaryEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/salary/export", Next: api.exportBranchSalaryEndpoint, Method: "POST", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/salary/detail/{bsID}", Next: api.getSalerSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/salary/detail/{bsID}", Next: api.updateSalerSalaryEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/salary/detail/refresh/{bsID}", Next: api.refreshSalerSalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/salary/detail/{bsID}", Next: api.getSalerSalaryEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/salary/detail/{bsID}", Next: api.updateSalerSalaryEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/salary/detail/refresh/{bsID}", Next: api.refreshSalerSalaryEndpoint, Method: "GET", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/NHIsalary/{bsID}", Next: api.getNHISalaryEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/NHIsalary/{bsID}", Next: api.getNHISalaryEndpoint, Method: "GET", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/managerBonus/{bsID}", Next: api.getManagerBonusEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/managerBonus/{bsID}", Next: api.updateManagerBonusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/managerBonus/{bsID}", Next: api.getManagerBonusEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/managerBonus/{bsID}", Next: api.updateManagerBonusEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 
 		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.closeAccountSettlementEndpoint, Method: "POST", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.getCloseAccountSettlementEndpoint, Method: "GET", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.deleteCloseAccountSettlementEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.deleteCloseAccountSettlementEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 	}
 
 }
@@ -106,6 +106,7 @@ func (api *SalaryAPI) lockSalaryEndpoint(w http.ResponseWriter, req *http.Reques
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 	fmt.Println(ID)
+	dbname := req.Header.Get("dbname")
 	SalaryM := model.GetSalaryModel(di)
 	lock := salarylock{}
 	err := json.NewDecoder(req.Body).Decode(&lock)
@@ -119,7 +120,7 @@ func (api *SalaryAPI) lockSalaryEndpoint(w http.ResponseWriter, req *http.Reques
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("lock shoud be 已完成 or 未完成"))
 	}
-	if err := SalaryM.LockBranchSalary(ID, lock.Lock); err != nil {
+	if err := SalaryM.LockBranchSalary(ID, lock.Lock, dbname); err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
 			w.WriteHeader(http.StatusLocked)
@@ -145,8 +146,8 @@ func (api *SalaryAPI) deleteSalaryEndpoint(w http.ResponseWriter, req *http.Requ
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 	SalaryM := model.GetSalaryModel(di)
-
-	if err := SalaryM.DeleteSalary(ID); err != nil {
+	dbname := req.Header.Get("dbname")
+	if err := SalaryM.DeleteSalary(ID, dbname); err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
 			w.WriteHeader(http.StatusLocked)
@@ -164,7 +165,7 @@ func (api *SalaryAPI) deleteSalaryEndpoint(w http.ResponseWriter, req *http.Requ
 }
 
 func (api *SalaryAPI) getBranchSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	queryVar := util.GetQueryValue(req, []string{"date"}, true)
 	date := (*queryVar)["date"].(string)
 	if date == "" {
@@ -172,7 +173,7 @@ func (api *SalaryAPI) getBranchSalaryEndpoint(w http.ResponseWriter, req *http.R
 	}
 	SalaryM := model.GetSalaryModel(di)
 
-	SalaryM.GetBranchSalaryData(date)
+	SalaryM.GetBranchSalaryData(date, dbname)
 	//data, err := json.Marshal(result)
 	data, err := SalaryM.Json("BranchSalary")
 	if err != nil {
@@ -188,7 +189,8 @@ func (api *SalaryAPI) getNHISalaryEndpoint(w http.ResponseWriter, req *http.Requ
 	SalaryM := model.GetSalaryModel(di)
 	vars := util.GetPathVars(req, []string{"bsID"})
 	bsID := vars["bsID"].(string)
-	SalaryM.GetNHISalaryData(bsID)
+	dbname := req.Header.Get("dbname")
+	SalaryM.GetNHISalaryData(bsID, dbname)
 	//data, err := json.Marshal(result)
 	data, err := SalaryM.Json("NHISalary")
 	if err != nil {
@@ -205,7 +207,8 @@ func (api *SalaryAPI) getSalerSalaryEndpoint(w http.ResponseWriter, req *http.Re
 	vars := util.GetPathVars(req, []string{"bsID"})
 	bsID := vars["bsID"].(string)
 	fmt.Println(bsID)
-	SalaryM.GetSalerSalaryData(bsID, "%")
+	dbname := req.Header.Get("dbname")
+	SalaryM.GetSalerSalaryData(bsID, "%", dbname)
 	//data, err := json.Marshal(result)
 	data, err := SalaryM.Json("SalerSalary")
 	if err != nil {
@@ -222,7 +225,8 @@ func (api *SalaryAPI) refreshSalerSalaryEndpoint(w http.ResponseWriter, req *htt
 	vars := util.GetPathVars(req, []string{"bsID"})
 	bsID := vars["bsID"].(string)
 	fmt.Println(bsID)
-	err := SalaryM.ReFreshSalerSalary(bsID)
+	dbname := req.Header.Get("dbname")
+	err := SalaryM.ReFreshSalerSalary(bsID, dbname)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -239,7 +243,8 @@ func (api *SalaryAPI) getManagerBonusEndpoint(w http.ResponseWriter, req *http.R
 	vars := util.GetPathVars(req, []string{"bsID"})
 	bsID := vars["bsID"].(string)
 	fmt.Println(bsID)
-	SalaryM.GetIncomeExpenseData(bsID)
+	dbname := req.Header.Get("dbname")
+	SalaryM.GetIncomeExpenseData(bsID, dbname)
 	//data, err := json.Marshal(result)
 	data, err := SalaryM.Json("ManagerBonus")
 	if err != nil {
@@ -263,6 +268,7 @@ func (api *SalaryAPI) DownloadTest(w http.ResponseWriter, req *http.Request) {
 }
 func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("exportBranchSalaryEndpoint")
+	dbname := req.Header.Get("dbname")
 	exportId := exportBranchId{}
 	err := json.NewDecoder(req.Body).Decode(&exportId)
 	if err != nil {
@@ -315,7 +321,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		ex := excel.GetNewExcel()
 		cm.ConfigSalerList = []*model.ConfigSaler{}
 		for _, element := range exportId.BSidList {
-			SalaryM.ExportPayrollTransfer(element.BSid)
+			SalaryM.ExportPayrollTransfer(element.BSid, dbname)
 		}
 		SalaryM.EXCEL(mExport)
 
@@ -327,7 +333,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		ex := excel.GetNewExcel()
 		cm.ConfigSalerList = []*model.ConfigSaler{}
 		for _, element := range exportId.BSidList {
-			SalaryM.ExportIncomeTaxReturn(element.BSid)
+			SalaryM.ExportIncomeTaxReturn(element.BSid, dbname)
 		}
 		SalaryM.EXCEL(mExport)
 
@@ -338,7 +344,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 	case pdf.Commission: //4
 		cm := model.GetCModel(di)
 		for _, element := range exportId.BSidList {
-			cm.ExportCommissiontDataByBSid(element.BSid)
+			cm.ExportCommissiontDataByBSid(element.BSid, dbname)
 			cm.PDF(pdf.OriPdf)
 		}
 		w.Write(cm.GetBytePDF())
@@ -354,8 +360,8 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		SalaryM.SetSMTPConf(di.GetSMTPConf())
 		for _, element := range exportId.BSidList {
 			fmt.Println("element.BSid:", element.BSid)
-			SalaryM.GetSalerSalaryData(element.BSid, "%")
-			SalaryM.PDF(mExport, pdf.NewPdf, send)
+			SalaryM.GetSalerSalaryData(element.BSid, "%", dbname)
+			SalaryM.PDF(dbname, mExport, pdf.NewPdf, send)
 		}
 		/*
 			1.寄送郵件的話，不輸出檔案
@@ -365,9 +371,9 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		if send == "true" {
 			//8 pdf運行
 			for _, element := range exportId.BSidList {
-				SalaryM.GetSalerCommission(element.BSid)
+				SalaryM.GetSalerCommission(element.BSid, dbname)
 				//SalaryM.PDF(mExport, pdf.OriPdf)
-				SalaryM.PDF(pdf.SalarCommission, pdf.NewPdf, send)
+				SalaryM.PDF(dbname, pdf.SalarCommission, pdf.NewPdf, send)
 			}
 			conf := SalaryM.SMTPConf
 			fmt.Println(conf)
@@ -402,8 +408,8 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 	case pdf.BranchSalary: //1
 		for _, element := range exportId.BSidList {
 			fmt.Println("element.BSid:", element.BSid)
-			SalaryM.GetSalerSalaryData(element.BSid, "%")
-			SalaryM.PDF(mExport, pdf.NewPdf)
+			SalaryM.GetSalerSalaryData(element.BSid, "%", dbname)
+			SalaryM.PDF(dbname, mExport, pdf.NewPdf)
 		}
 		util.CompressZip("download")
 		ReceiveFile(w, req, "download.zip")
@@ -415,19 +421,19 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		SalaryM.CommissionList = []*model.Commission{}
 
 		for _, element := range exportId.BSidList {
-			SalaryM.GetAgentSign(element.BSid)
+			SalaryM.GetAgentSign(element.BSid, dbname)
 		}
 
-		SalaryM.PDF(mExport, pdf.OriPdf)
+		SalaryM.PDF(dbname, mExport, pdf.OriPdf)
 		break
 
 	case pdf.SalarCommission: //8 (在7[pdf.SalerSalary]的時候會執行 這邊應該用不到了!)
 		SalaryM.SetSMTPConf(di.GetSMTPConf())
 		for _, element := range exportId.BSidList {
-			SalaryM.GetSalerCommission(element.BSid)
+			SalaryM.GetSalerCommission(element.BSid, dbname)
 
 			//SalaryM.PDF(mExport, pdf.OriPdf)
-			SalaryM.PDF(mExport, pdf.NewPdf, send)
+			SalaryM.PDF(dbname, mExport, pdf.NewPdf, send)
 		}
 		//寄送郵件的話，不輸出檔案哦~
 		if send == "true" {
@@ -441,8 +447,8 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		break
 	case pdf.SR: //6
 		for _, element := range exportId.BSidList {
-			SalaryM.ExportSR(element.BSid)
-			SalaryM.PDF(mExport, pdf.OriPdf)
+			SalaryM.ExportSR(element.BSid, dbname)
+			SalaryM.PDF(dbname, mExport, pdf.OriPdf)
 		}
 		break
 	case pdf.NHI: //3
@@ -450,9 +456,9 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		SalaryM.NHISalaryList = []*model.NHISalary{}
 		for _, element := range exportId.BSidList {
 			fmt.Println(element.BSid)
-			SalaryM.ExportNHISalaryData(element.BSid)
+			SalaryM.ExportNHISalaryData(element.BSid, dbname)
 		}
-		SalaryM.PDF(mExport, pdf.OriPdf)
+		SalaryM.PDF(dbname, mExport, pdf.OriPdf)
 		break
 	// case pdf.Amortization:
 	// 	amor := model.GetAmortizationModel(di) // 會使用到system model函式，預防崩潰，所以要初始化
@@ -464,7 +470,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 
 		for _, element := range exportId.BSidList {
 			fmt.Println(element.BSid)
-			err := SalaryM.MakeTxtTransferSalary(element.BSid)
+			err := SalaryM.MakeTxtTransferSalary(element.BSid, dbname)
 			if err != nil {
 				fmt.Println(err)
 				SalaryM.TransferSalaryList = []*model.TransferSalary{}
@@ -484,7 +490,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 
 	case 0: //test
 
-		SalaryM.PDF(mExport, pdf.OriPdf)
+		SalaryM.PDF(dbname, mExport, pdf.OriPdf)
 		break
 	default:
 		w.WriteHeader(http.StatusBadRequest)
@@ -497,7 +503,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 
 func (api *SalaryAPI) createBranchSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iBS := inputBranchSalary{}
 	err := json.NewDecoder(req.Body).Decode(&iBS)
 	if err != nil {
@@ -519,7 +525,7 @@ func (api *SalaryAPI) createBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		fmt.Println("sid:", cid.Sid)
 	}
 
-	err = SalaryM.CreateSalary(iBS.GetBranchSalary(), iBS.CList)
+	err = SalaryM.CreateSalary(iBS.GetBranchSalary(), iBS.CList, dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -695,7 +701,7 @@ func (api *SalaryAPI) updateSalerSalaryEndpoint(w http.ResponseWriter, req *http
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"bsID"})
 	bsID := vars["bsID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iSS := inputSalerSalary{}
 	err := json.NewDecoder(req.Body).Decode(&iSS)
 	if err != nil {
@@ -712,7 +718,7 @@ func (api *SalaryAPI) updateSalerSalaryEndpoint(w http.ResponseWriter, req *http
 
 	SalaryM := model.GetSalaryModel(di)
 
-	err = SalaryM.UpdateSalerSalaryData(iSS.GetSalerSalary(), bsID)
+	err = SalaryM.UpdateSalerSalaryData(iSS.GetSalerSalary(), bsID, dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -733,7 +739,7 @@ func (api *SalaryAPI) updateManagerBonusEndpoint(w http.ResponseWriter, req *htt
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"bsID"})
 	bsID := vars["bsID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iIE := inputIncomeExpense{}
 	err := json.NewDecoder(req.Body).Decode(&iIE)
 	if err != nil {
@@ -750,7 +756,7 @@ func (api *SalaryAPI) updateManagerBonusEndpoint(w http.ResponseWriter, req *htt
 
 	SalaryM := model.GetSalaryModel(di)
 
-	err = SalaryM.UpdateIncomeExpenseData(iIE.GetIncomeExpense(), bsID)
+	err = SalaryM.UpdateIncomeExpenseData(iIE.GetIncomeExpense(), bsID, dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -769,6 +775,7 @@ func (api *SalaryAPI) updateManagerBonusEndpoint(w http.ResponseWriter, req *htt
 
 func (api *SalaryAPI) closeAccountSettlementEndpoint(w http.ResponseWriter, req *http.Request) {
 	per := req.Header.Get("AuthPerm")
+	dbname := req.Header.Get("dbname")
 	fmt.Println(per)
 	//Get params from body
 	iCA := inputCloseAccount{}
@@ -787,7 +794,7 @@ func (api *SalaryAPI) closeAccountSettlementEndpoint(w http.ResponseWriter, req 
 
 	SalaryM := model.GetSalaryModel(di)
 
-	err = SalaryM.CloseAccountSettlement(iCA.GetCloseAccount(), per)
+	err = SalaryM.CloseAccountSettlement(iCA.GetCloseAccount(), per, dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -805,10 +812,10 @@ func (api *SalaryAPI) closeAccountSettlementEndpoint(w http.ResponseWriter, req 
 }
 
 func (api *SalaryAPI) getCloseAccountSettlementEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	SalaryM := model.GetSalaryModel(di)
 
-	SalaryM.GetAccountSettlement()
+	SalaryM.GetAccountSettlement(dbname)
 	//data, err := json.Marshal(result)
 	data, err := SalaryM.Json("AccountSettlement")
 	if err != nil {
@@ -822,8 +829,8 @@ func (api *SalaryAPI) getCloseAccountSettlementEndpoint(w http.ResponseWriter, r
 func (api *SalaryAPI) deleteCloseAccountSettlementEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	SalaryM := model.GetSalaryModel(di)
-
-	SalaryM.DeleteAccountSettlement()
+	dbname := req.Header.Get("dbname")
+	SalaryM.DeleteAccountSettlement(dbname)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("OK"))

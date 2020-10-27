@@ -39,10 +39,10 @@ func GetEventLogModel(imr interModelRes) *EventLogModel {
 	return logM
 }
 
-func (logM *EventLogModel) GetEventLogData() error {
+func (logM *EventLogModel) GetEventLogData(dbname string) error {
 	const qspl = `SELECT account, name, auth, date, type, msg FROM public.eventlog;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := logM.imr.GetSQLDB()
+	db := logM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {
 		return nil
@@ -84,12 +84,12 @@ func (logM *EventLogModel) Json(mtype string) ([]byte, error) {
 	return json.Marshal(logM.eventLogList)
 }
 
-func (logM *EventLogModel) CreateEventLog(eventLog *EventLog) (err error) {
+func (logM *EventLogModel) CreateEventLog(eventLog *EventLog, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.EventLog(id, account, name, auth, msg, type, date)	VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO nothing;`
 	//and ( select sum(amount)+$3 FROM public.receipt  where arid = $4 group by arid ) <=  (SELECT amount from public.ar ar WHERE arid = $4);`
 
-	interdb := logM.imr.GetSQLDB()
+	interdb := logM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err

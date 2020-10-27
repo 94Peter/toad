@@ -31,19 +31,19 @@ type exportCommission struct {
 
 func (api CommissionAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/commission", Next: api.getCommissionEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/commission", Next: api.getCommissionEndpoint, Method: "GET", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/commission/{Rid}/{Sid}", Next: api.updateCommissionEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/commission/status/{Rid}/{Sid}", Next: api.updateCommissionStatusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/commission/{Rid}/{Sid}", Next: api.updateCommissionEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/commission/status/{Rid}/{Sid}", Next: api.updateCommissionStatusEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		//更新Bonus使用
-		&APIHandler{Path: "/v1/commission/bonus/{Rid}/{Sid}", Next: api.refreshCommissionBonusEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/commission/bonus/{Rid}/{Sid}", Next: api.refreshCommissionBonusEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 	}
 }
 
 func (api *CommissionAPI) getCommissionEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	cm := model.GetCModel(di)
-
+	dbname := req.Header.Get("dbname")
 	queryVar := util.GetQueryValue(req, []string{"date", "status", "export"}, true)
 	//export := (*queryVar)["export"].(string)
 	status := (*queryVar)["status"].(string)
@@ -72,7 +72,7 @@ func (api *CommissionAPI) getCommissionEndpoint(w http.ResponseWriter, req *http
 	}
 
 	//cm.GetCommissiontData(by_m+"-01", ey_m+"-01", status)
-	cm.GetCommissiontData(b, e, status)
+	cm.GetCommissiontData(b, e, status, dbname)
 	//data, err := json.Marshal(result)
 	//if export == "" {
 	data, err := cm.Json()
@@ -95,6 +95,7 @@ func (api *CommissionAPI) updateCommissionEndpoint(w http.ResponseWriter, req *h
 	vars2 := util.GetPathVars(req, []string{"Sid"})
 	Rid := vars["Rid"].(string)
 	Sid := vars2["Sid"].(string)
+	dbname := req.Header.Get("dbname")
 	fmt.Println("Rid" + Rid)
 	fmt.Println("Sid" + Sid)
 	iuC := inputUpdateCommission{}
@@ -112,7 +113,7 @@ func (api *CommissionAPI) updateCommissionEndpoint(w http.ResponseWriter, req *h
 	}
 
 	cm := model.GetCModel(di)
-	if err := cm.UpdateCommission(iuC.GetCommission(), Rid, Sid); err != nil {
+	if err := cm.UpdateCommission(iuC.GetCommission(), Rid, Sid, dbname); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
@@ -134,11 +135,11 @@ func (api *CommissionAPI) refreshCommissionBonusEndpoint(w http.ResponseWriter, 
 	Rid := vars["Rid"].(string)
 	Sid := vars["Sid"].(string)
 	mtype := (*queryVar)["type"].(string)
-
+	dbname := req.Header.Get("dbname")
 	fmt.Println("Rid" + Rid + " Sid" + Sid + " type " + mtype)
 
 	cm := model.GetCModel(di)
-	if err := cm.RefreshCommissionBonus(Sid, Rid, mtype); err != nil {
+	if err := cm.RefreshCommissionBonus(Sid, Rid, mtype, dbname); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
@@ -154,7 +155,7 @@ func (api *CommissionAPI) refreshCommissionBonusEndpoint(w http.ResponseWriter, 
 }
 
 func (api *CommissionAPI) updateCommissionStatusEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	vars := util.GetPathVars(req, []string{"Rid"})
 	vars2 := util.GetPathVars(req, []string{"Sid"})
 	Rid := vars["Rid"].(string)
@@ -163,7 +164,7 @@ func (api *CommissionAPI) updateCommissionStatusEndpoint(w http.ResponseWriter, 
 	fmt.Println("Sid" + Sid)
 
 	cm := model.GetCModel(di)
-	if err := cm.UpdateCommissionStatus(Rid, Sid); err != nil {
+	if err := cm.UpdateCommissionStatus(Rid, Sid, dbname); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return

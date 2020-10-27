@@ -63,7 +63,7 @@ func (indexM *IndexModel) Json(mtype string) ([]byte, error) {
 	return nil, nil
 }
 
-func (indexM *IndexModel) GetInfoData(date time.Time) *Info {
+func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 
 	// const sql = `SELECT
 	// 			ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount,
@@ -83,7 +83,7 @@ func (indexM *IndexModel) GetInfoData(date time.Time) *Info {
 	 */
 
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := indexM.imr.GetSQLDB()
+	db := indexM.imr.GetSQLDBwithDbname(dbname)
 	//fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
 	//t := time.Now()
@@ -136,7 +136,7 @@ func (indexM *IndexModel) GetInfoData(date time.Time) *Info {
 
 }
 
-func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*IncomeStatement, error) {
+func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Time) (*IncomeStatement, error) {
 
 	//本來使用此sql，但有可能branchsalary為空
 	const sql = `WITH  vals  AS (VALUES ( 'none' ) )
@@ -239,7 +239,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch string, date time.Time) (*In
 	fmt.Println(curDate)
 	//t, _ := time.Parse(layout, curDate+"-01")
 
-	mdb := indexM.imr.GetSQLDB()
+	mdb := indexM.imr.GetSQLDBwithDbname(dbname)
 	db, err := mdb.ConnectSQLDB()
 	defer db.Close()
 

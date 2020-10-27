@@ -29,15 +29,17 @@ func (api AdminAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/category", Next: api.getCategoryEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/category", Next: api.t, Method: "POST", Auth: false, Group: permission.All},
 
-		&APIHandler{Path: "/v1/user", Next: api.getUserEndPoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/user", Next: api.createUser, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/user/{ID}", Next: api.deleteUserEndPoint, Method: "DELETE", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/user", Next: api.updateUserEndPoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/user", Next: api.getUserEndPoint, Method: "GET", Auth: true, Group: permission.Backend},
+		&APIHandler{Path: "/v1/user", Next: api.createUser, Method: "POST", Auth: true, Group: permission.Backend},
+		&APIHandler{Path: "/v1/user/{ID}", Next: api.deleteUserEndPoint, Method: "DELETE", Auth: true, Group: permission.Backend},
+		&APIHandler{Path: "/v1/user", Next: api.updateUserEndPoint, Method: "PUT", Auth: true, Group: permission.Backend},
 
-		&APIHandler{Path: "/v1/user/pwd", Next: api.updatePwdEndPoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/user/pwd", Next: api.updatePwdEndPoint, Method: "PUT", Auth: true, Group: permission.All},
 		//&APIHandler{Path: "/v1/user/pwd/{Email}", Next: api.resetPwdEndPoint, Method: "POST", Auth: false, Group: permission.All}, not work
-		&APIHandler{Path: "/v1/user/disable", Next: api.disableUserEndPoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/user/state", Next: api.updateStateEndPoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/user/disable", Next: api.disableUserEndPoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/user/state", Next: api.updateStateEndPoint, Method: "PUT", Auth: true, Group: permission.All},
+
+		&APIHandler{Path: "/v1/user/dbname/{ID}", Next: api.updateDbnameEndPoint, Method: "PUT", Auth: false, Group: permission.Backend},
 	}
 }
 
@@ -74,11 +76,15 @@ type inputState struct {
 	State   string `json:"state"`
 }
 
+type inputDbname struct {
+	Dbname string `json:"dbname"`
+}
+
 func (api *AdminAPI) getUserEndPoint(w http.ResponseWriter, req *http.Request) {
 	memM := model.GetMemberModel(di)
-
+	dbname := req.Header.Get("dbname")
 	//data, err := json.Marshal(result)
-	data, err := memM.GetAccountUserData()
+	data, err := memM.GetAccountUserData(dbname)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
@@ -96,6 +102,7 @@ func (api *AdminAPI) getUserEndPoint(w http.ResponseWriter, req *http.Request) {
 }
 
 func (api *AdminAPI) createUser(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
 	// 取得IP
 	ip, _, _ := net.SplitHostPort(req.RemoteAddr)
 	// 印出IP
@@ -114,7 +121,7 @@ func (api *AdminAPI) createUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	memM := model.GetMemberModel(di)
-	err = memM.CreateUser(user.GetUser())
+	err = memM.CreateUser(user.GetUser(dbname))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -129,8 +136,8 @@ func (api *AdminAPI) deleteUserEndPoint(w http.ResponseWriter, req *http.Request
 	ID := vars["ID"].(string)
 
 	memM := model.GetMemberModel(di)
-
-	if err := memM.DeleteUser(ID); err != nil {
+	dbname := req.Header.Get("dbname")
+	if err := memM.DeleteUser(ID, dbname); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
@@ -140,6 +147,13 @@ func (api *AdminAPI) deleteUserEndPoint(w http.ResponseWriter, req *http.Request
 }
 
 func (api *AdminAPI) updateUserEndPoint(w http.ResponseWriter, req *http.Request) {
+
+	dbname := req.Header.Get("dbname")
+	if dbname == "" {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("updateUserEndPoint dbname error"))
+		return
+	}
 
 	user := inputUpdateUser{}
 	err := json.NewDecoder(req.Body).Decode(&user)
@@ -154,7 +168,7 @@ func (api *AdminAPI) updateUserEndPoint(w http.ResponseWriter, req *http.Request
 		return
 	}
 	memM := model.GetMemberModel(di)
-	if err := memM.UpdateUser(user.GetUser()); err != nil {
+	if err := memM.UpdateUser(user.GetUser(), dbname); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
@@ -164,6 +178,13 @@ func (api *AdminAPI) updateUserEndPoint(w http.ResponseWriter, req *http.Request
 }
 
 func (api *AdminAPI) updatePwdEndPoint(w http.ResponseWriter, req *http.Request) {
+
+	dbname := req.Header.Get("dbname")
+	if dbname == "" {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("dbname error"))
+		return
+	}
 
 	user := inputPwd{}
 	err := json.NewDecoder(req.Body).Decode(&user)
@@ -192,9 +213,9 @@ func (api *AdminAPI) disableUserEndPoint(w http.ResponseWriter, req *http.Reques
 		w.Write([]byte("Invalid JSON format"))
 		return
 	}
-
+	dbname := req.Header.Get("dbname")
 	memM := model.GetMemberModel(di)
-	if err := memM.SetUserDisable(user.Account, user.Disable); err != nil {
+	if err := memM.SetUserDisable(user.Account, dbname, user.Disable); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
@@ -223,16 +244,51 @@ func (api *AdminAPI) updateStateEndPoint(w http.ResponseWriter, req *http.Reques
 	w.Write([]byte("ok"))
 }
 
+func (api *AdminAPI) updateDbnameEndPoint(w http.ResponseWriter, req *http.Request) {
+
+	vars := util.GetPathVars(req, []string{"ID"})
+	uid := vars["ID"].(string)
+
+	idbname := inputDbname{}
+	err := json.NewDecoder(req.Body).Decode(&idbname)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := idbname.isDbnameValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	memM := model.GetMemberModel(di)
+	if err := memM.UpdateDbname(uid, idbname.Dbname); err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Write([]byte("ok"))
+}
+
 // 交換firebase token to pica token
 func (api *AdminAPI) tokenEndpoint(w http.ResponseWriter, req *http.Request) {
 	//ftoken := req.Header.Get("Auth-Token")
 	ftoken := req.Header.Get("token")
+	//dbname := req.Header.Get("dbname")
 
 	if ftoken == "" {
-
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+
+	// if dbname == "" {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte("dbname error"))
+	// 	return
+	// }
 
 	mm := model.GetMemberModel(di)
 	user := mm.VerifyToken(ftoken)
@@ -253,6 +309,7 @@ func (api *AdminAPI) tokenEndpoint(w http.ResponseWriter, req *http.Request) {
 		"state":      user.State,
 		"permission": user.Permission,
 		"branch":     user.Branch,
+		"dbname":     user.Dbname,
 	})
 
 }
@@ -369,15 +426,15 @@ func permissionCheck(perm string) error {
 	return errors.New(perm + " permission in unknown.")
 }
 
-func (user *inputUser) GetUser() *model.User {
+func (user *inputUser) GetUser(dbname string) *model.User {
 
 	return &model.User{
 		Password:   user.Password,
 		Permission: user.Permission,
 		Account:    user.Account,
 		Name:       user.Name,
-		Site:       user.Site,
 		Branch:     user.Branch,
+		Dbname:     dbname,
 	}
 }
 
@@ -389,6 +446,15 @@ func (user *inputUpdateUser) GetUser() *model.User {
 		Name:       user.Name,
 		Branch:     user.Branch,
 	}
+}
+
+func (iDb *inputDbname) isDbnameValid() (bool, error) {
+
+	if iDb.Dbname == "" {
+		return false, errors.New("dbname is empty")
+	}
+
+	return true, nil
 }
 
 /*

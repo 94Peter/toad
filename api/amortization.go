@@ -31,15 +31,16 @@ func (api AmortizationAPI) Enable() bool {
 
 func (api AmortizationAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/amortization", Next: api.getAmortizationEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/amortization", Next: api.createAmortizationEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/amortization/{ID}", Next: api.deleteAmortizationEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/amortization", Next: api.getAmortizationEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/amortization", Next: api.createAmortizationEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/amortization/{ID}", Next: api.deleteAmortizationEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/amortization/export", Next: api.exportAmortizationEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/amortization/export", Next: api.exportAmortizationEndpoint, Method: "GET", Auth: true, Group: permission.All},
 	}
 }
 
 func (api *AmortizationAPI) exportAmortizationEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
 	//Get params from body
 	//vars := util.GetPathVars(req, []string{"ID"})
 	//amorID := vars["ID"].(string)
@@ -70,19 +71,19 @@ func (api *AmortizationAPI) exportAmortizationEndpoint(w http.ResponseWriter, re
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	amor.GetAmortizationData(b, e, branch)
+	amor.GetAmortizationData(b, e, branch, dbname)
 
 	w.Write(amor.PDF())
 
 }
 
 func (api *AmortizationAPI) deleteAmortizationEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 
 	amorM := model.GetAmortizationModel(di)
-	if err := amorM.DeleteAmortization(ID); err != nil {
+	if err := amorM.DeleteAmortization(ID, dbname); err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
 			w.WriteHeader(http.StatusLocked)
@@ -105,7 +106,7 @@ func (api *AmortizationAPI) deleteAmortizationEndpoint(w http.ResponseWriter, re
 }
 
 func (api *AmortizationAPI) getAmortizationEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	amorM := model.GetAmortizationModel(di)
 	// var queryDate time.Time
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
@@ -137,7 +138,7 @@ func (api *AmortizationAPI) getAmortizationEndpoint(w http.ResponseWriter, req *
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	amorM.GetAmortizationData(b, e, branch)
+	amorM.GetAmortizationData(b, e, branch, dbname)
 	//data, err := json.Marshal(result)
 	data, err := amorM.Json()
 	if err != nil {
@@ -150,7 +151,7 @@ func (api *AmortizationAPI) getAmortizationEndpoint(w http.ResponseWriter, req *
 
 func (api *AmortizationAPI) createAmortizationEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iAmor := inputAmortization{}
 	err := json.NewDecoder(req.Body).Decode(&iAmor)
 	if err != nil {
@@ -167,7 +168,7 @@ func (api *AmortizationAPI) createAmortizationEndpoint(w http.ResponseWriter, re
 
 	amor := model.GetAmortizationModel(di)
 
-	err = amor.CreateAmortization(iAmor.GetAmortization())
+	err = amor.CreateAmortization(iAmor.GetAmortization(), dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:

@@ -53,10 +53,10 @@ func GetSystemModel(imr interModelRes) *SystemModel {
 	return systemM
 }
 
-func (systemM *SystemModel) GetAccountData() error {
+func (systemM *SystemModel) GetAccountData(dbname string) error {
 	const qspl = `SELECT account, name, permission, createdate, lasttime, state, disable FROM public.account;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := systemM.imr.GetSQLDB()
+	db := systemM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl))
 	if err != nil {
 		fmt.Println(err)
@@ -187,14 +187,14 @@ func (systemM *SystemModel) GetBranchDataFromPICA() ([]byte, error) {
 	return sitemap, err
 }
 
-func (systemM *SystemModel) GetBranchData() ([]byte, error) {
+func (systemM *SystemModel) GetBranchData(dbname string) ([]byte, error) {
 	//if invoiceno is null in Database return ""
 	//const qspl = `SELECT rid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
 	//left join public.invoice I on  I.Rid = R.rid
 	//
 	fmt.Println("GetBranchData")
 	const qspl = `SELECT branch	FROM public.configbranch;`
-	db := systemM.imr.GetSQLDB()
+	db := systemM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(qspl)
 	if err != nil {
 		return nil, nil
@@ -243,12 +243,12 @@ func (systemM *SystemModel) Json(mtype string) ([]byte, error) {
 	return nil, nil
 }
 
-func (systemM *SystemModel) CreateSystemAccount(systemAccount *SystemAccount) (err error) {
+func (systemM *SystemModel) CreateSystemAccount(systemAccount *SystemAccount, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.account(account, passoword, name, auth, createdate, email, phone)	VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (account) DO nothing;`
 	//and ( select sum(amount)+$3 FROM public.receipt  where arid = $4 group by arid ) <=  (SELECT amount from public.ar ar WHERE arid = $4);`
 
-	interdb := systemM.imr.GetSQLDB()
+	interdb := systemM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -274,13 +274,13 @@ func (systemM *SystemModel) CreateSystemAccount(systemAccount *SystemAccount) (e
 	return nil
 }
 
-func (systemM *SystemModel) UpdateSystemAccount(systemAccount *SystemAccount) (err error) {
+func (systemM *SystemModel) UpdateSystemAccount(systemAccount *SystemAccount, dbname string) (err error) {
 
 	const sql = `UPDATE public.account 
 	SET name=$3 ,auth=$4 , email = $5 , phone = $6
 	Where account = $1 and passoword=$2;`
 
-	interdb := systemM.imr.GetSQLDB()
+	interdb := systemM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -311,13 +311,13 @@ func encryptPassword(pwd string) string {
 	//return util.MD5(pwd)
 }
 
-func (systemM *SystemModel) UpdateSystemAccountPassword(newpassword string, systemAccount *SystemAccount) (err error) {
+func (systemM *SystemModel) UpdateSystemAccountPassword(newpassword, dbname string, systemAccount *SystemAccount) (err error) {
 
 	const sql = `UPDATE public.account 
 	SET passoword=$3
 	Where account = $1 and passoword=$2;`
 
-	interdb := systemM.imr.GetSQLDB()
+	interdb := systemM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -343,11 +343,11 @@ func (systemM *SystemModel) UpdateSystemAccountPassword(newpassword string, syst
 	return nil
 }
 
-func (systemM *SystemModel) DeleteSystemAccount(account string) (err error) {
+func (systemM *SystemModel) DeleteSystemAccount(account, dbname string) (err error) {
 
 	const sql = `DELETE FROM public.account WHERE account = $1;`
 
-	interdb := systemM.imr.GetSQLDB()
+	interdb := systemM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err

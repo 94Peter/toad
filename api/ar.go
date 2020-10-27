@@ -72,23 +72,23 @@ type inputReceipt struct {
 
 func (api ARAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/housego", Next: api.CreateHouseGoEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/housego", Next: api.GetHouseGoEndpoint, Method: "Get", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/housego/{ID}", Next: api.UpgradeARInfoWithHouseGoEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/housego", Next: api.CreateHouseGoEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/housego", Next: api.GetHouseGoEndpoint, Method: "Get", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/housego/{ID}", Next: api.UpgradeARInfoWithHouseGoEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/receivable", Next: api.getAccountReceivableEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/receivable", Next: api.createAccountReceivableEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/receivable/{ID}", Next: api.deleteAccountReceivableEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/receivable/{ID}", Next: api.updateAccountReceivableEndpoint, Method: "PUT", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable", Next: api.getAccountReceivableEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable", Next: api.createAccountReceivableEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable/{ID}", Next: api.deleteAccountReceivableEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable/{ID}", Next: api.updateAccountReceivableEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/receipt", Next: api.createReceiptEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/receipt", Next: api.createReceiptEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/receivable/saler", Next: api.getSalerDataEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/receivable/saler", Next: api.getSalerDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
 
 		// &APIHandler{Path: "/v1/category", Next: api.createCategoryEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/category/{NAME}", Next: api.deleteCategoryEndpoint, Method: "DELETE", Auth: true, Group: permission.Backend},
-		// &APIHandler{Path: "/v1/user", Next: api.createUserEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
+
 		// &APIHandler{Path: "/v1/user", Next: api.getUserEndpoint, Method: "GET", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/user/category", Next: api.updateUserCategoryEndpoint, Method: "PUT", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/user/permission", Next: api.updateUserPemissionEndpoint, Method: "PUT", Auth: true, Group: permission.Backend},
@@ -97,12 +97,12 @@ func (api ARAPI) GetAPIs() *[]*APIHandler {
 }
 
 func (api *ARAPI) deleteAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 
 	am := model.GetARModel(di)
-	if err := am.DeleteAccountReceivable(ID); err != nil {
+	if err := am.DeleteAccountReceivable(ID, dbname); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
@@ -121,7 +121,7 @@ func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iUAR := inputUpdateAR{}
 	err := json.NewDecoder(req.Body).Decode(&iUAR)
 	if err != nil {
@@ -144,7 +144,7 @@ func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 
 	am := model.GetARModel(di)
 
-	if err := am.UpdateAccountReceivable(iUAR.Amount, ID, iUAR.SalerList); err != nil {
+	if err := am.UpdateAccountReceivable(iUAR.Amount, ID, dbname, iUAR.SalerList); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
@@ -168,8 +168,8 @@ func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.
 
 	queryVar := util.GetQueryValue(req, []string{"key", "export"}, true)
 	key := (*queryVar)["key"].(string)
-
-	am.GetARData(today, end, key)
+	dbname := req.Header.Get("dbname")
+	am.GetARData(today, end, key, dbname)
 	//data, err := json.Marshal(result)
 	data, err := am.Json("ar")
 	if err != nil {
@@ -186,12 +186,12 @@ func (api *ARAPI) getSalerDataEndpoint(w http.ResponseWriter, req *http.Request)
 
 	queryVar := util.GetQueryValue(req, []string{"branch"}, true)
 	branch := (*queryVar)["branch"].(string)
-
+	dbname := req.Header.Get("dbname")
 	if branch == "" || branch == "全部" || strings.ToLower(branch) == "all" {
 		branch = "%"
 	}
 
-	am.GetSalerData(branch)
+	am.GetSalerData(branch, dbname)
 	//data, err := json.Marshal(result)
 	data, err := am.Json("saler")
 	if err != nil {
@@ -211,8 +211,8 @@ func (api *ARAPI) GetHouseGoEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	queryVar := util.GetQueryValue(req, []string{"key", "export"}, true)
 	key := (*queryVar)["key"].(string)
-
-	am.GetHouseGoData(today, end, key)
+	dbname := req.Header.Get("dbname")
+	am.GetHouseGoData(today, end, key, dbname)
 	//data, err := json.Marshal(result)
 	data, err := am.Json("housego")
 	if err != nil {
@@ -226,7 +226,7 @@ func (api *ARAPI) GetHouseGoEndpoint(w http.ResponseWriter, req *http.Request) {
 func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	//正常網站下的流程
-
+	dbname := req.Header.Get("dbname")
 	iAR := inputAR{}
 	err := json.NewDecoder(req.Body).Decode(&iAR)
 
@@ -244,7 +244,7 @@ func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 
 	am := model.GetARModel(di)
 
-	_err := am.CreateAccountReceivable(iAR.GetAR(), "nil")
+	_err := am.CreateAccountReceivable(iAR.GetAR(), "nil", dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error"))
@@ -256,6 +256,7 @@ func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 
 func (api *ARAPI) CreateHouseGoEndpoint(w http.ResponseWriter, req *http.Request) {
 	fmt.Println("houseGo inc.")
+	dbname := req.Header.Get("dbname")
 	iGoAR := inputhouseGoAR{}
 	//err := json.NewDecoder(req.Body).Decode(&iGoAR)
 	data, _ := ioutil.ReadAll(req.Body) //把  body 内容读入字符串
@@ -288,7 +289,7 @@ func (api *ARAPI) CreateHouseGoEndpoint(w http.ResponseWriter, req *http.Request
 
 	am := model.GetARModel(di)
 
-	_err := am.CreateAccountReceivable(iGoAR.GetAR(ACTION_BUY), string(data))
+	_err := am.CreateAccountReceivable(iGoAR.GetAR(ACTION_BUY), string(data), dbname)
 	if _err != nil {
 		//不重複執行放入HouseGo Table
 		if _err.Error() == "duplicate data" {
@@ -299,7 +300,7 @@ func (api *ARAPI) CreateHouseGoEndpoint(w http.ResponseWriter, req *http.Request
 		w.Write([]byte("Error." + _err.Error()))
 		return
 	}
-	_err = am.CreateAccountReceivable(iGoAR.GetAR(ACTION_SELL), string(data))
+	_err = am.CreateAccountReceivable(iGoAR.GetAR(ACTION_SELL), string(data), dbname)
 	if _err != nil {
 		// if _err.Error() == "duplicate data" {
 		// 	w.WriteHeader(http.StatusBadRequest)
@@ -315,12 +316,12 @@ func (api *ARAPI) CreateHouseGoEndpoint(w http.ResponseWriter, req *http.Request
 }
 
 func (api *ARAPI) UpgradeARInfoWithHouseGoEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 
 	am := model.GetARModel(di)
-	if err := am.UpgradeARInfo(ID); err != nil {
+	if err := am.UpgradeARInfo(ID, dbname); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
@@ -338,7 +339,7 @@ func (api *ARAPI) UpgradeARInfoWithHouseGoEndpoint(w http.ResponseWriter, req *h
 
 func (api *ARAPI) createDeductEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iDeduct := inputDeduct{}
 	err := json.NewDecoder(req.Body).Decode(&iDeduct)
 	if err != nil {
@@ -355,7 +356,7 @@ func (api *ARAPI) createDeductEndpoint(w http.ResponseWriter, req *http.Request)
 
 	DM := model.GetDecuctModel(di)
 
-	_err := DM.CreateDeduct(iDeduct.GetDeduct())
+	_err := DM.CreateDeduct(iDeduct.GetDeduct(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error"))
@@ -368,7 +369,7 @@ func (api *ARAPI) createDeductEndpoint(w http.ResponseWriter, req *http.Request)
 func (api *ARAPI) createReceiptEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
 	irt := inputReceipt{}
-
+	dbname := req.Header.Get("dbname")
 	err := json.NewDecoder(req.Body).Decode(&irt)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -385,7 +386,7 @@ func (api *ARAPI) createReceiptEndpoint(w http.ResponseWriter, req *http.Request
 	rm := model.GetRTModel(di)
 	_ = model.GetCModel(di)      //init Commission Model for create commission
 	_ = model.GetDecuctModel(di) //init Deduct Model for update DeductRid
-	_err := rm.CreateReceipt(irt.GetReceipt())
+	_err := rm.CreateReceipt(irt.GetReceipt(), dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error()))

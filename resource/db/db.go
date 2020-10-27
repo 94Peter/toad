@@ -18,6 +18,7 @@ type InterDB interface {
 	SetUserDisable(uid string, disable bool) error
 	ChangePwd(uid string, pwd string) error
 	UpdateState(uid string, state string) error
+	UpdateDbname(uid string, dbname string) error
 	UpdateUser(uid, display, permission, dbname string) error
 	VerifyToken(idToken string) (string, error)
 	GetByID(id string, doc interface{}) error
@@ -40,7 +41,7 @@ type InterSQLDB interface {
 
 type DBConf struct {
 	FirebaseConf *firebaseConf `yaml:"firebase"`
-	SqlDBConf    *sqldbConf    `yaml:"sqldatabase"`
+	SqlDBConf    *SqldbConf    `yaml:"sqldatabase"`
 
 	db    InterDB
 	sqldb InterSQLDB
@@ -54,7 +55,7 @@ func (dbc *DBConf) SetFirebase(file, url string) {
 }
 
 func (dbc *DBConf) SetSqldatabase(host, user, password, db string, port int) {
-	dbc.SqlDBConf = &sqldbConf{
+	dbc.SqlDBConf = &SqldbConf{
 		DatabaseURL: host,
 		Port:        port,
 		User:        user,
@@ -68,7 +69,7 @@ type firebaseConf struct {
 	DatabaseURL     string `yaml:"databaseURL"`
 }
 
-type sqldbConf struct {
+type SqldbConf struct {
 	DatabaseURL string `yaml:"databaseURL"`
 	Port        int    `yaml:"port"`
 	User        string `yaml:"user"`
@@ -91,27 +92,22 @@ func (dbc *DBConf) GetDB() InterDB {
 }
 
 func (dbc *DBConf) GetSQLDB() InterSQLDB {
-
+	fmt.Println("GetSQLDB")
 	if dbc.sqldb != nil {
 		return dbc.sqldb
 	}
-	fmt.Println("GetSQLDB")
+	//fmt.Println("GetSQLDB")
 
-	dbc.sqldb = &sqlDB{
-		ctx:      context.Background(),
-		dburl:    dbc.SqlDBConf.DatabaseURL,
-		user:     dbc.SqlDBConf.User,
-		password: dbc.SqlDBConf.Password,
-		db:       dbc.SqlDBConf.DB,
-		port:     dbc.SqlDBConf.Port,
+	dbc.sqldb = &SqlDB{
+		Ctx:      context.Background(),
+		Dburl:    dbc.SqlDBConf.DatabaseURL,
+		User:     dbc.SqlDBConf.User,
+		Password: dbc.SqlDBConf.Password,
+		Db:       dbc.SqlDBConf.DB,
+		Port:     dbc.SqlDBConf.Port,
 	}
 
-	if dbc.sqldb.InitDB() {
-		fmt.Println("Init DataBase error")
-	}
-	// if !dbc.sqldb.InitTable() {
-	// 	fmt.Println("Init DataTable error")
-	// }
+	dbc.sqldb.InitDB()
 
 	return dbc.sqldb
 }

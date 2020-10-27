@@ -1,9 +1,12 @@
 package middle
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
+	"toad/resource"
 	"toad/util"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -20,6 +23,7 @@ const (
 var (
 	authMap  map[string]uint8    = make(map[string]uint8)
 	groupMap map[string][]string = make(map[string][]string)
+	myDI                         = resource.GetConf("dev", os.Getenv("TIMEZONE"))
 )
 
 func AddAuthPath(path string, auth bool, group []string) {
@@ -90,15 +94,16 @@ func (am AuthMiddle) GetMiddleWare() func(f http.HandlerFunc) http.HandlerFunc {
 					return
 				}
 
-				// out, err := json.Marshal(jwtToken)
-				// if err != nil {
-				// 	panic(err)
-				// }
-				// fmt.Println(string(out))
+				out, err := json.Marshal(jwtToken)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Println("auth middle:", string(out))
 
 				mapClaims := jwtToken.Claims.(jwt.MapClaims)
 
 				permission := mapClaims["per"].(string)
+
 				if hasPerm := hasPerm(path, r.Method, permission); !hasPerm {
 					fmt.Println("permission error")
 					w.WriteHeader(http.StatusUnauthorized)
@@ -111,7 +116,13 @@ func (am AuthMiddle) GetMiddleWare() func(f http.HandlerFunc) http.HandlerFunc {
 				r.Header.Set("AuthName", mapClaims["nam"].(string))
 				r.Header.Set("AuthPerm", permission)
 				r.Header.Set("AuthCategory", mapClaims["cat"].(string))
-
+				r.Header.Set("dbname", mapClaims["dbname"].(string))
+				if mapClaims["dbname"].(string) == "" {
+					fmt.Println("auth_middle dbname error")
+					w.WriteHeader(http.StatusUnauthorized)
+					w.Write([]byte("dbname error"))
+					return
+				}
 			}
 			f(w, r)
 		}

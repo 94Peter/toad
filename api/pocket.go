@@ -31,12 +31,12 @@ func (api PocketAPI) Enable() bool {
 
 func (api PocketAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/pocket", Next: api.getPocketEndpoint, Method: "GET", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/pocket", Next: api.createPocketEndpoint, Method: "POST", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/pocket/{ID}", Next: api.updatePocketEndpoint, Method: "PUT", Auth: false, Group: permission.All},
-		&APIHandler{Path: "/v1/pocket/{ID}", Next: api.deletePocketEndpoint, Method: "DELETE", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/pocket", Next: api.getPocketEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/pocket", Next: api.createPocketEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/pocket/{ID}", Next: api.updatePocketEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/pocket/{ID}", Next: api.deletePocketEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
-		&APIHandler{Path: "/v1/pocket/export", Next: api.exportPocketEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/pocket/export", Next: api.exportPocketEndpoint, Method: "GET", Auth: true, Group: permission.All},
 	}
 }
 
@@ -80,12 +80,12 @@ func (api *PocketAPI) exportPocketEndpoint(w http.ResponseWriter, req *http.Requ
 }
 
 func (api *PocketAPI) deletePocketEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
 	fmt.Println(ID)
 	PocketM := model.GetPocketModel(di)
-	if err := PocketM.DeletePocket(ID); err != nil {
+	if err := PocketM.DeletePocket(ID, dbname); err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
 			w.WriteHeader(http.StatusLocked)
@@ -150,7 +150,7 @@ func (api *PocketAPI) updatePocketEndpoint(w http.ResponseWriter, req *http.Requ
 	//Get params from body
 	vars := util.GetPathVars(req, []string{"ID"})
 	ID := vars["ID"].(string)
-
+	dbname := req.Header.Get("dbname")
 	iPocket := inputPocket{}
 	err := json.NewDecoder(req.Body).Decode(&iPocket)
 	if err != nil {
@@ -167,7 +167,7 @@ func (api *PocketAPI) updatePocketEndpoint(w http.ResponseWriter, req *http.Requ
 
 	PocketM := model.GetPocketModel(di)
 
-	err = PocketM.UpdatePocket(ID, iPocket.GetPocket())
+	err = PocketM.UpdatePocket(ID, dbname, iPocket.GetPocket())
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:
@@ -186,7 +186,7 @@ func (api *PocketAPI) updatePocketEndpoint(w http.ResponseWriter, req *http.Requ
 
 func (api *PocketAPI) createPocketEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
-
+	dbname := req.Header.Get("dbname")
 	iPocket := inputPocket{}
 	err := json.NewDecoder(req.Body).Decode(&iPocket)
 	if err != nil {
@@ -203,7 +203,7 @@ func (api *PocketAPI) createPocketEndpoint(w http.ResponseWriter, req *http.Requ
 
 	PocketM := model.GetPocketModel(di)
 
-	err = PocketM.CreatePocket(iPocket.GetPocket())
+	err = PocketM.CreatePocket(iPocket.GetPocket(), dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:

@@ -185,12 +185,12 @@ func (salaryM *SalaryModel) SetSMTPConf(conf util.SendMail) {
 	salaryM.SMTPConf = conf
 }
 
-func (salaryM *SalaryModel) GetBranchSalaryData(date string) []*BranchSalary {
+func (salaryM *SalaryModel) GetBranchSalaryData(date, dbname string) []*BranchSalary {
 
 	sql := "SELECT bsid, to_timestamp(bsid::int), branch, name, total, lock FROM public.branchsalary" +
 		" where date Like '%" + date + "%' order by bsid;"
 
-	db := salaryM.imr.GetSQLDB()
+	db := salaryM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(sql)
 
 	if err != nil {
@@ -244,7 +244,7 @@ func (salaryM *SalaryModel) GetPDFByte() []byte {
 	return data
 }
 
-func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
+func (salaryM *SalaryModel) PDF(dbname string, mtype int, isNew bool, things ...string) {
 	var p *pdf.Pdf
 	if isNew {
 		p = pdf.GetNewPDF()
@@ -290,7 +290,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 		p.CustomizedAgentSign(table, T_Bonus, T_SR)
 		break
 	case pdf.SalarCommission: //8
-		mailList, err := salaryM.getSalerEmail()
+		mailList, err := salaryM.getSalerEmail(dbname)
 		if err != nil {
 			//getSalerEmail 失敗
 			fmt.Println(err)
@@ -346,7 +346,7 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 
 				if send == "true" && element.Sid == element.ManagerID {
 					fmt.Println("Build PDFIncomeStatement")
-					salaryM.PDFIncomeStatement(element.Branch, element.SName, element.Code, date)
+					salaryM.PDFIncomeStatement(element.Branch, element.SName, element.Code, date, dbname)
 				}
 				//p = nil
 				// if send == "true" {
@@ -402,11 +402,11 @@ func (salaryM *SalaryModel) PDF(mtype int, isNew bool, things ...string) {
 	return //p.GetBytesPdf()
 }
 
-func (salaryM *SalaryModel) PDFIncomeStatement(branch, SName, Code, date string) {
+func (salaryM *SalaryModel) PDFIncomeStatement(branch, SName, Code, date, dbname string) {
 	p := pdf.GetNewPDF(pdf.PageSizeA4_)
 	indexM := GetIndexModel(salaryM.imr)
 	mdate, _ := time.Parse(time.RFC3339, "2019-12-31T16:00:00Z")
-	incomeStatement, err := indexM.GetIncomeStatement(branch, mdate)
+	incomeStatement, err := indexM.GetIncomeStatement(branch, dbname, mdate)
 	if err != nil {
 		fmt.Println("ERROR PDFIncomeStatement:", err)
 		return
@@ -464,7 +464,7 @@ func (salaryM *SalaryModel) TXT(mtype int) {
 	return //p.GetBytesPdf()
 }
 
-func (salaryM *SalaryModel) DeleteSalary(ID string) (err error) {
+func (salaryM *SalaryModel) DeleteSalary(ID, dbname string) (err error) {
 	const sql = `
 				delete from public.SalerSalary where bsid = '%s';
 				delete from public.NHISalary where bsid = '%s';
@@ -473,7 +473,7 @@ func (salaryM *SalaryModel) DeleteSalary(ID string) (err error) {
 				UPDATE public.commission SET bsid = null , status = 'normal' WHERE bsid = '%s';
 				`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -497,12 +497,12 @@ func (salaryM *SalaryModel) DeleteSalary(ID string) (err error) {
 	return nil
 }
 
-func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
+func (salaryM *SalaryModel) isOK_CreateSalary(dbname string) (err error) {
 	// //( (case when cb.sid is not null then ie.managerbonus else 0 end) + ss.tamount )
 	sql := `select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C `
 	// //where ss.bsid = '%s' and ss.sid like '%s'`
 	var Tag = true
-	db := salaryM.imr.GetSQLDB()
+	db := salaryM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(sql)
 	if err != nil {
 		return err
@@ -542,9 +542,9 @@ func (salaryM *SalaryModel) isOK_CreateSalary() (err error) {
 
 	return nil
 }
-func (salaryM *SalaryModel) getNextDayFromLastTimeSalary() (mtime time.Time, err error) {
+func (salaryM *SalaryModel) getNextDayFromLastTimeSalary(dbname string) (mtime time.Time, err error) {
 	mtime = time.Now()
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 
 	const sql = `SELECT max(date) FROM public.BranchSalary;`
 
@@ -576,9 +576,9 @@ func (salaryM *SalaryModel) getNextDayFromLastTimeSalary() (mtime time.Time, err
 *計算並建立業務薪資
 *更新分店總表數值
 **/
-func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err error) {
+func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
 
-	err = salaryM.isOK_CreateSalary()
+	err = salaryM.isOK_CreateSalary(dbname)
 	if err != nil {
 		fmt.Println("CreateSalary err:" + err.Error())
 		return err
@@ -587,12 +587,12 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 	fmt.Println(bs.Date)
 	fmt.Println(bs.StrDate)
 
-	_, err = salaryM.CheckValidCloseDate(bs.Date)
+	_, err = salaryM.CheckValidCloseDate(bs.Date, dbname)
 	if err != nil {
 		return
 	}
 
-	t, err := salaryM.getNextDayFromLastTimeSalary()
+	t, err := salaryM.getNextDayFromLastTimeSalary(dbname)
 	bs.LastDate = t
 	fmt.Println("bs.LastDate:", bs.LastDate)
 
@@ -625,7 +625,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 				where tmp.hasbind is null or tmp.hasbind = 0
 				;`
 	//使得每個BSid + 1
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -653,19 +653,19 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 	}
 
 	////將曾經排除的傭金加入
-	scsErr := salaryM.SetCommissionBSid(bs, cid)
+	scsErr := salaryM.SetCommissionBSid(bs, cid, dbname)
 	if scsErr != nil {
 		return nil
 		//return css_err
 	}
 
-	cssErr := salaryM.CreateSalerSalary(bs, cid)
+	cssErr := salaryM.CreateSalerSalary(bs, cid, dbname)
 	if cssErr != nil {
 		return nil
 		//return css_err
 	}
 
-	_err := salaryM.UpdateBranchSalaryTotal()
+	_err := salaryM.UpdateBranchSalaryTotal(dbname)
 	if _err != nil {
 		return nil
 		//return css_err
@@ -680,7 +680,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid) (err erro
 	*0.01 vs *1/100 答案是不一樣的。
 	所以使用CAST轉型後用ROUND去修正答案。
 */
-func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err error) {
+func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
 
 	// const sql = `INSERT INTO public.salersalary
 	// (bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
@@ -782,7 +782,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	year := bs.StrDate[0:4]
 	fmt.Println(year)
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -814,16 +814,16 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	}
 
 	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
-	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid)
+	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid, dbname)
 
 	//綁定更改BSid後才可建立紅利表，預設使用5%成本(年終提撥)
-	cieErr := salaryM.CreateIncomeExpense(bs)
+	cieErr := salaryM.CreateIncomeExpense(bs, dbname)
 	if cieErr != nil {
 		return nil
 		//return css_err
 	}
 
-	ucnhi_err := salaryM.CreateNHISalary(year)
+	ucnhi_err := salaryM.CreateNHISalary(year, dbname)
 	if ucnhi_err != nil {
 		return nil
 		//return ucias_err
@@ -832,7 +832,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid) (err
 	return nil
 }
 
-func (salaryM *SalaryModel) SetCommissionBSid(bs *BranchSalary, cid []*Cid) (err error) {
+func (salaryM *SalaryModel) SetCommissionBSid(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
 
 	for _, cid := range cid {
 		fmt.Println("*cid:", cid.Rid)
@@ -864,7 +864,7 @@ func (salaryM *SalaryModel) SetCommissionBSid(bs *BranchSalary, cid []*Cid) (err
 		year := bs.StrDate[0:4]
 		fmt.Println(year)
 
-		interdb := salaryM.imr.GetSQLDB()
+		interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 		sqldb, err := interdb.ConnectSQLDB()
 		if err != nil {
 			return err
@@ -892,8 +892,7 @@ func (salaryM *SalaryModel) SetCommissionBSid(bs *BranchSalary, cid []*Cid) (err
 	return nil
 }
 
-func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
-
+func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary, dbname string) (err error) {
 	//(subtable.pretaxTotal + subtable.PreTax )  lastloss ,   應該不包含這期虧損
 	const sql = `INSERT INTO public.incomeexpense
 	(bsid, Pbonus ,LBonus, salary, prepay, pocket, amorcost, sr, annualbonus, salesamounts,  businesstax, agentsign, rent, commercialfee, pretax, businessincometax, aftertax,  lastloss, managerbonus, annualratio )	
@@ -955,7 +954,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	ON CONFLICT (bsid) DO Nothing;
 	`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -988,7 +987,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary) (err error) {
 	return nil
 }
 
-func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid []*Cid) (err error) {
+func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
 
 	const sql = `Update public.commission as com
 				set bsid = subquery.bsid, status = 'join'
@@ -1002,7 +1001,7 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 				where com.sid = subquery.sid and com.rid = subquery.rid	;	
 				`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -1034,7 +1033,7 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 	return nil
 }
 
-func (salaryM *SalaryModel) UpdateBranchSalaryTotal() (err error) {
+func (salaryM *SalaryModel) UpdateBranchSalaryTotal(dbname string) (err error) {
 
 	const sql = `UPDATE public.branchsalary BS
 				set total = tmp.total
@@ -1044,7 +1043,7 @@ func (salaryM *SalaryModel) UpdateBranchSalaryTotal() (err error) {
 				)as tmp where tmp.bsid = bs.bsid;	
 				`
 	//where date = $1
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -1072,7 +1071,7 @@ func (salaryM *SalaryModel) UpdateBranchSalaryTotal() (err error) {
 	return nil
 }
 
-func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary {
+func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid, dbname string) []*SalerSalary {
 	//( (case when cb.sid is not null then ie.managerbonus else 0 end) + ss.tamount )
 	sql := `SELECT ss.sid, ss.bsid, ss.sname, ss.date, ss.branch, ss.salary, ss.pbonus, ss.lbonus, ss.abonus, 
 				ss.total, 
@@ -1089,7 +1088,7 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 				where ss.bsid = '%s' order by cs.code`
 	//where ss.bsid = '%s' and ss.sid like '%s'`
 
-	db := salaryM.imr.GetSQLDB()
+	db := salaryM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(sql, bsID))
 	if err != nil {
 		return nil
@@ -1129,11 +1128,11 @@ func (salaryM *SalaryModel) GetSalerSalaryData(bsID, sid string) []*SalerSalary 
 	return salaryM.salerSalaryList
 }
 
-func (salaryM *SalaryModel) GetIncomeExpenseData(bsID string) []*IncomeExpense {
+func (salaryM *SalaryModel) GetIncomeExpenseData(bsID, dbname string) []*IncomeExpense {
 
 	const spl = `SELECT bsid, sr, businesstax, salesamounts, pbonus, lbonus, amorcost, agentsign, rent, commercialfee, salary, prepay, pocket, annualbonus, salerfee, pretax, aftertax, earnadjust, lastloss, businessincometax, managerbonus, annualratio
 	FROM public.incomeexpense where bsid = '%s';`
-	db := salaryM.imr.GetSQLDB()
+	db := salaryM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(spl, bsID))
 	if err != nil {
 		return nil
@@ -1157,7 +1156,7 @@ func (salaryM *SalaryModel) GetIncomeExpenseData(bsID string) []*IncomeExpense {
 	return salaryM.IncomeExpenseList
 }
 
-func (salaryM *SalaryModel) GetNHISalaryData(bsID string) []*NHISalary {
+func (salaryM *SalaryModel) GetNHISalaryData(bsID, dbname string) []*NHISalary {
 
 	fmt.Println("GetNHISalaryData")
 	const spl = `SELECT nhi.sid, nhi.bsid, nhi.sname, nhi.payrollbracket, nhi.salary, nhi.pbonus, nhi.bonus, nhi.total, nhi.pd, nhi.salarybalance, nhi.fourbouns, ss.sp, nhi.foursp, nhi.ptsp, cs.code
@@ -1168,7 +1167,7 @@ func (salaryM *SalaryModel) GetNHISalaryData(bsID string) []*NHISalary {
 				inner join  public.configsaler cs on cs.sid = ss.sid				
 				where nhi.bsid = '%s' order by cs.code`
 
-	db := salaryM.imr.GetSQLDB()
+	db := salaryM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(spl, bsID))
 	if err != nil {
 		fmt.Println(err)
@@ -1197,7 +1196,7 @@ func (salaryM *SalaryModel) GetNHISalaryData(bsID string) []*NHISalary {
 	return salaryM.NHISalaryList
 }
 
-func (salaryM *SalaryModel) ExportNHISalaryData(bsID string) []*NHISalary {
+func (salaryM *SalaryModel) ExportNHISalaryData(bsID, dbname string) []*NHISalary {
 
 	fmt.Println("ExportNHISalaryData")
 	const spl = `SELECT nhi.sid, nhi.bsid, nhi.sname, nhi.payrollbracket, nhi.salary, nhi.pbonus, nhi.bonus, nhi.total, nhi.pd, nhi.salarybalance, nhi.fourbouns, ss.sp, nhi.foursp, nhi.ptsp, cs.title , coalesce(ss.description,''), cs.branch
@@ -1211,7 +1210,7 @@ func (salaryM *SalaryModel) ExportNHISalaryData(bsID string) []*NHISalary {
 				) cs on cs.sid = nhi.sid
 				where nhi.bsid = '%s' order by cs.code`
 
-	db := salaryM.imr.GetSQLDB()
+	db := salaryM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(spl, bsID))
 	if err != nil {
 		fmt.Println(err)
@@ -1233,7 +1232,7 @@ func (salaryM *SalaryModel) ExportNHISalaryData(bsID string) []*NHISalary {
 	return salaryM.NHISalaryList
 }
 
-func (salaryM *SalaryModel) CreateNHISalary(year string) (err error) {
+func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.nhisalary
 	(sid, bsid, sname, payrollbracket, salary, pbonus, bonus, total, salarybalance, pd, fourbouns, sp, foursp, ptsp)
@@ -1265,7 +1264,7 @@ func (salaryM *SalaryModel) CreateNHISalary(year string) (err error) {
 		where year = $1
 	ON CONFLICT (bsid,sid) DO Nothing ;` //UPDATE SET balance = excluded.balance;`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -1292,7 +1291,7 @@ func (salaryM *SalaryModel) CreateNHISalary(year string) (err error) {
 	return nil
 }
 
-func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid string) (err error) {
+func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid, dbname string) (err error) {
 
 	const sql = `UPDATE public.salersalary
 				SET lbonus= $1, abonus= $2, total= salary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
@@ -1338,7 +1337,7 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid string) 
 			) CP
 		) as subquery
 		WHERE sid= $7 and bsid = $8;`*/
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -1366,7 +1365,7 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid string) 
 	return nil
 }
 
-func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid string) (err error) {
+func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid, dbname string) (err error) {
 
 	//annualBonus 是上筆算好的，sr * $4 / 100是用新的AnnualRatio算出新的annualBonus
 	const sql = `UPDATE public.incomeExpense
@@ -1381,7 +1380,7 @@ func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid stri
 	ELSE 0 END)
 	WHERE bsid = $1;`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -1406,7 +1405,7 @@ func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid stri
 		return errors.New("UpdateIncomeExpenseData, not found any salary")
 	}
 
-	ummb_err := salaryM.UpdateManagerByManagerBonus(bsid)
+	ummb_err := salaryM.UpdateManagerByManagerBonus(bsid, dbname)
 	if ummb_err != nil {
 		return nil
 		//return ucias_err
@@ -1416,7 +1415,7 @@ func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid stri
 }
 
 //[專門]針對因為更改紅利表，所以更新店長的薪資
-func (salaryM *SalaryModel) UpdateManagerByManagerBonus(bsid string) (err error) {
+func (salaryM *SalaryModel) UpdateManagerByManagerBonus(bsid, dbname string) (err error) {
 	//welfare = subquery.Total * 0.01,
 	const sql = `UPDATE public.salersalary salersalary
 	SET total= subquery.Total , 
@@ -1457,7 +1456,7 @@ func (salaryM *SalaryModel) UpdateManagerByManagerBonus(bsid string) (err error)
 	) as subquery
 	WHERE salersalary.bsid = $1 and salersalary.sid = subquery.sid`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -1484,11 +1483,11 @@ func (salaryM *SalaryModel) UpdateManagerByManagerBonus(bsid string) (err error)
 	return nil
 }
 
-func (salaryM *SalaryModel) LockBranchSalary(bsid, lock string) (err error) {
+func (salaryM *SalaryModel) LockBranchSalary(bsid, lock, dbname string) (err error) {
 
 	const sql = `UPDATE public.branchsalary	SET lock = $2	WHERE bsid = $1;`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -1512,7 +1511,7 @@ func (salaryM *SalaryModel) LockBranchSalary(bsid, lock string) (err error) {
 		return errors.New("LockBranchSalary, not found any salary")
 	}
 
-	_err := salaryM.UpdateBranchSalaryTotal()
+	_err := salaryM.UpdateBranchSalaryTotal(dbname)
 	if _err != nil {
 		return nil
 		//return css_err
@@ -1901,7 +1900,7 @@ func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf
 	return
 }
 
-func (salaryM *SalaryModel) ExportSR(bsID string) {
+func (salaryM *SalaryModel) ExportSR(bsID, dbname string) {
 	const qsql = `SELECT ss.sid, ss.sname ,  coalesce(sum(tmp.SR),0)  ,coalesce( sum( tmp.SR * cs.percent/100)  , 0 ) bonus , cs.branch , ss.date
 	from salersalary ss
 		left join(
@@ -1920,7 +1919,7 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 	group by cs.branch , ss.date, ss.sid, ss.sname , cs.code
 	order by cs.code `
 
-	db := cm.imr.GetSQLDB()
+	db := cm.imr.GetSQLDBwithDbname(dbname)
 
 	cDataList := []*Commission{}
 	//salerList := []*SystemAccount{}
@@ -1966,7 +1965,7 @@ func (salaryM *SalaryModel) ExportSR(bsID string) {
 
 }
 
-func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
+func (salaryM *SalaryModel) GetSalerCommission(bsID, dbname string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, (tmp.sr * cs.percent/100) bonus , tmp.remark , cs.branch, tmp.mdate  from salersalary ss
 				left join(
 					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100 - coalesce(c.fee,0)) sr, 
@@ -1987,7 +1986,7 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 			) cs on cs.sid=ss.sid 			
 			where ss.bsid = '%s' order by code,mdate, sid asc;`
 
-	db := cm.imr.GetSQLDB()
+	db := cm.imr.GetSQLDBwithDbname(dbname)
 
 	cDataList := []*Commission{}
 
@@ -2027,7 +2026,7 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID string) {
 	return
 }
 
-func (salaryM *SalaryModel) GetAgentSign(bsID string) {
+func (salaryM *SalaryModel) GetAgentSign(bsID, dbname string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, cs.percent   from salersalary ss
 				inner join(
 					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100- coalesce(c.fee,0)) sr, 
@@ -2048,7 +2047,7 @@ func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 			) cs on cs.sid=ss.sid 
 			where ss.bsid = '%s' order by cs.code, ss.sid asc;`
 
-	db := cm.imr.GetSQLDB()
+	db := cm.imr.GetSQLDBwithDbname(dbname)
 
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, bsID))
 	if err != nil {
@@ -2075,9 +2074,9 @@ func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 		c.DedectItem = DedectItem.Value
 		salaryM.CommissionList = append(salaryM.CommissionList, &c)
 	}
-	//這邊在做啥小?
+	//這邊在做啥小? 忘了
 	if len(salaryM.CommissionList) > 0 {
-		systemM.GetAccountData()
+		systemM.GetAccountData(dbname)
 		salerList := systemM.systemAccountList
 		for _, element := range salerList {
 			salaryM.SystemAccountList = append(salaryM.SystemAccountList, element)
@@ -2087,7 +2086,7 @@ func (salaryM *SalaryModel) GetAgentSign(bsID string) {
 	return
 }
 
-func (salaryM *SalaryModel) ExportIncomeTaxReturn(bsID string) {
+func (salaryM *SalaryModel) ExportIncomeTaxReturn(bsID, dbname string) {
 
 	const dsql = `SELECT ss.date , ss.branch from salersalary ss where ss.bsid = '%s'`
 
@@ -2099,7 +2098,7 @@ func (salaryM *SalaryModel) ExportIncomeTaxReturn(bsID string) {
 				where ss.date||'-01' >= '%s' and ss.date||'-01' <= '%s' and ss.branch = '%s'	
 				order by cs.code, ss.sid asc;`
 
-	db := cm.imr.GetSQLDB()
+	db := cm.imr.GetSQLDBwithDbname(dbname)
 
 	// cDataList := []*Commission{}
 	// salerList := []*SystemAccount{}
@@ -2148,7 +2147,7 @@ func (salaryM *SalaryModel) ExportIncomeTaxReturn(bsID string) {
 	return
 }
 
-func (salaryM *SalaryModel) ExportPayrollTransfer(bsID string) {
+func (salaryM *SalaryModel) ExportPayrollTransfer(bsID, dbname string) {
 	const qsql = `SELECT ss.sid, ss.sname , cs.identitynum, cs.bankaccount, ss.tamount,  cs.branch   from salersalary ss			
 			Inner Join (
 				SELECT A.sid, A.branch, A.identitynum, A.title , A.bankaccount, A.code
@@ -2158,7 +2157,7 @@ func (salaryM *SalaryModel) ExportPayrollTransfer(bsID string) {
 			where ss.bsid = '%s'
 			order by cs.code, ss.sid asc;`
 
-	db := cm.imr.GetSQLDB()
+	db := cm.imr.GetSQLDBwithDbname(dbname)
 
 	// cDataList := []*Commission{}
 	// salerList := []*SystemAccount{}
@@ -2894,7 +2893,7 @@ func (salaryM *SalaryModel) addIncomeTaxReturnInfoTable(mtype int) (DataList []*
 	return
 }
 
-func (salaryM *SalaryModel) getSalerEmail(things ...string) ([]*ConfigSaler, error) {
+func (salaryM *SalaryModel) getSalerEmail(dbname string, things ...string) ([]*ConfigSaler, error) {
 
 	branch := "%"
 	for _, it := range things {
@@ -2904,7 +2903,7 @@ func (salaryM *SalaryModel) getSalerEmail(things ...string) ([]*ConfigSaler, err
 	const qspl = `SELECT A.sid, A.sname, A.branch, A.Email, A.code	FROM public.ConfigSaler A 				
 					where A.branch like '%s';`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := salaryM.imr.GetSQLDB()
+	db := salaryM.imr.GetSQLDBwithDbname(dbname)
 	//fmt.Println(fmt.Sprintf(qspl, branch))
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, branch))
 	if err != nil {
@@ -2931,8 +2930,8 @@ func (salaryM *SalaryModel) getSalerEmail(things ...string) ([]*ConfigSaler, err
 }
 
 //更新薪資表
-func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
-	salaryM.RefreshCommissionBonusbyBsid(Bsid)
+func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid, dbname string) error {
+	salaryM.RefreshCommissionBonusbyBsid(Bsid, dbname)
 	const sql = `UPDATE public.salersalary t
 				SET total= subquery.salary + subquery.pbonus + lbonus - abonus ,
 				laborfee = ( Case When workday >= 30 then subquery.laborfee else subquery.laborfee * workday / 30 END),
@@ -2969,7 +2968,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 					) CB on CB.branch = A.branch
 				) as subquery
 				WHERE t.bsid = $1 and t.sid = subquery.sid;`
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		fmt.Printf(err.Error())
@@ -2990,11 +2989,11 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 		return errors.New("not found bsid:" + Bsid)
 	}
 	//TODO:: 紅利店長表更新
-	salaryM.UpdateManagerByManagerBonus(Bsid)
+	salaryM.UpdateManagerByManagerBonus(Bsid, dbname)
 	//TODO:: 二代健保表更新
-	salaryM.RefreshNHISalary(Bsid)
+	salaryM.RefreshNHISalary(Bsid, dbname)
 	//TODO:: 總表更新
-	_err := salaryM.UpdateBranchSalaryTotal()
+	_err := salaryM.UpdateBranchSalaryTotal(dbname)
 	if _err != nil {
 		fmt.Println(_err)
 		return nil
@@ -3005,7 +3004,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid string) error {
 }
 
 //更新傭金byBsid
-func (salaryM *SalaryModel) RefreshCommissionBonusbyBsid(Bsid string) (err error) {
+func (salaryM *SalaryModel) RefreshCommissionBonusbyBsid(Bsid, dbname string) (err error) {
 
 	const sql = `Update public.commission t1
 					set sr = (t2.amount - t2.fee) * t2.cpercent / 100 , bonus = (t2.amount - t2.fee) * t2.cpercent / 100 * t2.percent /100
@@ -3023,7 +3022,7 @@ func (salaryM *SalaryModel) RefreshCommissionBonusbyBsid(Bsid string) (err error
 								)	cs  on cs.sid = c.sid
 								WHERE c.bsid = $1
 				) as t2 where t1.sid = t2.sid and t1.rid = t2.rid`
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -3040,7 +3039,7 @@ func (salaryM *SalaryModel) RefreshCommissionBonusbyBsid(Bsid string) (err error
 }
 
 //更新二代健保表
-func (salaryM *SalaryModel) RefreshNHISalary(bsid string) (err error) {
+func (salaryM *SalaryModel) RefreshNHISalary(bsid, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.nhisalary
 	(sid, bsid, sname, payrollbracket, salary, pbonus, bonus, total, salarybalance, pd, fourbouns, sp, foursp, ptsp)
@@ -3077,7 +3076,7 @@ func (salaryM *SalaryModel) RefreshNHISalary(bsid string) (err error) {
 		salary= excluded.salary, pbonus= excluded.pbonus, bonus= excluded.bonus, total= excluded.total , salarybalance= excluded.salarybalance,
 		pd= excluded.pd, fourbouns= excluded.fourbouns, sp= excluded.sp, foursp= excluded.foursp, ptsp=excluded.ptsp ;`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -3104,13 +3103,13 @@ func (salaryM *SalaryModel) RefreshNHISalary(bsid string) (err error) {
 }
 
 //13 txt 薪資簡易版
-func (salaryM *SalaryModel) MakeTxtTransferSalary(bsid string) error {
+func (salaryM *SalaryModel) MakeTxtTransferSalary(bsid, dbname string) error {
 
 	const qspl = `SELECT s.branch, s.date, s.sid, s.tamount, c.bankaccount, '822' FROM public.salersalary s
 	INNER JOIN public.configsaler c on c.sid = s.sid 
 	where s.bsid = $1;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	db := salaryM.imr.GetSQLDB()
+	db := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := db.ConnectSQLDB()
 	//fmt.Println(fmt.Sprintf(qspl, branch))
 	rows, err := sqldb.Query(qspl, bsid)
@@ -3160,12 +3159,13 @@ func (salaryM *SalaryModel) makeTxtTransferSalary() (string, string) {
 }
 
 //Action:取得目前關帳日期
-func (salaryM *SalaryModel) GetAccountSettlement() (ca CloseAccount, err error) {
+func (salaryM *SalaryModel) GetAccountSettlement(dbname string) (ca CloseAccount, err error) {
 	const sql = `SELECT id, uid, closedate, status, date
 					FROM public.accountsettlement Where status = '1';`
 
 	ca = CloseAccount{}
-	interdb := salaryM.imr.GetSQLDB()
+
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return
@@ -3190,11 +3190,11 @@ func (salaryM *SalaryModel) GetAccountSettlement() (ca CloseAccount, err error) 
 }
 
 //Action:測試刪除用
-func (salaryM *SalaryModel) DeleteAccountSettlement() (ca CloseAccount, err error) {
+func (salaryM *SalaryModel) DeleteAccountSettlement(dbname string) (ca CloseAccount, err error) {
 	const sql = `delete FROM public.accountsettlement;`
 
 	ca = CloseAccount{}
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return
@@ -3210,9 +3210,9 @@ func (salaryM *SalaryModel) DeleteAccountSettlement() (ca CloseAccount, err erro
 }
 
 //Action:會計關帳
-func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per string) (err error) {
+func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per, dbname string) (err error) {
 
-	oriCa, err := salaryM.CheckValidCloseDate(ca.CloseDate)
+	oriCa, err := salaryM.CheckValidCloseDate(ca.CloseDate, dbname)
 	if err != nil && per != permission.Admin {
 		return
 	}
@@ -3224,7 +3224,7 @@ func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per string)
 
 	ca.CloseDate = setDayEndDate(ca.CloseDate)
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -3271,7 +3271,7 @@ func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per string)
 	}
 	//更動status，紀錄目前關帳的日期
 	if id > 0 {
-		err = salaryM.updateAccountSettlementStatus(oriCa)
+		err = salaryM.updateAccountSettlementStatus(oriCa, dbname)
 		if err != nil {
 			return err
 		}
@@ -3286,11 +3286,11 @@ func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per string)
 }
 
 //Action:會計關帳
-func (salaryM *SalaryModel) updateAccountSettlementStatus(oriCa *CloseAccount) error {
+func (salaryM *SalaryModel) updateAccountSettlementStatus(oriCa *CloseAccount, dbname string) error {
 
 	const sql = `update public.accountsettlement set status = '0' where id = $1	;`
 
-	interdb := salaryM.imr.GetSQLDB()
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
@@ -3314,10 +3314,10 @@ func (salaryM *SalaryModel) updateAccountSettlementStatus(oriCa *CloseAccount) e
 	return nil
 }
 
-func (salaryM *SalaryModel) CheckValidCloseDate(t time.Time) (*CloseAccount, error) {
+func (salaryM *SalaryModel) CheckValidCloseDate(t time.Time, dbname string) (*CloseAccount, error) {
 
 	//關帳日在建資料的時間點之後，不給建立
-	ca, _ := salaryM.GetAccountSettlement()
+	ca, _ := salaryM.GetAccountSettlement(dbname)
 	if ca.CloseDate.After(t) {
 		return &ca, errors.New("關帳日期錯誤")
 	}

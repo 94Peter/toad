@@ -15,12 +15,12 @@ func (api LogAPI) Enable() bool {
 
 func (api LogAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
-		&APIHandler{Path: "/v1/log", Next: api.getEventLogEndpoint, Method: "GET", Auth: false, Group: permission.All},
+		&APIHandler{Path: "/v1/log", Next: api.getEventLogEndpoint, Method: "GET", Auth: true, Group: permission.All},
 	}
 }
 
 func (api *LogAPI) getEventLogEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	logM := model.GetEventLogModel(di)
 	// queryVar := util.GetQueryValue(req, []string{"branch"}, true)
 	// branch := (*queryVar)["branch"].(string)
@@ -29,7 +29,7 @@ func (api *LogAPI) getEventLogEndpoint(w http.ResponseWriter, req *http.Request)
 	// }
 
 	//data, err := json.Marshal(result)
-	logM.GetEventLogData()
+	logM.GetEventLogData(dbname)
 	data, err := logM.Json("")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

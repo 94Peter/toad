@@ -331,7 +331,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	var Pretax, Aftertax, BusinessIncomeTax, ManagerBonus int
 	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + Prepay + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 0)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)))
 	if Pretax > 0 {
-		BusinessIncomeTax = int(round(float64(Pretax)*0.8, 0))
+		BusinessIncomeTax = int(round(float64(Pretax)*0.2, 0))
 	} else {
 		BusinessIncomeTax = 0
 	}

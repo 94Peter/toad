@@ -208,6 +208,7 @@ func (decuctModel *DeductModel) setFeeToCommission(sqldb *sql.DB, Did, ARid stri
 	if ARid == "" {
 		const qspl = `SELECT D.Did, D.arid FROM public.deduct as D Where D.Did = '%s';`
 		//db := decuctModel.imr.GetSQLDBwithDbname(dbname)
+
 		rows, err := sqldb.Query(fmt.Sprintf(qspl, Did))
 		//rows, err := db.SQLCommand(fmt.Sprintf(qspl, Did))
 		if err != nil {
@@ -320,7 +321,10 @@ func (decuctModel *DeductModel) updateSRBonusToCommission(ARid string, sqldb *sq
 
 }
 
-func (decuctModel *DeductModel) DeleteDeduct(ID, dbname string, sqldb *sql.DB) (err error) {
+func (decuctModel *DeductModel) DeleteDeduct(ID, dbname string) (err error) {
+
+	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
 
 	d := decuctModel.getDeductByID(ID, dbname, sqldb)
 	if d.Did == "" {
@@ -334,11 +338,6 @@ func (decuctModel *DeductModel) DeleteDeduct(ID, dbname string, sqldb *sql.DB) (
 	/*
 	* 邏輯是先取得ARID後刪除，然後從算傭金應扣。
 	 */
-	// interdb := decuctModel.imr.GetSQLDB()
-	// sqldb, err := interdb.ConnectSQLDB()
-	// if err != nil {
-	// 	return err
-	// }
 
 	//nothing 回傳arid用
 	arid, _ := decuctModel.setFeeToCommission(sqldb, ID, "", "nothing")
@@ -619,12 +618,12 @@ func (decuctModel *DeductModel) getDeductByID(ID, dbname string, sqldb *sql.DB) 
 	deduct := &Deduct{}
 
 	for rows.Next() {
-
-		if err := rows.Scan(&deduct.Did, &deduct.Date); err != nil {
+		var lasttime NullTime
+		if err := rows.Scan(&deduct.Did, &lasttime); err != nil {
 			fmt.Println("err Scan " + err.Error())
 			return nil
 		}
-
+		deduct.Date = lasttime.Time
 	}
 
 	return deduct

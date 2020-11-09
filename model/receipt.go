@@ -89,7 +89,7 @@ func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid, dbname string) error
 func (rm *RTModel) DeleteReceiptData(Rid, dbname string) error {
 
 	r := rm.GetReceiptDataByRid(Rid, dbname)
-	if r.Rid == "" {
+	if r == nil || r.Rid == "" {
 		return errors.New("not found receipt")
 	}
 

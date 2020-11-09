@@ -109,7 +109,7 @@ func (api *DeductAPI) deleteDeductEndpoint(w http.ResponseWriter, req *http.Requ
 	dbname := req.Header.Get("dbname")
 	DM := model.GetDecuctModel(di)
 
-	err := DM.DeleteDeduct(ID, dbname, nil)
+	err := DM.DeleteDeduct(ID, dbname)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:

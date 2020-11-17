@@ -93,12 +93,10 @@ func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 	// 	t.Hour(), t.Minute(), t.Second())
 	//curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
 
-	b, _ := time.Parse(time.RFC3339, "2019-12-31T16:00:00Z")
+	//b, _ := time.Parse(time.RFC3339, "2019-12-31T16:00:00Z")
 
-	//curDate := fmt.Sprintf("2020-01-01")
-	//fmt.Println(curDate)
-	rows, err := db.SQLCommand(fmt.Sprintf(sql, b.Unix(), b.Unix()))
-	//rows, err := db.SQLCommand(fmt.Sprintf(sql, curDate, curDate))
+	//rows, err := db.SQLCommand(fmt.Sprintf(sql, b.Unix(), b.Unix()))
+	rows, err := db.SQLCommand(fmt.Sprintf(sql, date.Unix(), date.Unix()))
 	if err != nil {
 		fmt.Println(err)
 		return nil

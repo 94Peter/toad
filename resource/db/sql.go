@@ -73,6 +73,7 @@ func (sdb *SqlDB) ConnectSQLDB() (*sql.DB, error) {
 	}
 	fmt.Println(sdb.Db + " 連線成功")
 	sdb.Clinet = db
+
 	return sdb.Clinet, err
 }
 
@@ -106,6 +107,7 @@ func (sdb *SqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 		return nil, err
 	}
 
+	fmt.Println("SQLCommand close db")
 	defer db.Close()
 
 	if rows.Err() != nil {

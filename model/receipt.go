@@ -167,23 +167,20 @@ func (rm *RTModel) GetReceiptDataByID(rid, dbname string) *Receipt {
 
 func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receipt {
 
-	// const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(iv.invoiceno, null),'')
+	// const sql = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , iv.amount, COALESCE(NULLIF(iv.invoiceno, null),'') , cs.branch
 	// 				FROM public.receipt R
 	// 				inner join public.ar AR on AR.arid = R.arid
 	// 				left join public.invoice iv on iv.rid = r.rid
-	// 				where to_timestamp(date_part('epoch',R.date)::int) >= '%s' and to_timestamp(date_part('epoch',R.date)::int) <= '%s'::date + '86399999 milliseconds'::interval
+	// 				left join public.configSaler cs on iv.sid = cs.sid
+	// 				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '86399999 milliseconds'::interval) <= '%d'
 	// 				order by date desc`
-
-	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , iv.amount, COALESCE(NULLIF(iv.invoiceno, null),'') , cs.branch 
+	const sql = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount 
 					FROM public.receipt R
-					inner join public.ar AR on AR.arid = R.arid
-					left join public.invoice iv on iv.rid = r.rid
-					left join public.configSaler cs on iv.sid = cs.sid
-					where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '86399999 milliseconds'::interval) <= '%d'
+					inner join public.ar AR on AR.arid = R.arid				
+					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '86399999 milliseconds'::interval) <= '%d'
 					order by date desc`
-	//
 	db := rm.imr.GetSQLDBwithDbname(dbname)
-	rows, err := db.SQLCommand(fmt.Sprintf(qspl, begin.Unix(), end.Unix()))
+	rows, err := db.SQLCommand(fmt.Sprintf(sql, begin.Unix(), end.Unix()))
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil
@@ -196,7 +193,7 @@ func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receip
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount, &rt.InvoiceNo, &rt.Branch); err != nil {
+		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 

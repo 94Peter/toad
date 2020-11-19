@@ -195,9 +195,12 @@ func (systemM *SystemModel) GetBranchData(dbname string) ([]byte, error) {
 	fmt.Println("GetBranchData")
 	const qspl = `SELECT branch	FROM public.configbranch;`
 	db := systemM.imr.GetSQLDBwithDbname(dbname)
+
+	// t, _ := db.ConnectSQLDB()
+	// rows, err := t.Query(qspl)
 	rows, err := db.SQLCommand(qspl)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	branchList := []string{}
 	for rows.Next() {

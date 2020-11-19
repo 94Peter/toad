@@ -177,14 +177,14 @@ func (am *ARModel) GetARData(today, end time.Time, key, dbname string) []*AR {
 		"   " +
 		"FROM public.ar ar	" +
 		"where ar.arid like '" + index + "' OR ar.cno like '" + index + "' OR ar.casename like '" + index + "' OR ar.type like '" + index + "' OR ar.name like '" + index + "' " +
-		"group by ar.arid order by ar.date desc;"
+		"group by ar.arid order by ar.date desc , ar.cno;"
 	/*
 	*balance equal ar.amount - COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA
 	*but I do with r.Balance = r.Amount - r.RA
 	 */
 
 	db := am.imr.GetSQLDBwithDbname(dbname)
-	//fmt.Println(sql)
+	fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
 
 	rows, err := db.SQLCommand(sql)
@@ -288,7 +288,7 @@ func (am *ARModel) GetHouseGoData(today, end time.Time, key, dbname string) []*H
 
 	rows, err := db.SQLCommand(sql)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("GetHouseGoData:", err)
 		return nil
 	}
 	var hgList []*HouseGo

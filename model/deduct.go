@@ -453,7 +453,7 @@ func (decuctModel *DeductModel) UpdateDeductItem(Did, item, dbname string) (err 
 
 	d := decuctModel.getDeductByID(Did, dbname, sqldb)
 	if d.Did == "" {
-		return errors.New("not found decuct")
+		return errors.New(" not found decuct")
 	}
 	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
 	if err != nil {

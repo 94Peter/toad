@@ -73,7 +73,7 @@ type inputReceipt struct {
 func (api ARAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/housego", Next: api.CreateHouseGoEndpoint, Method: "POST", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/housego", Next: api.GetHouseGoEndpoint, Method: "Get", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/housego", Next: api.getHouseGoEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/housego/{ID}", Next: api.UpgradeARInfoWithHouseGoEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 
 		&APIHandler{Path: "/v1/receivable", Next: api.getAccountReceivableEndpoint, Method: "GET", Auth: true, Group: permission.All},
@@ -160,7 +160,7 @@ func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 }
 
 func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
-
+	dbname := req.Header.Get("dbname")
 	am := model.GetARModel(di)
 	var queryDate time.Time
 	today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
@@ -168,7 +168,7 @@ func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.
 
 	queryVar := util.GetQueryValue(req, []string{"key", "export"}, true)
 	key := (*queryVar)["key"].(string)
-	dbname := req.Header.Get("dbname")
+
 	am.GetARData(today, end, key, dbname)
 	//data, err := json.Marshal(result)
 	data, err := am.Json("ar")
@@ -202,16 +202,16 @@ func (api *ARAPI) getSalerDataEndpoint(w http.ResponseWriter, req *http.Request)
 	w.Write(data)
 }
 
-func (api *ARAPI) GetHouseGoEndpoint(w http.ResponseWriter, req *http.Request) {
-
-	am := model.GetARModel(di)
+func (api *ARAPI) getHouseGoEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
 	var queryDate time.Time
 	today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
 	queryVar := util.GetQueryValue(req, []string{"key", "export"}, true)
 	key := (*queryVar)["key"].(string)
-	dbname := req.Header.Get("dbname")
+
+	am := model.GetARModel(di)
 	am.GetHouseGoData(today, end, key, dbname)
 	//data, err := json.Marshal(result)
 	data, err := am.Json("housego")

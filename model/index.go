@@ -252,7 +252,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	var Salesamounts, Businesstax int
 	for rows.Next() {
 		if err := rows.Scan(&SR, &Bonus, &Salary); err != nil {
-			fmt.Println("err Scan " + err.Error())
+			fmt.Println("income err Scan " + err.Error())
 			return nil, err
 		}
 	}
@@ -269,7 +269,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	var Amor int
 	for rows.Next() {
 		if err := rows.Scan(&Amor); err != nil {
-			fmt.Println("err Scan " + err.Error())
+			fmt.Println("amor err Scan " + err.Error())
 			return nil, err
 		}
 	}
@@ -282,7 +282,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	var Pocket int
 	for rows.Next() {
 		if err := rows.Scan(&Pocket); err != nil {
-			fmt.Println("err Scan " + err.Error())
+			fmt.Println("pocket err Scan " + err.Error())
 			return nil, err
 		}
 	}
@@ -292,10 +292,10 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 		fmt.Println(err)
 		return nil, err
 	}
-	var Prepay int
+	var Prepay NullInt
 	for rows.Next() {
 		if err := rows.Scan(&Prepay); err != nil {
-			fmt.Println("err Scan " + err.Error())
+			fmt.Println("prepay err Scan " + err.Error())
 			return nil, err
 		}
 	}
@@ -309,7 +309,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	var Commmercialfee, Annualratio float64
 	for rows.Next() {
 		if err := rows.Scan(&Rent, &Agentsign, &Commmercialfee, &Annualratio); err != nil {
-			fmt.Println("err Scan " + err.Error())
+			fmt.Println("rent err Scan " + err.Error())
 			return nil, err
 		}
 	}
@@ -321,13 +321,13 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	var lastloss int
 	for rows.Next() {
 		if err := rows.Scan(&lastloss); err != nil {
-			fmt.Println("err Scan " + err.Error())
+			fmt.Println("lastloss err Scan " + err.Error())
 			return nil, err
 		}
 	}
 
 	var Pretax, Aftertax, BusinessIncomeTax, ManagerBonus int
-	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + Prepay + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 0)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)))
+	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + int(Prepay.Value) + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 0)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)))
 	if Pretax > 0 {
 		BusinessIncomeTax = int(round(float64(Pretax)*0.2, 0))
 	} else {
@@ -349,7 +349,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 		Rent:          Rent,
 		Pocket:        Pocket,
 		Salary:        int(Salary.Value),
-		Prepay:        Prepay,
+		Prepay:        int(Prepay.Value),
 		Pbonus:        int(Bonus.Value),
 		Annualbonus:   int(round(Annualratio*float64(SR.Value)/100, 0)),
 		Commercialfee: int(round(Commmercialfee*float64(Salary.Value+Bonus.Value)/100, 0)),

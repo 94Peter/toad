@@ -383,5 +383,6 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	// fmt.Println("ManagerBonus:", ManagerBonus)
 
 	//indexM.incomeStatement = data
+	defer db.Close()
 	return data, err
 }

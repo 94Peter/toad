@@ -123,7 +123,8 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status, dbname string
 				FROM public.commission c
 				inner JOIN public.receipt r on r.rid = c.rid
 				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
-				and c.status like '%s';`
+				and c.status like '%s'
+				order by sid;`
 
 	db := cm.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
@@ -284,7 +285,7 @@ func (cm *CModel) CreateCommission(rt *Receipt, dbname string) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, CreateCommission")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -319,7 +320,7 @@ func (cm *CModel) UpdateCommission(com *Commission, rid, sid, dbname string) (er
 	if id == 0 {
 		return errors.New("[UpdateCommission] Invalid operation, maybe not found commission")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -367,7 +368,7 @@ func (cm *CModel) RefreshCommissionBonus(Sid, Rid, mtype, dbname string) (err er
 	} else {
 		fmt.Println("RefreshCommissionBonus error : something error")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -402,7 +403,7 @@ func (cm *CModel) UpdateCommissionStatus(rid, sid, dbname string) (err error) {
 	if id == 0 {
 		return errors.New("[UpdateCommission] Invalid operation, maybe not found commission or already bind salary")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 

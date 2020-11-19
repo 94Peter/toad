@@ -261,7 +261,7 @@ func (configM *ConfigModel) CreateConfigBranch(data []string, dbname string) (er
 	if id == 0 {
 		return errors.New("Invalid operation, CreateConfigBranch")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -296,7 +296,7 @@ func (configM *ConfigModel) CreateConfigBranchWithManager(cb *ConfigBranch, dbna
 	if id == 0 {
 		return errors.New("Invalid operation, CreateConfigBranch")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -331,7 +331,7 @@ func (configM *ConfigModel) UpdateConfigBranch(Branch, dbname string, cb *Config
 	if id == 0 {
 		return errors.New("Invalid operation,UpdateConfigBranch")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -361,7 +361,7 @@ func (configM *ConfigModel) DeleteConfigBranch(Branch, dbname string) (err error
 	if id == 0 {
 		return errors.New("Invalid operation. ")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -427,7 +427,7 @@ func (configM *ConfigModel) UpdateConfigParameter(cp *ConfigParameter, ID, dbnam
 		return errors.New("Invalid operation, update ConfigParameter")
 
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -457,7 +457,7 @@ func (configM *ConfigModel) DeleteConfigParameter(ID, dbname string) (err error)
 	if id == 0 {
 		return errors.New("Invalid operation, DeleteConfigParameter")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -489,7 +489,7 @@ func (configM *ConfigModel) CreateConfigParameter(cp *ConfigParameter, dbname st
 	if id == 0 {
 		return errors.New("Invalid operation, CreateConfigParameter")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -610,6 +610,7 @@ func (configM *ConfigModel) CreateConfigSaler(cs *ConfigSaler, dbname string) (e
 	}
 	//連動薪水 新增預設紀錄
 	configM.CreateConfigSalary(cs.GetConfigSalary(), dbname)
+	defer sqldb.Close()
 	return nil
 }
 
@@ -644,6 +645,7 @@ func (configM *ConfigModel) DeleteConfigSaler(sid, dbname string) (err error) {
 	res, err = sqldb.Exec(qsql, sid)
 	id, err = res.RowsAffected()
 	fmt.Println(id)
+	defer sqldb.Close()
 	return nil
 }
 
@@ -682,7 +684,7 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid, dbname strin
 	if id == 0 {
 		return errors.New("Invalid operation, maybe not found the saler")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -764,6 +766,7 @@ func (configM *ConfigModel) CreateConfigSalary(cs *ConfigSalary, dbname string) 
 		return errors.New("Invalid operation, CreateConfigSalary")
 	}
 	configM.WorkValidDate(dbname)
+	defer sqldb.Close()
 	return nil
 }
 func (configM *ConfigModel) DeleteConfigSalary(sid, zerodate, dbname string) (err error) {
@@ -792,6 +795,7 @@ func (configM *ConfigModel) DeleteConfigSalary(sid, zerodate, dbname string) (er
 		return errors.New("Invalid operation, maybe not found the salary of saler ")
 	}
 	configM.WorkValidDate(dbname)
+	defer sqldb.Close()
 	return nil
 }
 
@@ -832,7 +836,7 @@ func (configM *ConfigModel) WorkValidDate(dbname string) (err error) {
 		return err
 	}
 	fmt.Println("WorkValidDate:", id)
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -871,34 +875,38 @@ func (configM *ConfigModel) GetAccountItemData(today, end time.Time, dbname stri
 
 func (configM *ConfigModel) CreateAccountItem(aitem *AccountItem, dbname string) (err error) {
 
-	const sql = `INSERT INTO public.AccountItem
+	for i := 0; i < 100; i++ {
+		const sql = `INSERT INTO public.AccountItem
 	(AccountItemName)
 	VALUES ($1)
 	;`
+		fmt.Println("i:", i)
+		interdb := configM.imr.GetSQLDBwithDbname(dbname)
+		sqldb, err := interdb.ConnectSQLDB()
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
 
-	interdb := configM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
+		//res, err := sqldb.Exec(sql, aitem.ItemName)
+		_, err = sqldb.Exec(sql, aitem.ItemName)
+		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		if err != nil {
+			fmt.Println(err)
+			//return err
+		}
+		// id, err := res.RowsAffected()
+		// if err != nil {
+		// 	fmt.Println("PG Affecte Wrong: ", err)
+		// 	//return err
+		// }
+		// fmt.Println(id)
 
-	res, err := sqldb.Exec(sql, aitem.ItemName)
-	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-	if err != nil {
-		fmt.Println(err)
-		return err
+		// if id == 0 {
+		// 	return errors.New("Invalid operation, Create AccountItem")
+		// }
+		sqldb.Close()
 	}
-	id, err := res.RowsAffected()
-	if err != nil {
-		fmt.Println("PG Affecte Wrong: ", err)
-		return err
-	}
-	fmt.Println(id)
-
-	if id == 0 {
-		return errors.New("Invalid operation, Create AccountItem")
-	}
-
 	return nil
 }
 
@@ -931,7 +939,7 @@ func (configM *ConfigModel) UpdateAccountItem(oldItemName, dbname string, aitem 
 	if id == 0 {
 		return errors.New("Invalid operation, Update AccountItem")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 func (configM *ConfigModel) DeleteAccountItem(ItemName, dbname string) (err error) {
@@ -960,7 +968,7 @@ func (configM *ConfigModel) DeleteAccountItem(ItemName, dbname string) (err erro
 	if id == 0 {
 		return errors.New("Invalid operation, Delete AccountItem")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 

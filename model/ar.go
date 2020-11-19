@@ -370,7 +370,7 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID, dbname string, salerL
 
 	//連動更改傭金明細TABLE的數值
 	am.RefreshCommissionBonus(ID, dbname)
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -440,7 +440,7 @@ func (am *ARModel) DeleteARandDeductMAP(ID, dbname string) (err error) {
 	}
 
 	_, err = sqldb.Exec(sql, ID)
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -469,7 +469,7 @@ func (am *ARModel) UpdateAccountReceivableSalerProportion(salerList []*MAPSaler,
 		}
 		fmt.Println("UpdateAccountReceivableSalerProportion:", id)
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -508,7 +508,7 @@ func (am *ARModel) RefreshCommissionBonus(ID, dbname string) (err error) {
 	} else {
 		fmt.Println("RefreshCommissionBonus error : something error")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -544,6 +544,7 @@ func (am *ARModel) DeleteAccountReceivable(ID, dbname string) (err error) {
 	if id <= 0 {
 		return errors.New("not found anything")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -571,6 +572,7 @@ func (am *ARModel) DeleteHouseGo(ID, dbname string) (err error) {
 	if id <= 0 {
 		return errors.New("DeleteHouseGo not found anything")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -662,6 +664,7 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR, json, dbname string) 
 		am.CreateHouseGoDuplicate(fakeId, json, dbname)
 		return errors.New("duplicate data")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -705,6 +708,7 @@ func (am *ARModel) CreateHouseGoDuplicate(ID, data, dbname string) (err error) {
 	if id <= 0 {
 		return errors.New("CreateHouseGoDuplicate not found anything")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -759,7 +763,7 @@ func (am *ARModel) UpdateARInfo(arid, dbname string) (err error) {
 		fmt.Println("reset update:", id)
 		return err
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 

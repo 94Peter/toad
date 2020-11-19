@@ -82,7 +82,7 @@ func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid, dbname string) error
 	if id <= 0 {
 		return errors.New("not found receipt")
 	}
-
+	defer mdb.Close()
 	return nil
 }
 
@@ -125,7 +125,7 @@ func (rm *RTModel) DeleteReceiptData(Rid, dbname string) error {
 	if id <= 0 {
 		return errors.New("not found receipt")
 	}
-
+	defer mdb.Close()
 	return nil
 }
 
@@ -325,6 +325,6 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string) (err error) {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-
+	defer sqldb.Close()
 	return nil
 }

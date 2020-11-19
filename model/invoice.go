@@ -157,7 +157,7 @@ func (invoiceM *InvoiceModel) GetInvoiceConfig(branch, dbname string) ([]*Invoic
 		}
 		InvoiceConfigList = append(InvoiceConfigList, &InvoiceConfig)
 	}
-
+	defer sqldb.Close()
 	return InvoiceConfigList, nil
 }
 
@@ -180,6 +180,7 @@ func (invoiceM *InvoiceModel) GetCommissionBranchByRid(rid, dbname string) ([]*C
 		cDataList = append(cDataList, &c)
 
 	}
+	defer sqldb.Close()
 	return cDataList, nil
 }
 
@@ -214,6 +215,7 @@ func (invoiceM *InvoiceModel) CreateInvoiceConfig(inputInvoiceConfig *InvoiceCon
 	if id == 0 {
 		return errors.New("CreateInvoiceConfig Error")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -238,6 +240,7 @@ func (invoiceM *InvoiceModel) DeleteInvoiceConfig(branch, dbname string) error {
 	if id == 0 {
 		return errors.New("DeleteInvoiceConfig Error")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -325,8 +328,9 @@ func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice, dbname string
 			return "", errors.New("CreateInvoice Error")
 		}
 		result += invoice.InvoiceNo
-
+		defer sqldb.Close()
 	}
+
 	return result, nil
 }
 

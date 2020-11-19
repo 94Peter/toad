@@ -273,7 +273,7 @@ func (systemM *SystemModel) CreateSystemAccount(systemAccount *SystemAccount, db
 	if id == 0 {
 		return errors.New("Invalid operation, CreateSystemAccount")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -305,7 +305,7 @@ func (systemM *SystemModel) UpdateSystemAccount(systemAccount *SystemAccount, db
 	if id == 0 {
 		return errors.New("Invalid operation, UpdateSystemAccount")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -342,7 +342,7 @@ func (systemM *SystemModel) UpdateSystemAccountPassword(newpassword, dbname stri
 	if id == 0 {
 		return errors.New("Invalid operation, UpdateSystemAccount")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -372,6 +372,6 @@ func (systemM *SystemModel) DeleteSystemAccount(account, dbname string) (err err
 	if id == 0 {
 		return errors.New("Invalid operation, DeleteSystemAccount")
 	}
-
+	defer sqldb.Close()
 	return nil
 }

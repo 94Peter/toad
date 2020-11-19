@@ -127,11 +127,6 @@ func (memM *memberModel) CreateUser(user *User) error {
 		return err
 	}
 
-	// sqldb, err := memM.cu.sqldb.ConnectSQLDB()
-	// if err != nil {
-	// 	return err
-	// }
-
 	res, err := sqldb.Exec(sql, user.Account, user.Name, user.Permission, UserStateInit, user.Branch)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -147,7 +142,7 @@ func (memM *memberModel) CreateUser(user *User) error {
 	if id == 0 {
 		return errors.New("[CreateUser]: save Local DB Error")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -167,11 +162,6 @@ func (memM *memberModel) DeleteUser(uid, dbname string) error {
 		return err
 	}
 
-	// sqldb, err := memM.cu.sqldb.ConnectSQLDB()
-	// if err != nil {
-	// 	return err
-	// }
-
 	res, err := sqldb.Exec(sql, uid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -187,6 +177,7 @@ func (memM *memberModel) DeleteUser(uid, dbname string) error {
 	if id == 0 {
 		return errors.New("[DeleteUser]: save Local DB Error")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -228,7 +219,7 @@ func (memM *memberModel) SetUserDisable(uid, dbname string, disable bool) error 
 	if id == 0 {
 		return errors.New("[SetUserDisable]: save Local DB Error")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -294,7 +285,7 @@ func (memM *memberModel) UpdateUser(user *User, dbname string) error {
 	if id == 0 {
 		return errors.New("[UpdateUser]: save Local DB Error")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 

@@ -126,6 +126,7 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, dbnam
 	}
 
 	decuctModel.deductList = deductDataList
+	defer sqldb.Close()
 	return decuctModel.deductList
 
 }
@@ -197,7 +198,7 @@ func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct, dbname string) (err
 
 	deduct.Did = fmt.Sprintf("%d", fakeid)
 	decuctModel.setFeeToCommission(sqldb, deduct.Did, deduct.ARid, dbname)
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -362,6 +363,7 @@ func (decuctModel *DeductModel) DeleteDeduct(ID, dbname string) (err error) {
 	}
 
 	decuctModel.setFeeToCommission(sqldb, "", arid)
+	defer sqldb.Close()
 	return nil
 }
 
@@ -401,6 +403,7 @@ func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber, dbn
 		return errors.New("Invalid operation, UpdateDeduct")
 	}
 	decuctModel.setFeeToCommission(sqldb, Did, "")
+	defer sqldb.Close()
 	return nil
 }
 
@@ -440,6 +443,7 @@ func (decuctModel *DeductModel) UpdateDeductFee(Did, dbname string, fee int) (er
 		return errors.New("Invalid operation, UpdateDeductFee")
 	}
 	decuctModel.setFeeToCommission(sqldb, Did, "")
+	defer sqldb.Close()
 	return nil
 }
 
@@ -477,7 +481,7 @@ func (decuctModel *DeductModel) UpdateDeductItem(Did, item, dbname string) (err 
 	if id == 0 {
 		return errors.New("Invalid operation, UpdateDeductItem")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -525,6 +529,7 @@ func (decuctModel *DeductModel) UpdateDeductRid(ARid, dbname string) (err error)
 	if id == 0 {
 		return errors.New("Invalid operation, UpdateDeductRid")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -547,7 +552,7 @@ func (decuctModel *DeductModel) UpdateDeductSales(Did, dbname string, salerList 
 	// sqldb, err := interdb.ConnectSQLDB()
 	decuctModel.DeleteDeductMAP(Did, sqldb)
 	decuctModel.SaveDeductMAP(salerList, Did, sqldb)
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -625,6 +630,6 @@ func (decuctModel *DeductModel) getDeductByID(ID, dbname string, sqldb *sql.DB) 
 		}
 		deduct.Date = lasttime.Time
 	}
-
+	defer sqldb.Close()
 	return deduct
 }

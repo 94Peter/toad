@@ -107,7 +107,7 @@ func (sdb *SqlDB) SQLCommand(cmd string) (*sql.Rows, error) {
 		return nil, err
 	}
 
-	fmt.Println("SQLCommand close db")
+	//fmt.Println("SQLCommand close db")
 	defer db.Close()
 
 	if rows.Err() != nil {

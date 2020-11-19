@@ -486,14 +486,7 @@ func (salaryM *SalaryModel) DeleteSalary(ID, dbname string) (err error) {
 		return err
 	}
 
-	// id, err := res.RowsAffected()
-	// if err != nil {
-	// 	fmt.Println("PG Affecte Wrong: ", err)
-	// 	return err
-	// }
-	// if id <= 0 {
-	// 	return errors.New("not found anything")
-	// }
+	defer sqldb.Close()
 	return nil
 }
 
@@ -630,6 +623,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname st
 	if err != nil {
 		return err
 	}
+	defer sqldb.Close()
 
 	fakeId := time.Now().Unix()
 	bs.BSid = strconv.Itoa(int(fakeId))
@@ -787,6 +781,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbna
 	if err != nil {
 		return err
 	}
+	defer sqldb.Close()
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
 	//GCP local time zone是+0時區，預設前端丟進來的是+8時區
@@ -888,6 +883,7 @@ func (salaryM *SalaryModel) SetCommissionBSid(bs *BranchSalary, cid []*Cid, dbna
 			fmt.Println("SetCommissionBSid, not found any commission ")
 
 		}
+		defer sqldb.Close()
 	}
 	return nil
 }
@@ -959,6 +955,7 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary, dbname string)
 	if err != nil {
 		return err
 	}
+	defer sqldb.Close()
 	////////////
 	loc, _ := time.LoadLocation("Asia/Taipei")
 	t := bs.LastDate.In(loc)
@@ -1029,7 +1026,7 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 		fmt.Println("UpdateCommissionBSidAndStatus, not found any commission")
 		//return errors.New("UpdateCommissionBSidAndStatus, not found any commission")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -1067,7 +1064,7 @@ func (salaryM *SalaryModel) UpdateBranchSalaryTotal(dbname string) (err error) {
 		fmt.Println("UpdateBranchSalaryTotal, not found any salary")
 		return errors.New("UpdateBranchSalaryTotal, not found any salary")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -1287,7 +1284,7 @@ func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
 	if id == 0 {
 		fmt.Println("CreateNHISalary, not found any salary ")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -1361,7 +1358,7 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid, dbname 
 		fmt.Println("UpdateSalerSalaryData, not found any salary")
 		return errors.New("UpdateSalerSalaryData, not found any salary")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -1410,7 +1407,7 @@ func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid, dbn
 		return nil
 		//return ucias_err
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -1479,7 +1476,7 @@ func (salaryM *SalaryModel) UpdateManagerByManagerBonus(bsid, dbname string) (er
 		fmt.Println("UpdateManagerByManagerBonus, not found any salary")
 		return errors.New("UpdateManagerByManagerBonus, not found any salary")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -1516,7 +1513,7 @@ func (salaryM *SalaryModel) LockBranchSalary(bsid, lock, dbname string) (err err
 		return nil
 		//return css_err
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -2973,7 +2970,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid, dbname string) error {
 	if err != nil {
 		fmt.Printf(err.Error())
 	}
-
+	defer sqldb.Close()
 	res, err := sqldb.Exec(sql, Bsid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -3034,7 +3031,7 @@ func (salaryM *SalaryModel) RefreshCommissionBonusbyBsid(Bsid, dbname string) (e
 		fmt.Println("RefreshCommissionBonusbyBsid:", err)
 		return err
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -3098,7 +3095,7 @@ func (salaryM *SalaryModel) RefreshNHISalary(bsid, dbname string) (err error) {
 	if id == 0 {
 		fmt.Println("RefreshNHISalary, not found any salary ")
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -3135,7 +3132,7 @@ func (salaryM *SalaryModel) MakeTxtTransferSalary(bsid, dbname string) error {
 		panic(err)
 	}
 	fmt.Println(string(out))
-
+	defer sqldb.Close()
 	salaryM.TransferSalaryList = tList
 
 	return nil
@@ -3186,6 +3183,7 @@ func (salaryM *SalaryModel) GetAccountSettlement(dbname string) (ca CloseAccount
 	fmt.Println(ca)
 	fmt.Println(ca.CloseDate.Unix())
 	salaryM.CloseAccount = ca
+	defer sqldb.Close()
 	return
 }
 
@@ -3205,7 +3203,7 @@ func (salaryM *SalaryModel) DeleteAccountSettlement(dbname string) (ca CloseAcco
 		fmt.Println(err)
 		return
 	}
-
+	defer sqldb.Close()
 	return
 }
 
@@ -3229,6 +3227,8 @@ func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per, dbname
 	if err != nil {
 		return err
 	}
+	defer sqldb.Close()
+
 	fakeId := time.Now().Unix()
 	/**條件敘述:
 	1.關帳基本上只能往以後的日期關。
@@ -3297,6 +3297,7 @@ func (salaryM *SalaryModel) updateAccountSettlementStatus(oriCa *CloseAccount, d
 	}
 
 	res, err := sqldb.Exec(sql, oriCa.id)
+	defer sqldb.Close()
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)

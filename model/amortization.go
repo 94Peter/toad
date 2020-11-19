@@ -114,7 +114,7 @@ func (amorM *AmortizationModel) getAmortizationDataByAmorID(id, dbname string) *
 			fmt.Println("err Scan " + err.Error())
 		}
 	}
-
+	defer db.Close()
 	return amor
 }
 
@@ -158,6 +158,7 @@ func (amorM *AmortizationModel) DeleteAmortization(ID, dbname string) (err error
 	if id <= 0 {
 		return errors.New("not found amortization")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -200,7 +201,7 @@ func (amorM *AmortizationModel) CreateAmortization(amor *Amortization, dbname st
 	amorM.InsertFirstAmortizationData(amor, sqldb)
 	amorM.CreateAmorMap(sqldb)
 	amorM.UpdateAmortizationData(sqldb)
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -313,6 +314,7 @@ func (amorM *AmortizationModel) RefreshAmortizationData(dbname string) {
 	}
 	amorM.CreateAmorMap(sqldb)
 	amorM.UpdateAmortizationData(sqldb)
+	defer sqldb.Close()
 }
 
 func (amorM *AmortizationModel) addAmorInfoTable(tabel *pdf.DataTable, p *pdf.Pdf) (tabel_final *pdf.DataTable,

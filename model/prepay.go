@@ -106,6 +106,7 @@ func (prepayM *PrePayModel) GetPrePayData(startDate, endDate time.Time, dbname s
 	// }
 	// fmt.Println(string(out))
 	prepayM.prepayList = prepayDataList
+	defer sqldb.Close()
 	return prepayM.prepayList
 }
 
@@ -132,7 +133,7 @@ func (prepayM *PrePayModel) getPrePayDataByID(ID, dbname string) *PrePay {
 		}
 
 	}
-
+	defer sqldb.Close()
 	return prepay
 }
 
@@ -214,6 +215,7 @@ func (prepayM *PrePayModel) DeletePrePay(ID, dbname string) (err error) {
 	if id <= 0 {
 		return errors.New("not found anything")
 	}
+	defer sqldb.Close()
 	return nil
 }
 
@@ -286,7 +288,7 @@ func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay, dbname string) (err err
 		}
 		i++
 	}
-
+	defer sqldb.Close()
 	return nil
 }
 
@@ -359,6 +361,7 @@ func (prepayM *PrePayModel) UpdatePrePay(ID, dbname string, prepay *PrePay) (err
 		}
 		i++
 	}
+	defer sqldb.Close()
 	return nil
 }
 

@@ -167,6 +167,7 @@ func (pocketM *PocketModel) DeletePocket(ID, dbname string) (err error) {
 		return errors.New("Invalid operation, maybe not found the pocket")
 	}
 	pocketM.UpdatePocketBalance(sqldb)
+	defer sqldb.Close()
 	return nil
 }
 func (pocketM *PocketModel) AddorUpdatePocketMonthBalance(sqldb *sql.DB) (err error) {
@@ -306,6 +307,7 @@ func (pocketM *PocketModel) CreatePocket(pocket *Pocket, dbname string) (err err
 		return errors.New("Invalid operation, CreatePocket")
 	}
 	pocketM.UpdatePocketBalance(sqldb)
+	defer sqldb.Close()
 	return nil
 }
 
@@ -362,6 +364,7 @@ func (pocketM *PocketModel) UpdatePocket(ID, dbname string, pocket *Pocket) (err
 		return errors.New("Not found Pocket")
 	}
 	pocketM.UpdatePocketBalance(sqldb)
+	defer sqldb.Close()
 	return nil
 }
 

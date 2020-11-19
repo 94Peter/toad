@@ -112,6 +112,6 @@ func (logM *EventLogModel) CreateEventLog(eventLog *EventLog, dbname string) (er
 	if id == 0 {
 		return errors.New("Invalid operation, CreateEventLog")
 	}
-
+	defer sqldb.Close()
 	return nil
 }

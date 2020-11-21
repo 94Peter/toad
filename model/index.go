@@ -105,7 +105,7 @@ func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 
 	for rows.Next() {
 		var info Info
-		var Amount, RA = 0, 0
+		var Amount, RA NullInt
 		//var col_sales string
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
@@ -114,7 +114,7 @@ func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 			fmt.Println("err Scan " + err.Error())
 		}
 
-		info.Receivable = Amount - RA
+		info.Receivable = int(Amount.Value - RA.Value)
 
 		//先顛倒，前端沒弄好
 		//info.Receivable = info.Performance

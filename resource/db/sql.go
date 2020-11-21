@@ -1124,7 +1124,7 @@ func (sdb *SqlDB) InitTable() error {
 func (sdb *SqlDB) InitDB() bool {
 
 	rows, err := sdb.SQLCommand(fmt.Sprintf("SELECT datname FROM pg_database WHERE datname = '%s';", sdb.Db))
-
+	fmt.Println("InitDB sdb.Db:", sdb.Db)
 	if err != nil {
 		return false
 	}

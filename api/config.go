@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -987,6 +988,11 @@ func (iCSaler *inputConfigSaler) isConfigSalerValid(command int) (bool, error) {
 
 	if iCSaler.Branch == "" {
 		return false, errors.New("branch is empty")
+	}
+
+	_, err = strconv.Atoi(iCSaler.Code) // result: i = -18
+	if err != nil {
+		return false, errors.New("code is not valid")
 	}
 
 	return true, nil

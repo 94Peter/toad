@@ -242,13 +242,13 @@ func (memM *memberModel) UpdateState(uid string, state string) error {
 }
 
 func (memM *memberModel) UpdateDbname(uid string, dbname string) error {
+	db := memM.di.GetSQLDBwithDbname(dbname)
+	db.InitDB()
 	err := memM.cu.db.UpdateDbname(uid, dbname)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
-	db := memM.di.GetSQLDBwithDbname(dbname)
-	db.InitDB()
 
 	return nil
 }

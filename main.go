@@ -68,6 +68,7 @@ func main() {
 		mapi.SalaryAPI(true),
 		mapi.SystemAPI(true),
 		mapi.IndexAPI(true),
+		mapi.IndexAPIV2(true),
 		mapi.LogAPI(true),
 	)
 

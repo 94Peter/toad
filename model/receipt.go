@@ -178,7 +178,7 @@ func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receip
 					FROM public.receipt R
 					inner join public.ar AR on AR.arid = R.arid				
 					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '86399999 milliseconds'::interval) <= '%d'
-					order by date desc`
+					order by date asc , AR.cno `
 	db := rm.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(sql, begin.Unix(), end.Unix()))
 	if err != nil {

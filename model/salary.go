@@ -580,10 +580,11 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname st
 	fmt.Println(bs.Date)
 	fmt.Println(bs.StrDate)
 
-	_, err = salaryM.CheckValidCloseDate(bs.Date, dbname)
+	ca, err := salaryM.CheckValidCloseDate(bs.Date, dbname)
 	if err != nil {
 		return
 	}
+	fmt.Println("ca:", ca.CloseDate)
 
 	t, err := salaryM.getNextDayFromLastTimeSalary(dbname)
 	bs.LastDate = t

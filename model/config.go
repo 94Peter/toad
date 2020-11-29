@@ -816,7 +816,7 @@ func (configM *ConfigModel) WorkValidDate(dbname string) (err error) {
 		FROM public.configsalary A 
 		Inner Join ( 
 			select sid, max(zerodate) zerodate from public.configsalary cs 
-			where now() >= to_timestamp(zerodate,'YYYY-MM') + '1 month'::interval
+			where now() >= to_timestamp(zerodate,'YYYY-MM-DD')  - '8 hour'::interval
 			group by sid 
 		) B on A.sid=B.sid and A.zeroDate = B.zeroDate
 	) AS subquery

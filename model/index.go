@@ -73,8 +73,9 @@ func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 	// 			where ar.arid like '%%s%'  OR ar.cno like '%%s%' OR ar.casename like '%%s%' OR ar.type like '%%s%' OR ar.name like '%%s%'
 	// 			FROM public.ar ar
 	// 			group by ar.arid;`
-	const sql = `SELECT  SUM(ar.amount) amount,      
-	SUM(COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0)) AS SUM_RA ,
+	const sql = `SELECT  COALESCE(SUM(ar.amount),0) amount,      
+	COALESCE(SUM(COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0)),0) AS RA ,
+	COALESCE( (SELECT sum(fee) from public.deduct),0) deduct ,
 	COALESCE((SELECT  sum(amount) FROM public.receipt where extract(epoch from date) >= '%d' and extract(epoch from date - '1 month'::interval)  < '%d'  ),0) AS Performance
 	FROM public.ar ar `
 	/*
@@ -96,6 +97,7 @@ func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 	//b, _ := time.Parse(time.RFC3339, "2019-12-31T16:00:00Z")
 
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql, b.Unix(), b.Unix()))
+	//fmt.Println(fmt.Sprintf(sql, date.Unix(), date.Unix()))
 	rows, err := db.SQLCommand(fmt.Sprintf(sql, date.Unix(), date.Unix()))
 	if err != nil {
 		fmt.Println(err)
@@ -105,22 +107,23 @@ func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 
 	for rows.Next() {
 		var info Info
-		var Amount, RA NullInt
-		//var col_sales string
-		// if err := rows.Scan(&r.ARid, &s); err != nil {
-		// 	fmt.Println("err Scan " + err.Error())
-		// }
-		if err := rows.Scan(&Amount, &RA, &info.Performance); err != nil {
+		var Amount, SUM_RA, SUM_Deduct int
+
+		if err := rows.Scan(&Amount, &SUM_RA, &SUM_Deduct, &info.Performance); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
-		info.Receivable = int(Amount.Value - RA.Value)
+		info.Receivable = (Amount - SUM_RA - SUM_Deduct)
+		fmt.Println(Amount)
+		fmt.Println(SUM_RA)
+		fmt.Println(SUM_Deduct)
 
 		//先顛倒，前端沒弄好
 		//info.Receivable = info.Performance
 		//info.Performance = Amount - RA
 
 		data = &info
+
 	}
 
 	// out, err := json.Marshal(data)

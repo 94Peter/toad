@@ -134,6 +134,28 @@ func (sdb *SqlDB) CreateDB() error {
 	return nil
 }
 
+func (sdb *SqlDB) CreateInfoHistoryTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.InfoHistory "+
+			"( "+
+			"Date character varying(50) not NULL ,"+
+			"Performance  integer DEFAULT 0, "+ //本月業績
+			"Receivable  integer DEFAULT 0, "+ //累積應收
+			"PRIMARY KEY (Date) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.InfoHistory "+
+			"OWNER to %s; ", sdb.User))
+
+	if err != nil {
+		fmt.Println("CreateInfoHistoryTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateInfoHistoryTable Done")
+	return nil
+}
+
 func (sdb *SqlDB) CreateDeductTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
@@ -932,6 +954,7 @@ func (sdb *SqlDB) InitTable() error {
 		"account":           false,
 		"eventlog":          false,
 		"accountsettlement": false, //關帳日
+		"infohistory":       false,
 	}
 
 	for rows.Next() {
@@ -1019,6 +1042,8 @@ func (sdb *SqlDB) InitTable() error {
 		case "accountsettlement":
 			mT["accountsettlement"] = true
 			break
+		case "infohistory":
+			mT["infohistory"] = true
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
 		}
@@ -1108,6 +1133,8 @@ func (sdb *SqlDB) InitTable() error {
 			case "accountsettlement":
 				err = sdb.CreateAccountSettlementTable()
 				break
+			case "infohistory":
+				err = sdb.CreateInfoHistoryTable()
 			default:
 				fmt.Printf("unknown table %s.\n", tableName)
 				break

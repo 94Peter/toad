@@ -503,6 +503,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 
 func (api *SalaryAPI) createBranchSalaryEndpoint(w http.ResponseWriter, req *http.Request) {
 	//Get params from body
+	per := req.Header.Get("AuthPerm")
 	dbname := req.Header.Get("dbname")
 	iBS := inputBranchSalary{}
 	err := json.NewDecoder(req.Body).Decode(&iBS)
@@ -525,7 +526,7 @@ func (api *SalaryAPI) createBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		fmt.Println("sid:", cid.Sid)
 	}
 
-	err = SalaryM.CreateSalary(iBS.GetBranchSalary(), iBS.CList, dbname)
+	err = SalaryM.CreateSalary(iBS.GetBranchSalary(), iBS.CList, dbname, per)
 	if err != nil {
 		switch err.Error() {
 		case ERROR_CloseDate:

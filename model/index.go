@@ -94,11 +94,11 @@ func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 	// 	t.Hour(), t.Minute(), t.Second())
 	//curDate := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
 
-	//b, _ := time.Parse(time.RFC3339, "2019-12-31T16:00:00Z")
+	b, _ := time.Parse(time.RFC3339, "2020-10-31T16:00:00Z")
 
-	//rows, err := db.SQLCommand(fmt.Sprintf(sql, b.Unix(), b.Unix()))
+	rows, err := db.SQLCommand(fmt.Sprintf(sql, b.Unix(), b.Unix()))
 	//fmt.Println(fmt.Sprintf(sql, date.Unix(), date.Unix()))
-	rows, err := db.SQLCommand(fmt.Sprintf(sql, date.Unix(), date.Unix()))
+	//rows, err := db.SQLCommand(fmt.Sprintf(sql, date.Unix(), date.Unix()))
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -114,9 +114,10 @@ func (indexM *IndexModel) GetInfoData(date time.Time, dbname string) *Info {
 		}
 
 		info.Receivable = (Amount - SUM_RA - SUM_Deduct)
-		fmt.Println(Amount)
-		fmt.Println(SUM_RA)
-		fmt.Println(SUM_Deduct)
+
+		// fmt.Println(Amount)
+		// fmt.Println(SUM_RA)
+		// fmt.Println(SUM_Deduct)
 
 		//先顛倒，前端沒弄好
 		//info.Receivable = info.Performance
@@ -234,7 +235,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	//layout := "2006-01-02"
 	//curDate := fmt.Sprintf("2020-01")
 
-	mdate, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00+08:00")
+	mdate, _ := time.Parse(time.RFC3339, "2020-11-01T00:00:00+08:00")
 
 	curDate := fmt.Sprintf("%d-%02d", mdate.Year(), mdate.Month())
 	fmt.Println(curDate)

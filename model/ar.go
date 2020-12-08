@@ -160,16 +160,8 @@ func (am *ARModel) GetSalerData(branch, dbname string) []*Saler {
 	return am.salerList
 }
 
-func (am *ARModel) GetARData(today, end time.Time, key, dbname string) []*AR {
+func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 
-	// const sql = `SELECT
-	// 			ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount,
-	// 				COALESCE((SELECT SUM(d.fee) FROM public.deduct d WHERE ar.arid = d.arid),0) AS SUM_Fee,
-	// 				COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA,
-	// 				ar.sales
-	// 			where ar.arid like '%%s%'  OR ar.cno like '%%s%' OR ar.casename like '%%s%' OR ar.type like '%%s%' OR ar.name like '%%s%'
-	// 			FROM public.ar ar
-	// 			group by ar.arid;`
 	index := "%" + key + "%"
 	sql := "SELECT ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount, " +
 		"	COALESCE((SELECT SUM(d.fee) FROM public.deduct d WHERE ar.arid = d.arid),0) AS SUM_Fee," +
@@ -207,12 +199,10 @@ func (am *ARModel) GetARData(today, end time.Time, key, dbname string) []*AR {
 		}
 		r.Customer = ctm
 		r.Balance = r.Amount - r.RA
-		// err := json.Unmarshal([]byte(col_sales), &r.Sales)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// }
 
-		arDataList = append(arDataList, &r)
+		if status == "0" || r.Balance > 0 {
+			arDataList = append(arDataList, &r)
+		}
 	}
 
 	const Mapsql = `SELECT arid, sid, proportion, sname	FROM public.armap; `

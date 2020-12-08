@@ -1257,14 +1257,15 @@ func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
 func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid, dbname string) (err error) {
 
 	const sql = `UPDATE public.salersalary
-				SET lbonus= $1, abonus= $2, total= salary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
+				SET lbonus= $1, abonus= $2, total= subquery.msalary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
 				laborfee = ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END),
 				healthfee = ( Case When $6 >= 30 then subquery.healthfee else 0 END),
 				commercialFee =  ROUND( (salary + pbonus + $1 - $2) * subquery.commercialRatio/100 ) ,
+				salary = subquery.msalary ,
 				sp = $9 , welfare = $10 ,
-				tamount = salary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - (salary + pbonus + $1 - $2)* subquery.commercialRatio /100 - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
+				tamount = subquery.msalary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - (subquery.msalary + pbonus + $1 - $2)* subquery.commercialRatio /100 - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
 				FROM(
-					Select commercialFee as commercialRatio, ROUND(A.payrollbracket * CP.li * 0.2 / 100) laborfee, ROUND(A.payrollbracket * CP.nhi * 0.3 / 100) healthfee FROM public.ConfigSaler A 					
+					Select ROUND( Case When $6 >= 30 then salary else salary::float * $6 / 30 END)::integer msalary, commercialFee as commercialRatio, ROUND(A.payrollbracket * CP.li * 0.2 / 100) laborfee, ROUND(A.payrollbracket * CP.nhi * 0.3 / 100) healthfee FROM public.ConfigSaler A 					
 					cross join ( 
 						select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
 						inner join(

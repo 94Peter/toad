@@ -44,6 +44,10 @@ type inputSalerSalary struct {
 	SP          int    `json:"sp"`
 	Workday     int    `json:"workday"`
 	Description string `json:"description"`
+	//2020-12-08新增
+	Salary    int `json:"salary"`
+	LaborFee  int `json:"laborFee"`
+	HealthFee int `json:"healthFee"`
 	//Total  string `json:"total"`
 	//Lock   int    `json:"Lock"`
 }
@@ -585,6 +589,15 @@ func (iSS *inputSalerSalary) inputSalerSalaryValid() (bool, error) {
 	if iSS.Welfare < 0 {
 		return false, errors.New("welfare is not valid")
 	}
+	if iSS.Salary < 0 {
+		return false, errors.New("salary is not valid")
+	}
+	if iSS.LaborFee < 0 {
+		return false, errors.New("laborFee is not valid")
+	}
+	if iSS.HealthFee < 0 {
+		return false, errors.New("healthFee is not valid")
+	}
 
 	return true, nil
 }
@@ -639,6 +652,9 @@ func (iSS *inputSalerSalary) GetSalerSalary() *model.SalerSalary {
 		Welfare:     iSS.Welfare,
 		SP:          iSS.SP,
 		Workday:     iSS.Workday,
+		Salary:      iSS.Salary,
+		LaborFee:    iSS.LaborFee,
+		HealthFee:   iSS.HealthFee,
 	}
 }
 

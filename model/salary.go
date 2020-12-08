@@ -1255,52 +1255,46 @@ func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
 }
 
 func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid, dbname string) (err error) {
-
 	const sql = `UPDATE public.salersalary
-				SET lbonus= $1, abonus= $2, total= subquery.msalary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
-				laborfee = ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END),
-				healthfee = ( Case When $6 >= 30 then subquery.healthfee else 0 END),
-				commercialFee =  ROUND( (salary + pbonus + $1 - $2) * subquery.commercialRatio/100 ) ,
-				salary = subquery.msalary ,
-				sp = $9 , welfare = $10 ,
-				tamount = subquery.msalary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - (subquery.msalary + pbonus + $1 - $2)* subquery.commercialRatio /100 - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
-				FROM(
-					Select ROUND( Case When $6 >= 30 then salary else salary::float * $6 / 30 END)::integer msalary, commercialFee as commercialRatio, ROUND(A.payrollbracket * CP.li * 0.2 / 100) laborfee, ROUND(A.payrollbracket * CP.nhi * 0.3 / 100) healthfee FROM public.ConfigSaler A 					
-					cross join ( 
-						select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
-						inner join(
-							select  max(date) date from public.ConfigParameter 
-						) A on A.date = C.date limit 1
-					) CP
-					left join(
-						select branch , commercialFee from public.configbranch 
-					) CB on CB.branch = A.branch
-					WHERE sid= $7
-				) as subquery
-				WHERE sid= $7 and bsid = $8;`
+	SET lbonus= $1, abonus= $2, total= subquery.msalary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
+	laborfee =  $12,
+	healthfee = $13,
+	commercialFee =  ROUND( (salary + pbonus + $1 - $2) * subquery.commercialRatio/100 ) ,
+	salary = $11 ,
+	sp = $9 , welfare = $10 ,
+	tamount = subquery.msalary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - (subquery.msalary + pbonus + $1 - $2)* subquery.commercialRatio /100 - $12::integer - $13::integer
+	FROM(
+		Select ROUND( Case When $6 >= 30 then $11 else $11::float * $6 / 30 END)::integer msalary, commercialFee as commercialRatio FROM public.ConfigSaler A
+		left join(
+			select branch , commercialFee from public.configbranch
+		) CB on CB.branch = A.branch
+		WHERE sid= $7
+	) as subquery
+	WHERE sid= $7 and bsid = $8;`
 
-	/*
-			const sql = `UPDATE public.salersalary
-		SET lbonus= $1, abonus= $2, total= salary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
+	/*	const sql = `UPDATE public.salersalary
+		SET lbonus= $1, abonus= $2, total= subquery.msalary + pbonus + $1 - $2, tax = $3, other = $4,  description= $5, workday= $6,
 		laborfee = ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END),
 		healthfee = ( Case When $6 >= 30 then subquery.healthfee else 0 END),
+		commercialFee =  ROUND( (salary + pbonus + $1 - $2) * subquery.commercialRatio/100 ) ,
+		salary = subquery.msalary ,
 		sp = $9 , welfare = $10 ,
-		tamount = salary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - commercialFee - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
+		tamount = subquery.msalary + pbonus + $1 - $2 - $3 - $4 - $9 - $10 - (subquery.msalary + pbonus + $1 - $2)* subquery.commercialRatio /100 - ( Case When $6 >= 30 then subquery.laborfee else subquery.laborfee * $6 / 30 END) - ( Case When $6 >= 30 then subquery.healthfee else 0 END)
 		FROM(
-			Select ROUND(A.payrollbracket * CP.li * 0.2 / 100) laborfee, ROUND(A.payrollbracket * CP.nhi * 0.3 / 100) healthfee FROM public.ConfigSaler A
-			Inner Join (
-				select sid, max(zerodate) zerodate from public.configsaler cs
-				where now() > zerodate and Sid = $7
-				group by sid
-			) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+			Select ROUND( Case When $6 >= 30 then salary else salary::float * $6 / 30 END)::integer msalary, commercialFee as commercialRatio, ROUND(A.payrollbracket * CP.li * 0.2 / 100) laborfee, ROUND(A.payrollbracket * CP.nhi * 0.3 / 100) healthfee FROM public.ConfigSaler A
 			cross join (
 				select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
 				inner join(
 					select  max(date) date from public.ConfigParameter
 				) A on A.date = C.date limit 1
 			) CP
+			left join(
+				select branch , commercialFee from public.configbranch
+			) CB on CB.branch = A.branch
+			WHERE sid= $7
 		) as subquery
-		WHERE sid= $7 and bsid = $8;`*/
+		WHERE sid= $7 and bsid = $8;`
+	*/
 	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
@@ -1308,7 +1302,8 @@ func (salaryM *SalaryModel) UpdateSalerSalaryData(ss *SalerSalary, bsid, dbname 
 	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
-	res, err := sqldb.Exec(sql, ss.Lbonus, ss.Abonus, ss.Tax, ss.Other, ss.Description, ss.Workday, ss.Sid, bsid, ss.SP, ss.Welfare)
+	res, err := sqldb.Exec(sql, ss.Lbonus, ss.Abonus, ss.Tax, ss.Other, ss.Description, ss.Workday, ss.Sid, bsid, ss.SP, ss.Welfare, ss.Salary, ss.LaborFee, ss.HealthFee)
+	//res, err := sqldb.Exec(sql, ss.Lbonus, ss.Abonus, ss.Tax, ss.Other, ss.Description, ss.Workday, ss.Sid, bsid, ss.SP, ss.Welfare)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Update err] ", err)

@@ -17,10 +17,10 @@ type Receipt struct {
 	CaseName     string    `json:"caseName"`
 	CustomerType string    `json:"customertType"`
 	Name         string    `json:"customerName"`
-	Amount       int       `json:"amount"`    //收款
-	InvoiceNo    string    `json:"invoiceNo"` //發票號碼
+	Amount       int       `json:"amount"` //收款
+	//InvoiceNo    string    `json:"invoiceNo"` //發票號碼
 	// ---
-	Branch string `json:"branch"` //發票號碼
+	InvoiceData []*Invoice `json:"invoiceData"`
 }
 
 type RTModel struct {
@@ -155,7 +155,7 @@ func (rm *RTModel) GetReceiptDataByID(rid, dbname string) *Receipt {
 	for rows.Next() {
 
 		fmt.Println("scan start")
-		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount, &rt.InvoiceNo); err != nil {
+		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 		fmt.Println("scan end")
@@ -196,7 +196,7 @@ func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receip
 		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
-
+		rt.InvoiceData = []*Invoice{}
 		rtDataList = append(rtDataList, &rt)
 	}
 	fmt.Println("rtDataList Done")
@@ -206,6 +206,30 @@ func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receip
 	// 	return nil
 	// }
 	//fmt.Println(string(out))
+
+	const Mapsql = `SELECT rid, branch, invoiceno, buyerid, sellerid, title, date, amount	FROM public.invoice; `
+	rows, err = db.SQLCommand(Mapsql)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	for rows.Next() {
+
+		var iv Invoice
+
+		if err := rows.Scan(&iv.Rid, &iv.Branch, &iv.InvoiceNo, &iv.BuyerID, &iv.SellerID, &iv.Title, &iv.Date, &iv.TotalAmount); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		for _, rt := range rtDataList {
+			if rt.Rid == iv.Rid {
+				rt.InvoiceData = append(rt.InvoiceData, &iv)
+				break
+			}
+		}
+
+	}
 
 	rm.rtList = rtDataList
 	return rm.rtList
@@ -235,7 +259,7 @@ func (rm *RTModel) GetReceiptDataByRid(rid, dbname string) *Receipt {
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount, &rt.InvoiceNo); err != nil {
+		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 

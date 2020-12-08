@@ -576,6 +576,7 @@ func (sdb *SqlDB) CreateInvoiceTable() error {
 			"BuyerID character varying(20) ,"+
 			"SellerID  character varying(20) ,"+
 			"RandomNum character varying(10) ,"+
+			"Branch character varying(50) DEFAULT '',"+
 			"Title character varying(50) DEFAULT NULL,"+
 			"Date  character varying(50) DEFAULT NULL, "+
 			"Amount  integer not NULL, "+

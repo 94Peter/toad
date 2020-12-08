@@ -49,16 +49,16 @@ var (
 // }
 
 type Invoice struct {
-	Signatrue string `json:"signatrue"`
+	Signatrue string `json:"-"`
 	//No          string    `json:"invoice_no"`
-	RandNum     string    `json:"random_number"`
+	RandNum     string    `json:"-"`
 	Date        string    `json:"invoice_datetime"`
-	SalesAmount float64   `json:"sales_amount"`
-	TotalAmount int       `json:"total_amount"`
-	BuyerID     string    `json:"buyer_uniform"` //買家統編
-	SellerID    string    `json:"SellerID"`      //賣家統編(台灣房屋?)
+	SalesAmount float64   `json:"-"`
+	TotalAmount int       `json:"amount"`
+	BuyerID     string    `json:"buyerID"`  //買家統編
+	SellerID    string    `json:"sellerID"` //賣家統編(台灣房屋?)
 	Remark      string    `json:"remark"`
-	Detail      []*Detail `json:"details"`
+	Detail      []*Detail `json:"-"`
 
 	Rid string `json:"id"`
 	//Date    time.Time `json:"date"`
@@ -66,8 +66,10 @@ type Invoice struct {
 	InvoiceNo string `json:"invoice_no"`
 	//Amount    string `json:"amount"`
 	//Invoice      string `json:"invoice"`
-	Left_qrcode  string `json:"left_qrcode"`
-	Right_qrcode string `json:"right_qrcode"`
+	Left_qrcode  string `json:"-"`
+	Right_qrcode string `json:"-"`
+
+	Branch string `json:"branch"` //
 }
 
 type InvoiceConfig struct {
@@ -256,7 +258,10 @@ func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice, dbname string
 		return "", errors.New("Invalid operation, maybe not found the receipt")
 	}
 
-	if receipt.InvoiceNo != "" {
+	// if receipt.InvoiceNo != "" {
+	// 	return "", errors.New("Invalid operation, receipt already bind invoiceNo")
+	// }
+	if len(receipt.InvoiceData) > 0 {
 		return "", errors.New("Invalid operation, receipt already bind invoiceNo")
 	}
 
@@ -302,8 +307,8 @@ func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice, dbname string
 		}
 
 		const invoiceSql = `INSERT INTO public.invoice(
-		rid, invoiceno, buyerid, sellerid, randomnum, title, date, amount, left_qrcode, right_qrcode, sid)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`
+		rid, invoiceno, buyerid, sellerid, randomnum, title, date, amount, left_qrcode, right_qrcode, sid, branch)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`
 
 		interdb := invoiceM.imr.GetSQLDBwithDbname(dbname)
 		sqldb, err := interdb.ConnectSQLDB()
@@ -311,7 +316,7 @@ func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice, dbname string
 			return "", err
 		}
 		fmt.Println(Rid, invoice.InvoiceNo, inputInvoice.BuyerID, storeID, invoice.RandNum, inputInvoice.Title, invoice.Date, invoice.TotalAmount, invoice.Left_qrcode, invoice.Right_qrcode)
-		res, err := sqldb.Exec(invoiceSql, Rid, invoice.InvoiceNo, inputInvoice.BuyerID, storeID, invoice.RandNum, inputInvoice.Title, invoice.Date, invoice.TotalAmount, invoice.Left_qrcode, invoice.Right_qrcode, data.Sid)
+		res, err := sqldb.Exec(invoiceSql, Rid, invoice.InvoiceNo, inputInvoice.BuyerID, storeID, invoice.RandNum, inputInvoice.Title, invoice.Date, invoice.TotalAmount, invoice.Left_qrcode, invoice.Right_qrcode, data.Sid, data.Branch)
 		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 		if err != nil {
 			fmt.Println("[ERROR CreateInvoice]", err)

@@ -162,14 +162,14 @@ func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
 	dbname := req.Header.Get("dbname")
 	am := model.GetARModel(di)
-	var queryDate time.Time
-	today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
-	end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
-	queryVar := util.GetQueryValue(req, []string{"key", "export"}, true)
+	queryVar := util.GetQueryValue(req, []string{"key", "status", "export"}, true)
 	key := (*queryVar)["key"].(string)
-
-	am.GetARData(today, end, key, dbname)
+	status := (*queryVar)["status"].(string)
+	if status == "" {
+		status = "1"
+	}
+	am.GetARData(key, status, dbname)
 	//data, err := json.Marshal(result)
 	data, err := am.Json("ar")
 	if err != nil {

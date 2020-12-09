@@ -111,14 +111,10 @@ func (api *DeductAPI) deleteDeductEndpoint(w http.ResponseWriter, req *http.Requ
 
 	err := DM.DeleteDeduct(ID, dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
-
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("Error,maybe id is not exist or status is not accepted" + err.Error()))
 	} else {
@@ -150,13 +146,10 @@ func (api *DeductAPI) updateDeductEndpoint(w http.ResponseWriter, req *http.Requ
 
 	err = DM.UpdateDeduct(ID, iUD.Status, iUD.Date, iUD.CheckNumber, dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("Error" + err.Error()))
 	} else {
@@ -185,19 +178,17 @@ func (api *DeductAPI) updateDeductFeeEndpoint(w http.ResponseWriter, req *http.R
 	}
 
 	DM := model.GetDecuctModel(di)
-
 	_err := DM.UpdateDeductFee(ID, dbname, iUD.Fee)
-	if _err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
-			w.WriteHeader(http.StatusLocked)
-			break
-		default:
 
-			w.WriteHeader(http.StatusInternalServerError)
-			break
+	if _err != nil {
+		if strings.Contains(_err.Error(), ERROR_CloseDate) {
+			w.WriteHeader(http.StatusLocked)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
 		}
+
 		w.Write([]byte("[Error] " + _err.Error()))
+
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -221,13 +212,10 @@ func (api *DeductAPI) updateDeductItemEndpoint(w http.ResponseWriter, req *http.
 
 	err = DM.UpdateDeductItem(ID, iUD.Item, dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("Error" + err.Error()))
 	} else {
@@ -253,13 +241,10 @@ func (api *DeductAPI) updateDeductSalesEndpoint(w http.ResponseWriter, req *http
 
 	err = DM.UpdateDeductSales(ID, dbname, iUD.SalerList)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("Error" + err.Error()))
 	} else {

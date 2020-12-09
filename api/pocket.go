@@ -86,13 +86,10 @@ func (api *PocketAPI) deletePocketEndpoint(w http.ResponseWriter, req *http.Requ
 	fmt.Println(ID)
 	PocketM := model.GetPocketModel(di)
 	if err := PocketM.DeletePocket(ID, dbname); err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusNotFound)
-			break
 		}
 		w.Write([]byte(err.Error()))
 		return
@@ -169,13 +166,10 @@ func (api *PocketAPI) updatePocketEndpoint(w http.ResponseWriter, req *http.Requ
 
 	err = PocketM.UpdatePocket(ID, dbname, iPocket.GetPocket())
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte(err.Error()))
 	} else {
@@ -205,13 +199,10 @@ func (api *PocketAPI) createPocketEndpoint(w http.ResponseWriter, req *http.Requ
 
 	err = PocketM.CreatePocket(iPocket.GetPocket(), dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("Error:" + err.Error()))
 	} else {

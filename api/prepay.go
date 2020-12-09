@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"toad/model"
@@ -49,13 +50,10 @@ func (api *PrePayAPI) deletePrePayEndpoint(w http.ResponseWriter, req *http.Requ
 	fmt.Println(ID)
 	PrePayM := model.GetPrePayModel(di)
 	if err := PrePayM.DeletePrePay(ID, dbname); err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusNotFound)
-			break
 		}
 		w.Write([]byte(err.Error()))
 		return
@@ -143,14 +141,12 @@ func (api *PrePayAPI) createPrePayEndpoint(w http.ResponseWriter, req *http.Requ
 
 	err = PrePayM.CreatePrePay(iPrePay.GetPrePay(), dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
+
 		w.Write([]byte("Error:" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))
@@ -183,14 +179,12 @@ func (api *PrePayAPI) updatePrePayEndpoint(w http.ResponseWriter, req *http.Requ
 
 	err = PrePayM.UpdatePrePay(ID, dbname, iPrePay.GetPrePay())
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusNotFound)
-			break
 		}
+
 		w.Write([]byte("Error:" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))

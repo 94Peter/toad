@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -125,13 +126,10 @@ func (api *SalaryAPI) lockSalaryEndpoint(w http.ResponseWriter, req *http.Reques
 		w.Write([]byte("lock shoud be 已完成 or 未完成"))
 	}
 	if err := SalaryM.LockBranchSalary(ID, lock.Lock, dbname); err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusNotFound)
-			break
 		}
 		w.Write([]byte(err.Error()))
 		return
@@ -152,13 +150,10 @@ func (api *SalaryAPI) deleteSalaryEndpoint(w http.ResponseWriter, req *http.Requ
 	SalaryM := model.GetSalaryModel(di)
 	dbname := req.Header.Get("dbname")
 	if err := SalaryM.DeleteSalary(ID, dbname); err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusNotFound)
-			break
 		}
 		w.Write([]byte(err.Error()))
 		return
@@ -532,13 +527,10 @@ func (api *SalaryAPI) createBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 
 	err = SalaryM.CreateSalary(iBS.GetBranchSalary(), iBS.CList, dbname, per)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("[Error]" + err.Error()))
 	} else {
@@ -737,13 +729,10 @@ func (api *SalaryAPI) updateSalerSalaryEndpoint(w http.ResponseWriter, req *http
 
 	err = SalaryM.UpdateSalerSalaryData(iSS.GetSalerSalary(), bsID, dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("Error" + err.Error()))
 	} else {
@@ -775,13 +764,10 @@ func (api *SalaryAPI) updateManagerBonusEndpoint(w http.ResponseWriter, req *htt
 
 	err = SalaryM.UpdateIncomeExpenseData(iIE.GetIncomeExpense(), bsID, dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("Error" + err.Error()))
 	} else {
@@ -813,13 +799,10 @@ func (api *SalaryAPI) closeAccountSettlementEndpoint(w http.ResponseWriter, req 
 
 	err = SalaryM.CloseAccountSettlement(iCA.GetCloseAccount(), per, dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
 		w.Write([]byte("[Error]" + err.Error()))
 	} else {

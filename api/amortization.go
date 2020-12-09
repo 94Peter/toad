@@ -84,13 +84,10 @@ func (api *AmortizationAPI) deleteAmortizationEndpoint(w http.ResponseWriter, re
 
 	amorM := model.GetAmortizationModel(di)
 	if err := amorM.DeleteAmortization(ID, dbname); err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusNotFound)
-			break
 		}
 		w.Write([]byte(err.Error()))
 		return
@@ -170,14 +167,12 @@ func (api *AmortizationAPI) createAmortizationEndpoint(w http.ResponseWriter, re
 
 	err = amor.CreateAmortization(iAmor.GetAmortization(), dbname)
 	if err != nil {
-		switch err.Error() {
-		case ERROR_CloseDate:
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
-			break
-		default:
+		} else {
 			w.WriteHeader(http.StatusInternalServerError)
-			break
 		}
+
 		w.Write([]byte("Error:" + err.Error()))
 	} else {
 		w.Write([]byte("OK"))

@@ -167,7 +167,7 @@ func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.
 	key := (*queryVar)["key"].(string)
 	status := (*queryVar)["status"].(string)
 	if status == "" {
-		status = "1"
+		status = "0"
 	}
 	am.GetARData(key, status, dbname)
 	//data, err := json.Marshal(result)

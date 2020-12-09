@@ -584,20 +584,21 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 		return err
 	}
 
-	mCaD := &CloseAccount{
-		CloseDate: bs.Date,
-		Uid:       "salary",
-	}
-	salaryM.CloseAccountSettlement(mCaD, permission, dbname)
-
-	fmt.Println(bs.Date)
-	fmt.Println(bs.StrDate)
+	// mCaD := &CloseAccount{
+	// 	CloseDate: bs.Date,
+	// 	Uid:       "salary",
+	// }
+	//salaryM.CloseAccountSettlement(mCaD, permission, dbname) // 2020-12-09 說不做關帳
 
 	ca, err := salaryM.CheckValidCloseDate(bs.Date, dbname)
 	if err != nil {
 		return
 	}
 	fmt.Println("ca:", ca.CloseDate)
+
+	bs.Date = setDayEndDate(bs.Date)
+	fmt.Println(bs.Date)
+	fmt.Println(bs.StrDate)
 
 	t, err := salaryM.getNextDayFromLastTimeSalary(dbname)
 	bs.LastDate = t
@@ -755,8 +756,8 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbna
 	// b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
 	// fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
 
-	res, err := sqldb.Exec(sql, bs.StrDate, year, salaryM.CloseAccount.CloseDate.Unix())
-
+	//res, err := sqldb.Exec(sql, bs.StrDate, year, salaryM.CloseAccount.CloseDate.Unix())
+	res, err := sqldb.Exec(sql, bs.StrDate, year, bs.Date.Unix())
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)
@@ -975,8 +976,8 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 	//fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
 	//b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
 	//fmt.Println("UpdateCommissionBSidAndStatus:", bs.Date+"-01 =>", b.Unix())
-	//res, err := sqldb.Exec(sql, bs.LastDate.Unix(), bs.Date.Unix())
-	res, err := sqldb.Exec(sql, salaryM.CloseAccount.CloseDate.Unix())
+	res, err := sqldb.Exec(sql, bs.LastDate.Unix(), bs.Date.Unix())
+	//res, err := sqldb.Exec(sql, salaryM.CloseAccount.CloseDate.Unix())
 	if err != nil {
 		fmt.Println("[UpdateCommissionBSidAndStatus err] ", err)
 		return err
@@ -3299,7 +3300,8 @@ func (salaryM *SalaryModel) CheckValidCloseDate(t time.Time, dbname string) (*Cl
 	//關帳日在建資料的時間點之後，不給建立
 	ca, _ := salaryM.GetAccountSettlement(dbname)
 	if ca.CloseDate.After(t) {
-		return &ca, errors.New("關帳日期錯誤")
+		errtime := ca.CloseDate.Format("2006-01-02")
+		return &ca, errors.New("關帳日期錯誤:" + errtime)
 	}
 	salaryM.CloseAccount = &ca
 	return &ca, nil

@@ -693,7 +693,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbna
 
 	const sql = `INSERT INTO public.salersalary
 	(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
-	SELECT BS.bsid, A.sid, COALESCE(C.dateID, $1) dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0) Pbonus, 
+	SELECT BS.bsid, A.sid, $1 dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0) Pbonus, 
 	COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary) total, ROUND(A.InsuredAmount*CP.LI*0.2/100) LaborFee,ROUND(A.PayrollBracket*CP.nhi*0.3/100) HealthFee,
 	ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) Welfare,  ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) ) commercialFee,
 	$2 ,
@@ -720,10 +720,10 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbna
 		group by sid 
 	) B on A.sid=B.sid and A.zeroDate = B.zeroDate
 	left join (
-	SELECT c.sid , to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','YYYY-MM')::varchar(50) dateID, sum(c.bonus) Pbonus
+	SELECT c.sid , sum(c.bonus) Pbonus
 	FROM public.receipt r, public.commission c
 	where c.rid = r.rid and c.bsid is null and c.status = 'normal' and extract(epoch from Date)  <= $3
-	group by dateID , c.sid 
+	group by  c.sid 
 	) C on C.sid = A.Sid 
 	cross join (
 		select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
@@ -960,7 +960,7 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 				FROM public.receipt r
 				inner join public.commission c on c.rid = r.rid and c.status = 'normal' and
 				extract(epoch from r.date) <= $1 and c.bsid is null
-				inner join public.SalerSalary SS on SS.date = to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM') and SS.Sid = C.sid
+				inner join public.SalerSalary SS on  SS.Sid = C.sid
 				) AS subquery
 				where com.sid = subquery.sid and com.rid = subquery.rid	;	
 				`

@@ -590,11 +590,11 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 	// }
 	//salaryM.CloseAccountSettlement(mCaD, permission, dbname) // 2020-12-09 說不做關帳
 
-	ca, err := salaryM.CheckValidCloseDate(bs.Date, dbname)
-	if err != nil {
-		return
-	}
-	fmt.Println("ca:", ca.CloseDate)
+	// ca, err := salaryM.CheckValidCloseDate(bs.Date, dbname)
+	// if err != nil {
+	// 	return
+	// }
+	// fmt.Println("ca:", ca.CloseDate)
 
 	bs.Date = setDayEndDate(bs.Date)
 	fmt.Println(bs.Date)

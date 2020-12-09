@@ -551,7 +551,7 @@ func (salaryM *SalaryModel) getNextDayFromLastTimeSalary(dbname string) (mtime t
 	y, m, _ := t.Date()
 	t = time.Date(y, m, 1, 0, 0, 0, 0, loc)
 	strTime := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), 1) //default 月初
-	//Scan失敗使用default值
+	//Scan失敗使用default值,now + 1 day
 	for rows.Next() {
 		if err := rows.Scan(&strTime); err != nil {
 			fmt.Println("getNextDayFromLastTimeSalary err Scan " + err.Error())
@@ -976,7 +976,7 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 	//fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
 	//b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
 	//fmt.Println("UpdateCommissionBSidAndStatus:", bs.Date+"-01 =>", b.Unix())
-	res, err := sqldb.Exec(sql, bs.LastDate.Unix(), bs.Date.Unix())
+	res, err := sqldb.Exec(sql, bs.Date.Unix())
 	//res, err := sqldb.Exec(sql, salaryM.CloseAccount.CloseDate.Unix())
 	if err != nil {
 		fmt.Println("[UpdateCommissionBSidAndStatus err] ", err)

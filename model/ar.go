@@ -346,18 +346,28 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID, dbname string, salerL
 
 	dataF := am.checkEditable(ID, sqldb)
 	errmsg := ""
+	old_bsid := ""
 	for i := 0; i < len(dataF); i++ {
 		element := dataF[i]
 
 		if element.bsid != "" {
-			errmsg += element.branch + element.salaryName + ". "
-		}
-		//去除重複店家判斷
-		if i+1 < len(dataF) {
-			if element.bsid == dataF[i+1].bsid {
-				i++
+			if i == 0 {
+				errmsg += element.branch + element.salaryName + ". "
+				old_bsid = element.bsid
 			}
+			//去除重複店家判斷
+			if i+1 < len(dataF) {
+				if old_bsid == dataF[i+1].bsid {
+					//skip
+					i++
+				} else {
+					errmsg += element.branch + element.salaryName + ". "
+					old_bsid = element.bsid
+				}
+			}
+
 		}
+
 	}
 	fmt.Println(dataF)
 	if errmsg != "" {

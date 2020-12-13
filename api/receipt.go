@@ -147,7 +147,7 @@ func (api *ReceiptAPI) deleteReceiptEndpoint(w http.ResponseWriter, req *http.Re
 	ID := vars["ID"].(string)
 	fmt.Println(ID)
 	rm := model.GetRTModel(di)
-	if err := rm.DeleteReceiptData(ID, dbname); err != nil {
+	if _, err := rm.DeleteReceiptData(ID, dbname, nil); err != nil {
 		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
 		} else {

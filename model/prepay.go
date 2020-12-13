@@ -180,11 +180,17 @@ func (prepayM *PrePayModel) PDF(dbname string) []byte {
 
 func (prepayM *PrePayModel) DeletePrePay(ID, dbname string) (err error) {
 
+	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
 	u := prepayM.getPrePayDataByID(ID, dbname)
 	if u.PPid == "" {
 		return errors.New("not found prepay")
 	}
-	_, err = salaryM.CheckValidCloseDate(u.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(u.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -193,12 +199,6 @@ func (prepayM *PrePayModel) DeletePrePay(ID, dbname string) (err error) {
 				delete from public.PrePay where PPid = '%s';
 				delete from public.BranchPrePay where PPid = '%s';				
 				`
-
-	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 
 	res, err := sqldb.Exec(fmt.Sprintf(sql, ID, ID))
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -220,8 +220,13 @@ func (prepayM *PrePayModel) DeletePrePay(ID, dbname string) (err error) {
 }
 
 func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay, dbname string) (err error) {
+	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
 
-	_, err = salaryM.CheckValidCloseDate(prepay.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(prepay.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -230,12 +235,6 @@ func (prepayM *PrePayModel) CreatePrePay(prepay *PrePay, dbname string) (err err
 	(ppid, date, itemname, description, fee)
 	VALUES ($1, $2, $3, $4, $5)
 	;`
-
-	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 
 	fakeId := time.Now().Unix()
 
@@ -298,7 +297,14 @@ func (prepayM *PrePayModel) UpdatePrePay(ID, dbname string, prepay *PrePay) (err
 	if u.PPid == "" {
 		return errors.New("not found prepay")
 	}
-	_, err = salaryM.CheckValidCloseDate(u.Date, dbname)
+
+	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = salaryM.CheckValidCloseDate(u.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -307,12 +313,6 @@ func (prepayM *PrePayModel) UpdatePrePay(ID, dbname string, prepay *PrePay) (err
 	SET date= $2, itemname= $3, description= $4, fee=$5
 	WHERE ppid = $1;
 	;`
-
-	interdb := prepayM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 
 	res, err := sqldb.Exec(sql, ID, prepay.Date, prepay.ItemName, prepay.Description, prepay.Fee)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)

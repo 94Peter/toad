@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -216,7 +217,7 @@ func (cm *CModel) PDF(isNew bool) {
 	return //p.GetBytesPdf()  這邊使用GetBytesPdf 會莫名其妙多一頁面
 }
 
-func (cm *CModel) CreateCommission(rt *Receipt, dbname string) (err error) {
+func (cm *CModel) CreateCommission(rt *Receipt, sqldb *sql.DB) (err error) {
 	/**
 		預防薪資錯誤，若收款日期當月已建立薪資表，則自動將此傭金編入remove。#但不行，會造成傭金錯誤。
 		or armap.sid = cs.identityNum 條件查詢新增，因為住通串接，他們帶入的可能是身分證，本來使用的sid是電話號碼。
@@ -261,11 +262,11 @@ func (cm *CModel) CreateCommission(rt *Receipt, dbname string) (err error) {
 	// inner join 	public.armap armap on armap.arid = ar.arid
 	// where ar.arid = $2 ;`
 
-	interdb := cm.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
+	// interdb := cm.imr.GetSQLDBwithDbname(dbname)
+	// sqldb, err := interdb.ConnectSQLDB()
+	// if err != nil {
+	// 	return err
+	// }
 	fmt.Println("CreateCommission Rid:", rt.Rid)
 	//fmt.Println(rt.Amount)
 	fmt.Println("CreateCommission ARid:", rt.ARid)
@@ -285,7 +286,7 @@ func (cm *CModel) CreateCommission(rt *Receipt, dbname string) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, CreateCommission")
 	}
-	defer sqldb.Close()
+	
 	return nil
 }
 

@@ -143,6 +143,9 @@ func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 	}
 
 	am := model.GetARModel(di)
+	model.GetRTModel(di) //
+	model.GetCModel(di)
+	model.GetDecuctModel(di)
 
 	if err := am.UpdateAccountReceivable(iUAR.Amount, ID, dbname, iUAR.SalerList); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -386,7 +389,7 @@ func (api *ARAPI) createReceiptEndpoint(w http.ResponseWriter, req *http.Request
 	rm := model.GetRTModel(di)
 	_ = model.GetCModel(di)      //init Commission Model for create commission
 	_ = model.GetDecuctModel(di) //init Deduct Model for update DeductRid
-	_err := rm.CreateReceipt(irt.GetReceipt(), dbname)
+	_err := rm.CreateReceipt(irt.GetReceipt(), dbname, nil)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error()))
@@ -515,6 +518,21 @@ func (iUAR *inputUpdateAR) isARValid() (bool, error) {
 		return false, errors.New("amount is not vaild")
 	}
 
+	if len(iUAR.SalerList) <= 0 {
+		return false, errors.New("SalerList is empty")
+	}
+
+	for _, element := range iUAR.SalerList {
+		if element.Percent < 0 {
+			return false, errors.New("Percent is not valid")
+		}
+		if element.Sid == "" {
+			return false, errors.New("account is empty")
+		}
+		if element.SName == "" {
+			return false, errors.New("name is empty")
+		}
+	}
 	return true, nil
 }
 

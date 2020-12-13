@@ -120,12 +120,18 @@ func (amorM *AmortizationModel) getAmortizationDataByAmorID(id, dbname string) *
 
 func (amorM *AmortizationModel) DeleteAmortization(ID, dbname string) (err error) {
 	fmt.Println("DeleteAmortization")
+	interdb := amorM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
 	delamor := amorM.getAmortizationDataByAmorID(ID, dbname)
 	if delamor.AmorId == "" {
 		err = errors.New("not found amortization")
 		return
 	}
-	_, err = salaryM.CheckValidCloseDate(delamor.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(delamor.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -137,11 +143,7 @@ func (amorM *AmortizationModel) DeleteAmortization(ID, dbname string) (err error
 
 	del := fmt.Sprintf(sql, ID, ID)
 	//interdb := amorM.imr.GetSQLDB()
-	interdb := amorM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
+
 	fmt.Println("sqldb Exec")
 	res, err := sqldb.Exec(del)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -164,11 +166,6 @@ func (amorM *AmortizationModel) DeleteAmortization(ID, dbname string) (err error
 
 func (amorM *AmortizationModel) CreateAmortization(amor *Amortization, dbname string) (err error) {
 
-	_, err = salaryM.CheckValidCloseDate(amor.Date, dbname)
-	if err != nil {
-		return
-	}
-
 	const sql = `INSERT INTO public.amortization
 	(AmorId , branch, date, itemname, gaincost, amortizationyearlimit, monthlyamortizationamount, firstamortizationamount, notAmortizationAmount)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $5)
@@ -178,6 +175,11 @@ func (amorM *AmortizationModel) CreateAmortization(amor *Amortization, dbname st
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
+	}
+
+	_, err = salaryM.CheckValidCloseDate(amor.Date, dbname, sqldb)
+	if err != nil {
+		return
 	}
 
 	fakeId := time.Now().Unix()

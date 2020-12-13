@@ -136,8 +136,13 @@ func (decuctModel *DeductModel) Json() ([]byte, error) {
 }
 
 func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct, dbname string) (err error) {
+	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
 
-	_, err = salaryM.CheckValidCloseDate(time.Now(), dbname)
+	_, err = salaryM.CheckValidCloseDate(time.Now(), dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -151,11 +156,6 @@ func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct, dbname string) (err
 				Left join public.receipt AS r on r.date = (select MIN(Date) FROM public.receipt where arid = $2) and v.column2 = r.arid limit 1;`
 
 	//interdb := decuctModel.imr.GetSQLDB()
-	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 
 	fakeid := time.Now().Unix()
 	fmt.Println("fakeid did:", fakeid)
@@ -331,7 +331,7 @@ func (decuctModel *DeductModel) DeleteDeduct(ID, dbname string) (err error) {
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -379,7 +379,7 @@ func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber, dbn
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -419,7 +419,7 @@ func (decuctModel *DeductModel) UpdateDeductFee(Did, dbname string, fee int) (er
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -459,7 +459,7 @@ func (decuctModel *DeductModel) UpdateDeductItem(Did, item, dbname string) (err 
 	if d.Did == "" {
 		return errors.New(" not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -485,7 +485,7 @@ func (decuctModel *DeductModel) UpdateDeductItem(Did, item, dbname string) (err 
 	return nil
 }
 
-func (decuctModel *DeductModel) UpdateDeductRid(ARid, dbname string) (err error) {
+func (decuctModel *DeductModel) UpdateDeductRid(ARid string, sqldb *sql.DB) (err error) {
 	const sql = `Update public.deduct 
 				set rid = tmp.ReceiptID
 				FROM (
@@ -503,11 +503,11 @@ func (decuctModel *DeductModel) UpdateDeductRid(ARid, dbname string) (err error)
 	// --where D.arid = '1566575681'
 	// and ( SELECT rid from public.deduct WHERE arid = '1566575681') is null
 
-	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
+	// interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	// sqldb, err := interdb.ConnectSQLDB()
+	// if err != nil {
+	// 	return err
+	// }
 
 	// fakeid := time.Now().Unix()
 
@@ -529,7 +529,7 @@ func (decuctModel *DeductModel) UpdateDeductRid(ARid, dbname string) (err error)
 	if id == 0 {
 		return errors.New("Invalid operation, UpdateDeductRid")
 	}
-	defer sqldb.Close()
+
 	return nil
 }
 
@@ -542,7 +542,7 @@ func (decuctModel *DeductModel) UpdateDeductSales(Did, dbname string, salerList 
 	if d.Did == "" {
 		return errors.New("not found decuct")
 	}
-	_, err = salaryM.CheckValidCloseDate(d.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(d.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -629,6 +629,9 @@ func (decuctModel *DeductModel) getDeductByID(ID, dbname string, sqldb *sql.DB) 
 			return nil
 		}
 		deduct.Date = lasttime.Time
+	}
+	if deduct.Date.IsZero() {
+		fmt.Println("deduct", deduct)
 	}
 	defer sqldb.Close()
 	return deduct

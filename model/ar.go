@@ -77,6 +77,13 @@ type AccountReceivable struct {
 	ar []*AR
 }
 
+type mapRidBsid struct {
+	rid        string
+	bsid       string
+	branch     string
+	salaryName string
+}
+
 type inputhouseGoAR struct {
 	ARid     int       `json:"id"`
 	Date     time.Time `json:"completionDate"` //成交日期
@@ -176,7 +183,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 	 */
 
 	db := am.imr.GetSQLDBwithDbname(dbname)
-	fmt.Println(sql)
+	//fmt.Println(sql)
 	//rows, err := db.SQLCommand(fmt.Sprintf(sql))
 
 	rows, err := db.SQLCommand(sql)
@@ -318,6 +325,7 @@ func (am *ARModel) Json(mtype string) ([]byte, error) {
 }
 
 func (am *ARModel) UpdateAccountReceivable(amount int, ID, dbname string, salerList []*MAPSaler) (err error) {
+
 	fmt.Println("UpdateAccountReceivable")
 	const sql = `Update public.ar t1
 					set	amount = $1
@@ -335,6 +343,27 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID, dbname string, salerL
 	if err != nil {
 		return err
 	}
+
+	dataF := am.checkEditable(ID, sqldb)
+	errmsg := ""
+	for i := 0; i < len(dataF); i++ {
+		element := dataF[i]
+
+		if element.bsid != "" {
+			errmsg += element.branch + element.salaryName + ". "
+		}
+		//去除重複店家判斷
+		if i+1 < len(dataF) {
+			if element.bsid == dataF[i+1].bsid {
+				i++
+			}
+		}
+	}
+	fmt.Println(dataF)
+	if errmsg != "" {
+		return errors.New("[ERROR]:" + errmsg + " 已產生此相關薪資")
+	}
+
 	//fmt.Println("sqldb Exec " + sql)
 	res, err := sqldb.Exec(sql, amount, ID)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -352,14 +381,38 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID, dbname string, salerL
 		return errors.New("[ERROR]: Maybe id is not found or amount is not allowed. (amount should be greater then sum of receive amount)")
 	}
 	//刪除ARMAP 重建
-	am.DeleteARandDeductMAP(ID, dbname)
+	am.DeleteARandDeductMAP(ID, sqldb)
 	am.SaveARMAP(salerList, ID, sqldb)
 	am.SaveDeductMAP(ID, sqldb)
+	//delete old receipt commission && rebuild receipt!
+	doneMsg := ""
+	for i := 0; i < len(dataF); i++ {
+		element := dataF[i]
+		if element.bsid == "" {
+			receipt := rm.GetReceiptDataByID(sqldb, element.rid)
+			if receipt.Rid != "" {
+				msg, err := rm.DeleteReceiptData(element.rid, dbname, sqldb) //bsid無綁定狀況，刪除commission。 // 後續爭議款可能還要改成自動又開發票
+				doneMsg += msg
+				if err != nil { //not found receipt是正常的，會取出相同的rid(但可能不同人) 但都可以進行刪除
+					// if doneMsg != "" {
+					// 	return errors.New("[ERROR]:" + doneMsg + " 已刪除收款," + err.Error())
+					// } else {
+					// 	return err
+					// }
+				}
+				err = rm.CreateReceipt(receipt, dbname, sqldb)
+				if err != nil {
+					fmt.Println("CreateReceipt on update ar error:", receipt.Rid)
+					return errors.New("[ERROR]: CreateReceipt on update ar, " + err.Error())
+				}
+			}
+		}
+	}
 	//連動更改ARMAP TABLE的數值 (目前重新建立，不須連動了)
 	//am.UpdateAccountReceivableSalerProportion(salerList, ID)
 
 	//連動更改傭金明細TABLE的數值
-	am.RefreshCommissionBonus(ID, dbname)
+	//am.RefreshCommissionBonus(ID, dbname) //重新建立後，數值理應是新的
 	defer sqldb.Close()
 	return nil
 }
@@ -410,27 +463,16 @@ func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
 
 //;
 
-func (am *ARModel) DeleteARandDeductMAP(ID, dbname string) (err error) {
+func (am *ARModel) DeleteARandDeductMAP(ID string, sqldb *sql.DB) (err error) {
 	fmt.Println("DeleteARandDeductMAP")
 	sql := `delete from public.armap where arid = $1`
-
-	interdb := am.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 
 	_, err = sqldb.Exec(sql, ID)
 
 	sql = `DELETE FROM public.deductmap WHERE did IN (SELECT did FROM public.deduct WHERE arid = $1) ;`
 
-	sqldb, err = interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-
 	_, err = sqldb.Exec(sql, ID)
-	defer sqldb.Close()
+
 	return nil
 }
 
@@ -859,4 +901,35 @@ func (iGoAR *inputhouseGoAR) GetAR(action string) *AR {
 		//Fee:      iAR.Fee,
 		Sales: sales,
 	}
+}
+
+func (am *ARModel) checkEditable(ID string, sqldb *sql.DB) []mapRidBsid {
+
+	const mapSql = `select * from (
+		select c.rid , COALESCE(bs.bsid,'') bsid , COALESCE(bs.branch,''), COALESCE(bs.name,'') from (
+			select arid, rid from receipt where arid = $1
+		) r inner join (
+		  select * from 
+			(select rid, bsid from commission) tmpc
+		) c on c.rid = r.rid 
+		LEFT JOIN branchsalary bs on bs.bsid = c.bsid		
+	   ) tmp order by bsid desc;`
+
+	rows, err := sqldb.Query(mapSql, ID)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("checkEditable:", err)
+	}
+
+	mapList := []mapRidBsid{}
+	for rows.Next() {
+		var mapId mapRidBsid
+		if err := rows.Scan(&mapId.rid, &mapId.bsid, &mapId.branch, &mapId.salaryName); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		mapList = append(mapList, mapId)
+
+	}
+
+	return mapList
 }

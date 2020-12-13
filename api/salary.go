@@ -815,7 +815,7 @@ func (api *SalaryAPI) getCloseAccountSettlementEndpoint(w http.ResponseWriter, r
 	dbname := req.Header.Get("dbname")
 	SalaryM := model.GetSalaryModel(di)
 
-	SalaryM.GetAccountSettlement(dbname)
+	SalaryM.GetAccountSettlement(dbname, nil)
 	//data, err := json.Marshal(result)
 	data, err := SalaryM.Json("AccountSettlement")
 	if err != nil {

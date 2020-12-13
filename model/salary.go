@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -3119,16 +3120,20 @@ func (salaryM *SalaryModel) makeTxtTransferSalary() (string, string) {
 }
 
 //Action:取得目前關帳日期
-func (salaryM *SalaryModel) GetAccountSettlement(dbname string) (ca CloseAccount, err error) {
+func (salaryM *SalaryModel) GetAccountSettlement(dbname string, sqldb *sql.DB) (ca CloseAccount, err error) {
+
 	const sql = `SELECT id, uid, closedate, status, date
 					FROM public.accountsettlement Where status = '1';`
 
 	ca = CloseAccount{}
-
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return
+	if sqldb == nil {
+		interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
+		sqldb, err = interdb.ConnectSQLDB()
+		if err != nil {
+			return
+		}
+		fmt.Println("GetAccountSettlement sqldb.Close()sqldb.Close()sqldb.Close()sqldb.Close()sqldb.Close()sqldb.Close()sqldb.Close()sqldb.Close()sqldb.Close()sqldb.Close()")
+		defer sqldb.Close()
 	}
 
 	rows, err := sqldb.Query(sql)
@@ -3143,10 +3148,10 @@ func (salaryM *SalaryModel) GetAccountSettlement(dbname string) (ca CloseAccount
 		}
 
 	}
-	fmt.Println(ca)
-	fmt.Println(ca.CloseDate.Unix())
+	//fmt.Println("GetAccountSettlement:", ca)
+	//fmt.Println("GetAccountSettlement:", ca.CloseDate.Unix())
 	salaryM.CloseAccount = &ca
-	defer sqldb.Close()
+
 	return
 }
 
@@ -3172,8 +3177,13 @@ func (salaryM *SalaryModel) DeleteAccountSettlement(dbname string) (ca CloseAcco
 
 //Action:會計關帳
 func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per, dbname string) (err error) {
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
 
-	oriCa, err := salaryM.CheckValidCloseDate(ca.CloseDate, dbname)
+	oriCa, err := salaryM.CheckValidCloseDate(ca.CloseDate, dbname, sqldb)
 	if err != nil && per != permission.Admin {
 		return
 	}
@@ -3185,11 +3195,6 @@ func (salaryM *SalaryModel) CloseAccountSettlement(ca *CloseAccount, per, dbname
 
 	ca.CloseDate = setDayEndDate(ca.CloseDate)
 
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 	defer sqldb.Close()
 
 	fakeId := time.Now().Unix()
@@ -3295,10 +3300,10 @@ func (salaryM *SalaryModel) updateAllAccountSettlementStatus(dbname string) erro
 	return nil
 }
 
-func (salaryM *SalaryModel) CheckValidCloseDate(t time.Time, dbname string) (*CloseAccount, error) {
+func (salaryM *SalaryModel) CheckValidCloseDate(t time.Time, dbname string, sqldb *sql.DB) (*CloseAccount, error) {
 
 	//關帳日在建資料的時間點之後，不給建立
-	ca, _ := salaryM.GetAccountSettlement(dbname)
+	ca, _ := salaryM.GetAccountSettlement(dbname, sqldb)
 	if ca.CloseDate.After(t) {
 		errtime := ca.CloseDate.Format("2006-01-02")
 		return &ca, errors.New("關帳日期錯誤:" + errtime)

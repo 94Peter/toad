@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,19 +47,6 @@ func GetRTModel(imr interModelRes) *RTModel {
 
 func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid, dbname string) error {
 
-	r := rm.GetReceiptDataByRid(Rid, dbname)
-	if r.Rid == "" {
-		return errors.New("not found receipt")
-	}
-
-	_, err := salaryM.CheckValidCloseDate(r.Date, dbname)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("UpdateReceiptData")
-
-	const sql = `Update public.receipt set amount = $1 ,date = $2 where Rid = $3;`
 	db := rm.imr.GetSQLDBwithDbname(dbname)
 
 	mdb, err := db.ConnectSQLDB()
@@ -66,6 +54,21 @@ func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid, dbname string) error
 		fmt.Println(err)
 		return err
 	}
+
+	r := rm.GetReceiptDataByID(mdb, Rid)
+	if r.Rid == "" {
+		return errors.New("not found receipt")
+	}
+
+	_, err = salaryM.CheckValidCloseDate(r.Date, dbname, mdb)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("UpdateReceiptData")
+
+	const sql = `Update public.receipt set amount = $1 ,date = $2 where Rid = $3;`
+
 	res, err := mdb.Exec(sql, amount, Date, Rid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -86,66 +89,72 @@ func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid, dbname string) error
 	return nil
 }
 
-func (rm *RTModel) DeleteReceiptData(Rid, dbname string) error {
-
-	r := rm.GetReceiptDataByRid(Rid, dbname)
-	if r == nil || r.Rid == "" {
-		return errors.New("not found receipt")
+//Delete Commission data at same time
+func (rm *RTModel) DeleteReceiptData(Rid, dbname string, mdb *sql.DB) (string, error) {
+	if mdb == nil {
+		db := rm.imr.GetSQLDBwithDbname(dbname)
+		mdb, _ = db.ConnectSQLDB()
+		defer mdb.Close()
 	}
 
-	_, err := salaryM.CheckValidCloseDate(r.Date, dbname)
+	r := rm.GetReceiptDataByID(mdb, Rid)
+	if r == nil || r.Rid == "" {
+		return "", errors.New("not found receipt")
+	}
+
+	ivData := rm.GetInvoiceDataByRid(mdb, Rid)
+	if len(ivData) > 0 {
+		msg := ""
+		for _, element := range ivData {
+			msg += element.InvoiceNo + " "
+		}
+		return "", errors.New("[ERROR]" + msg + "發票號碼已開立，需先處理")
+	}
+
+	_, err := salaryM.CheckValidCloseDate(r.Date, dbname, mdb)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	fmt.Println("DeleteReceiptData:")
 
-	const sql = `Delete FROM public.receipt where Rid = $1;`
-	db := rm.imr.GetSQLDBwithDbname(dbname)
+	const sql = `Delete FROM public.receipt where Rid = '%s';
+				 Delete From public.commission where Rid = '%s';
+				 `
 
-	mdb, err := db.ConnectSQLDB()
+	res, err := mdb.Exec(fmt.Sprintf(sql, Rid, Rid))
 	if err != nil {
 		fmt.Println(err)
-		return err
-	}
-	res, err := mdb.Exec(sql, Rid)
-	if err != nil {
-		fmt.Println(err)
-		return err
+		return "", err
 	}
 
 	id, err := res.RowsAffected()
 	if err != nil {
 		fmt.Println("PG Affecte Wrong: ", err)
-		return err
+		return "", err
 	}
 
 	fmt.Println("RowsAffected: ", id)
 
 	if id <= 0 {
-		return errors.New("not found receipt")
+		return "", errors.New("not found receipt")
 	}
-	defer mdb.Close()
-	return nil
+
+	return r.CaseName + r.CustomerType, nil
 }
 
-//包含invoice
-func (rm *RTModel) GetReceiptDataByID(rid, dbname string) *Receipt {
+func (rm *RTModel) GetReceiptDataByID(sqldb *sql.DB, rid string) *Receipt {
 
-	//if invoiceno is null in Database return ""
-	//const qspl = `SELECT rid, date, cno, casename, type, name, amount, COALESCE(NULLIF(invoiceno, null),'') FROM public.receipt;`
-	//left join public.invoice I on  I.Rid = R.rid
-	//
 	fmt.Println("GetReceiptDataByID:", rid)
-	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(iv.invoiceno, null),'') 
+	const qspl = `SELECT R.arid, R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount
 					FROM public.receipt R
 					inner join public.ar AR on AR.arid = R.arid
 					left join public.invoice iv on iv.rid = r.rid				
 					where r.rid = '%s'`
 
-	db := rm.imr.GetSQLDBwithDbname(dbname)
-
-	rows, err := db.SQLCommand(fmt.Sprintf(qspl, rid))
+	//db := rm.imr.GetSQLDBwithDbname(dbname)
+	//sqldb, err := db.ConnectSQLDB()
+	rows, err := sqldb.Query(fmt.Sprintf(qspl, rid))
 	if err != nil {
 		fmt.Println("[rows err]:", err)
 		return nil
@@ -155,11 +164,12 @@ func (rm *RTModel) GetReceiptDataByID(rid, dbname string) *Receipt {
 	for rows.Next() {
 
 		fmt.Println("scan start")
-		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount); err != nil {
+		if err := rows.Scan(&rt.ARid, &rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 		fmt.Println("scan end")
 	}
+	rt.InvoiceData = rm.GetInvoiceDataByRid(sqldb, rid)
 	fmt.Println("GetReceiptDataByID Done")
 
 	return &rt
@@ -167,13 +177,6 @@ func (rm *RTModel) GetReceiptDataByID(rid, dbname string) *Receipt {
 
 func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receipt {
 
-	// const sql = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , iv.amount, COALESCE(NULLIF(iv.invoiceno, null),'') , cs.branch
-	// 				FROM public.receipt R
-	// 				inner join public.ar AR on AR.arid = R.arid
-	// 				left join public.invoice iv on iv.rid = r.rid
-	// 				left join public.configSaler cs on iv.sid = cs.sid
-	// 				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '86399999 milliseconds'::interval) <= '%d'
-	// 				order by date desc`
 	const sql = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount 
 					FROM public.receipt R
 					inner join public.ar AR on AR.arid = R.arid				
@@ -235,6 +238,29 @@ func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receip
 	return rm.rtList
 }
 
+func (rm *RTModel) GetInvoiceDataByRid(sqldb *sql.DB, rid string) []*Invoice {
+	const Mapsql = `SELECT rid, branch, invoiceno, buyerid, sellerid, title, date, amount	FROM public.invoice where rid = $1; `
+	rows, err := sqldb.Query(Mapsql, rid)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	InvoiceData := []*Invoice{}
+	for rows.Next() {
+
+		var iv Invoice
+
+		if err := rows.Scan(&iv.Rid, &iv.Branch, &iv.InvoiceNo, &iv.BuyerID, &iv.SellerID, &iv.Title, &iv.Date, &iv.TotalAmount); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		InvoiceData = append(InvoiceData, &iv)
+
+	}
+	return InvoiceData
+}
+
+/*
 func (rm *RTModel) GetReceiptDataByRid(rid, dbname string) *Receipt {
 
 	//if invoiceno is null in Database return ""
@@ -244,8 +270,8 @@ func (rm *RTModel) GetReceiptDataByRid(rid, dbname string) *Receipt {
 	fmt.Println("GetReceiptDataByRid:", rid)
 	const qspl = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount, COALESCE(NULLIF(iv.invoiceno, null),'')
 					FROM public.receipt R
-					inner join public.ar AR on AR.arid = R.arid	
-					LEFT join public.invoice iv on iv.rid = R.rid				
+					inner join public.ar AR on AR.arid = R.arid
+					LEFT join public.invoice iv on iv.rid = R.rid
 					where R.rid = '%s' `
 	db := rm.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, rid))
@@ -268,21 +294,28 @@ func (rm *RTModel) GetReceiptDataByRid(rid, dbname string) *Receipt {
 
 	return nil
 }
-
+*/
 func (rm *RTModel) Json() ([]byte, error) {
 	return json.Marshal(rm.rtList)
 }
 
-func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string) (err error) {
-	_, err = salaryM.CheckValidCloseDate(rt.Date, dbname)
+func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err error) {
+	if sqldb == nil {
+		interdb := rm.imr.GetSQLDBwithDbname(dbname)
+		sqldb, _ = interdb.ConnectSQLDB()
+		defer sqldb.Close()
+	}
+
+	_, err = salaryM.CheckValidCloseDate(rt.Date, dbname, sqldb)
 	if err != nil {
+		fmt.Println("CreateReceipt:", err)
 		return
 	}
 	fmt.Println("CreateReceipt : arid is ", rt.ARid)
 	/*
 	*前端時間 會送 yyyy-mm-dd 16:00:00 的UTC時間，方便計算，此地直接 加8小。
 	*arid exist
-	*(加總歷史收款明細 + 此筆單子) <= 應收款項的收款
+	*(加總歷史收款明細 + 此筆單子) <= 應收款項的收款  to_timestamp($2,'YYYY-MM-DD hh24:mi:ss')
 	**/
 	const sql = `INSERT INTO public.receipt (Rid, Date, Amount, ARid)
 				SELECT * FROM (SELECT $1::varchar(50), to_timestamp($2,'YYYY-MM-DD hh24:mi:ss') , $3::INTEGER , $4::varchar(50)) AS tmp
@@ -292,19 +325,13 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string) (err error) {
 				;`
 	//and ( select sum(amount)+$3 FROM public.receipt  where arid = $4 group by arid ) <=  (SELECT amount from public.ar ar WHERE arid = $4);`
 
-	interdb := rm.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-	fmt.Println("sqldb Exec")
+	// out, err := json.Marshal(rt)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	//fmt.Println(string(out))
+	//fmt.Println(string(sql))
 
-	out, err := json.Marshal(rt)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(out))
-	fmt.Println(string(sql))
 	t := time.Now().Unix()
 	res, err := sqldb.Exec(sql, t, rt.Date, rt.Amount, rt.ARid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -339,16 +366,16 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string) (err error) {
 	//init cm on createReceiptEndpoint  at ar.go(api)
 	Rid := fmt.Sprintf("%v", t)
 	rt.setRid(Rid)
-	err = cm.CreateCommission(rt, dbname)
+	err = cm.CreateCommission(rt, sqldb)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("UpdateDeductRid [GO]")
-	err = decuctModel.UpdateDeductRid(rt.ARid, dbname)
+	err = decuctModel.UpdateDeductRid(rt.ARid, sqldb)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println("UpdateDeductRid:" + err.Error())
 	}
-	defer sqldb.Close()
+
 	return nil
 }

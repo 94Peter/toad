@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -51,7 +52,7 @@ var (
 type Invoice struct {
 	Signatrue string `json:"-"`
 	//No          string    `json:"invoice_no"`
-	RandNum     string    `json:"-"`
+	RandNum     string    `json:"random_number"` //解析字串要用到，回傳前端就當作多餘的吧
 	Date        string    `json:"invoice_datetime"`
 	SalesAmount float64   `json:"-"`
 	TotalAmount int       `json:"amount"`
@@ -66,8 +67,8 @@ type Invoice struct {
 	InvoiceNo string `json:"invoice_no"`
 	//Amount    string `json:"amount"`
 	//Invoice      string `json:"invoice"`
-	Left_qrcode  string `json:"-"`
-	Right_qrcode string `json:"-"`
+	Left_qrcode  string //解析字串要用到，回傳前端就當作多餘的吧
+	Right_qrcode string //解析字串要用到，回傳前端就當作多餘的吧
 
 	Branch string `json:"branch"` //
 }
@@ -249,9 +250,16 @@ func (invoiceM *InvoiceModel) DeleteInvoiceConfig(branch, dbname string) error {
 func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice, dbname string) (string, error) {
 	Rid := inputInvoice.Rid
 
+	interdb := invoiceM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		fmt.Println("[ERROR CreateInvoice ConnectSQLDB]", err)
+		return "", err
+	}
+
 	fmt.Println(Rid)
 	result := ""
-	receipt := rm.GetReceiptDataByRid(Rid, dbname)
+	receipt := rm.GetReceiptDataByID(sqldb, Rid)
 
 	if receipt == nil {
 		fmt.Println("receipt is null")
@@ -296,7 +304,7 @@ func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice, dbname string
 			}
 		}
 		//invoice, err := invoiceM.CreateInvoiceDataFromAPI(inputInvoice, data.Branch, dbname)
-		invoice, err := invoiceM.CreateInvoiceDataFromAPI_V2(inputInvoice, data, sellerID, auth, dbname)
+		invoice, err := invoiceM.CreateInvoiceDataFromAPI_V2(sqldb, inputInvoice, data, sellerID, auth, dbname)
 		if err != nil {
 			fmt.Println("[CreateInvoiceDataFromAPI ERR:", err)
 			return "", err
@@ -310,8 +318,6 @@ func (invoiceM *InvoiceModel) CreateInvoice(inputInvoice *Invoice, dbname string
 		rid, invoiceno, buyerid, sellerid, randomnum, title, date, amount, left_qrcode, right_qrcode, sid, branch)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`
 
-		interdb := invoiceM.imr.GetSQLDBwithDbname(dbname)
-		sqldb, err := interdb.ConnectSQLDB()
 		if err != nil {
 			return "", err
 		}
@@ -559,13 +565,13 @@ func (invoiceM *InvoiceModel) GetInvoicePDF(rid, dbname string, p *pdf.Pdf) {
 	return
 }
 
-func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice, branch, dbname string) (*Invoice, error) {
+func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(sqldb *sql.DB, iv *Invoice, branch, dbname string) (*Invoice, error) {
 	fmt.Println("CreateInvoiceDataFromAPI")
 	if rm == nil {
 		fmt.Println("rm is null")
 		return nil, errors.New("rm is null")
 	}
-	r := rm.GetReceiptDataByID(iv.Rid, dbname)
+	r := rm.GetReceiptDataByID(sqldb, iv.Rid)
 	ivdvList, err := invoiceM.GetInvoiceConfig(branch, dbname)
 
 	if len(ivdvList) == 0 {
@@ -577,13 +583,13 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice, branch, dbna
 		return nil, errors.New("invoice setting error")
 	}
 
-	out2, err := json.Marshal(r)
+	out1, err := json.Marshal(r)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 
 	}
-	fmt.Println("Out2\n" + string(out2))
+	fmt.Println("Out 1\n" + string(out1))
 	if r.Rid == "" {
 		fmt.Println("not found receipt")
 		return nil, errors.New("not found receipt")
@@ -689,13 +695,14 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI(iv *Invoice, branch, dbna
 			fmt.Println(err)
 			return nil, err
 		}
-		fmt.Println("Out2\n" + string(out))
+		fmt.Println("Out v1\n" + string(out))
+
 	}
 
 	return invoice, nil
 }
 
-func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI_V2(iv *Invoice, commission *Commission, sellerID, auth, dbname string) (*Invoice, error) {
+func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI_V2(sqldb *sql.DB, iv *Invoice, commission *Commission, sellerID, auth, dbname string) (*Invoice, error) {
 	fmt.Println("CreateInvoiceDataFromAPI_V2")
 
 	if auth == "" {
@@ -705,7 +712,7 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI_V2(iv *Invoice, commissio
 		return nil, errors.New("sellerID invoice setting error")
 	}
 
-	r := rm.GetReceiptDataByID(iv.Rid, dbname)
+	r := rm.GetReceiptDataByID(sqldb, iv.Rid)
 
 	tmap := make(map[string]interface{})
 	deatils := make([]map[string]interface{}, 0, 0)
@@ -808,6 +815,7 @@ func (invoiceM *InvoiceModel) CreateInvoiceDataFromAPI_V2(iv *Invoice, commissio
 			return nil, err
 		}
 		fmt.Println("Out2\n" + string(out))
+
 	}
 
 	return invoice, nil

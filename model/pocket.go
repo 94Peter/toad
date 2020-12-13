@@ -137,18 +137,18 @@ func (pocketM *PocketModel) DeletePocket(ID, dbname string) (err error) {
 		return errors.New("not found pocket")
 	}
 
-	_, err = salaryM.CheckValidCloseDate(p.Date, dbname)
-	if err != nil {
-		return
-	}
-
-	const sql = `Delete from public.pocket	where Pid = $1 ;`
-
 	interdb := pocketM.imr.GetSQLDB()
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
 		return err
 	}
+
+	_, err = salaryM.CheckValidCloseDate(p.Date, dbname, sqldb)
+	if err != nil {
+		return
+	}
+
+	const sql = `Delete from public.pocket	where Pid = $1 ;`
 
 	res, err := sqldb.Exec(sql, ID)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
@@ -267,7 +267,13 @@ func (pocketM *PocketModel) UpdatePocketBalance(sqldb *sql.DB) (err error) {
 
 func (pocketM *PocketModel) CreatePocket(pocket *Pocket, dbname string) (err error) {
 
-	_, err = salaryM.CheckValidCloseDate(pocket.Date, dbname)
+	interdb := pocketM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	_, err = salaryM.CheckValidCloseDate(pocket.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -277,11 +283,6 @@ func (pocketM *PocketModel) CreatePocket(pocket *Pocket, dbname string) (err err
 	VALUES ($1, to_timestamp($2,'YYYY-MM-DD'), $3, $4, $5, $6, $7, $8)
 	;`
 
-	interdb := pocketM.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 	t := time.Now()
 	h := t.Hour()
 	m := t.Minute()
@@ -313,12 +314,18 @@ func (pocketM *PocketModel) CreatePocket(pocket *Pocket, dbname string) (err err
 
 func (pocketM *PocketModel) UpdatePocket(ID, dbname string, pocket *Pocket) (err error) {
 
+	interdb := pocketM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
 	p := pocketM.getPocketDataByID(ID)
 	if p.Pid == "" {
 		return errors.New("not found pocket")
 	}
 
-	_, err = salaryM.CheckValidCloseDate(p.Date, dbname)
+	_, err = salaryM.CheckValidCloseDate(p.Date, dbname, sqldb)
 	if err != nil {
 		return
 	}
@@ -333,11 +340,6 @@ func (pocketM *PocketModel) UpdatePocket(ID, dbname string, pocket *Pocket) (err
 				SET pid = $1 , date = to_timestamp($2,'YYYY-MM-DD'), branch=$3, itemname=$4, description=$5, circleid=$6, income=$7, fee=$8
 				WHERE pid= $9` // and Branch = $3;`
 
-	interdb := pocketM.imr.GetSQLDB()
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 	t := time.Now()
 	h := t.Hour()
 	m := t.Minute()

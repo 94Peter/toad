@@ -602,16 +602,12 @@ func (decuctModel *DeductModel) getDeductByID(ID, dbname string, sqldb *sql.DB) 
 	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	// db := prepayM.imr.GetSQLDB()
 	// sqldb, err := db.ConnectSQLDB()
-	f := false
+
 	if sqldb == nil {
 		fmt.Println("getDeductByID")
 		sqldb, _ = decuctModel.imr.GetSQLDBwithDbname(dbname).ConnectSQLDB()
-		f = true
-	}
-	if f {
-		if sqldb == nil {
-			fmt.Println("getDeductByID sqldb null")
-		}
+		defer sqldb.Close()
+
 	}
 
 	rows, err := sqldb.Query(fmt.Sprintf(sql, ID))
@@ -633,6 +629,6 @@ func (decuctModel *DeductModel) getDeductByID(ID, dbname string, sqldb *sql.DB) 
 	if deduct.Date.IsZero() {
 		fmt.Println("deduct", deduct)
 	}
-	defer sqldb.Close()
+
 	return deduct
 }

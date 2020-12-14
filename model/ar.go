@@ -242,6 +242,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 	// }
 	// fmt.Println(string(out))
 	am.arList = arDataList
+
 	return am.arList
 	// influxR := result[0]
 	// if len(influxR.Series) == 0 {

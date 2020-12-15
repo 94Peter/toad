@@ -211,10 +211,6 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 		   where cs.branch='%s'
 	) subtable;`
 
-	const amorSql = `select COALESCE(sum(cost),0) from public.amormap amp
-	inner join public.amortization am on am.amorid = amp.amorid
-	where amp.date = '%s' and am.branch = '%s'`
-
 	const configBranchSql = `select rent, agentsign, commercialfee , annualratio from public.configbranch where branch='%s';`
 
 	const pocketSql = `SELECT COALESCE(sum(fee),0) from public.pocket where circleid = '%s' and branch = '%s';`
@@ -265,7 +261,12 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	Salesamounts = int(round(float64(intSR)/1.05, 0))
 	Businesstax = int(SR.Value) - Salesamounts
 
-	rows, err = db.Query(fmt.Sprintf(amorSql, curDate, branch))
+	amorSql := "select COALESCE(sum(cost),0) from public.amormap amp " +
+		" inner join public.amortization am on am.amorid = amp.amorid " +
+		" where amp.date like '%" + curDate + "%' and am.branch = '" + branch + "' ;"
+	//fmt.Println(curDate)
+	//fmt.Println(amorSql)
+	rows, err = db.Query(amorSql)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err

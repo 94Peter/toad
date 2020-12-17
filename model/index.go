@@ -199,17 +199,16 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	group by subtable.branch
 	`
 	const incomeSql = ` WITH  vals  AS (VALUES ( 'none' ) )
-	SELECT SUM(SR) SR, SUM(bonus) bonus,  SUM(salary) salary
+	SELECT SUM(SR) SR, SUM(bonus) bonus
+
 	FROM vals as v
 	cross join (
-	select cb.annualratio, cs.sid, cs.branch,cs.salary, c.* from configsaler cs
-		   left join (
-		    select * from commission c inner join receipt r on r.rid = c.rid
-		    where c.status != 'remove' and extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
-		   ) c on c.sid = cs.sid
-		   inner join public.configbranch cb on cb.branch = cs.branch
-		   where cs.branch='%s'
-	) subtable;`
+	 select data.* , cs.branch from ( 
+		 select c.sr, c.bonus, c.sid, c.rid from commission c inner join receipt r on r.rid = c.rid
+	     where c.status != 'remove'  and extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
+	) data left join configsaler cs on cs.sid = data.sid	
+		where cs.branch='%s'
+	) subtable `
 
 	const configBranchSql = `select rent, agentsign, commercialfee , annualratio from public.configbranch where branch='%s';`
 
@@ -218,11 +217,6 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	const prepaySql = `select sum(cost) from prepay pp
 			inner join BranchPrePay bpp on bpp.ppid = pp.ppid
 			where pp.date < ('%s'::date + '1 month'::interval) and pp.date >= ('%s'::date) and  bpp.branch = '%s' `
-
-	const lastlossSql = `Select lastloss
-			FROM public.incomeexpense IE
-			inner join public.BranchSalary BS on  IE.bsid = BS.bsid
-			where date = '%s' and branch = '%s';`
 
 	//lt := time.Now().AddDate(0, -1, 0)
 	//lastMonthDate := fmt.Sprintf("%d-%02d-01", lt.Year(), lt.Month())
@@ -246,12 +240,12 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 		fmt.Println(err)
 		return nil, nil
 	}
-	//fmt.Println(fmt.Sprintf(incomeSql, t.Unix(), t.Unix(), branch))
+	//fmt.Println(fmt.Sprintf(incomeSql, mdate.Unix(), mdate.Unix(), branch))
 	// 收入/薪資支出 年終提播
-	var SR, Salary, Bonus NullInt
+	var SR, Bonus NullInt
 	var Salesamounts, Businesstax int
 	for rows.Next() {
-		if err := rows.Scan(&SR, &Bonus, &Salary); err != nil {
+		if err := rows.Scan(&SR, &Bonus); err != nil {
 			fmt.Println("income err Scan " + err.Error())
 			return nil, err
 		}
@@ -319,20 +313,25 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 		}
 	}
 
-	rows, err = db.Query(fmt.Sprintf(lastlossSql, branch))
+	lastlossSql := "Select IE.lastloss, IE.salary, IE.lbonus " +
+		"FROM public.incomeexpense IE " +
+		"inner join public.BranchSalary BS on  IE.bsid = BS.bsid " +
+		"where date like '" + curDate + "%' and branch = '" + branch + "';"
+	rows, err = db.Query(lastlossSql)
 	if err != nil {
 		return nil, err
 	}
 	var lastloss int
+	var Salary, Lbonus NullInt
 	for rows.Next() {
-		if err := rows.Scan(&lastloss); err != nil {
+		if err := rows.Scan(&lastloss, &Salary, &Lbonus); err != nil {
 			fmt.Println("lastloss err Scan " + err.Error())
 			return nil, err
 		}
 	}
 
 	var Pretax, Aftertax, BusinessIncomeTax, ManagerBonus int
-	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + int(Prepay.Value) + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 0)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)))
+	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + int(Prepay.Value) + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 0)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)) - int(Lbonus.Value))
 	if Pretax > 0 {
 		BusinessIncomeTax = int(round(float64(Pretax)*0.2, 0))
 	} else {
@@ -356,6 +355,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 		Salary:        int(Salary.Value),
 		Prepay:        int(Prepay.Value),
 		Pbonus:        int(Bonus.Value),
+		LBonus:        int(Lbonus.Value),
 		Annualbonus:   int(round(Annualratio*float64(SR.Value)/100, 0)),
 		Commercialfee: int(round(Commmercialfee*float64(Salary.Value+Bonus.Value)/100, 0)),
 	}

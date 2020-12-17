@@ -313,7 +313,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 		}
 	}
 
-	lastlossSql := "Select IE.lastloss, IE.salary, IE.lbonus " +
+	lastlossSql := "Select IE.lastloss " +
 		"FROM public.incomeexpense IE " +
 		"inner join public.BranchSalary BS on  IE.bsid = BS.bsid " +
 		"where date like '" + curDate + "%' and branch = '" + branch + "';"
@@ -322,13 +322,31 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 		return nil, err
 	}
 	var lastloss int
-	var Salary, Lbonus NullInt
+
 	for rows.Next() {
-		if err := rows.Scan(&lastloss, &Salary, &Lbonus); err != nil {
+		if err := rows.Scan(&lastloss); err != nil {
 			fmt.Println("lastloss err Scan " + err.Error())
 			return nil, err
 		}
 	}
+
+	salarySql := "select  sum(salary), sum(lbonus) from salersalary " +
+		"where date like '" + curDate + "%' and branch = '" + branch + "' " +
+		"group by branch;"
+
+	rows, err = db.Query(salarySql)
+	if err != nil {
+		return nil, err
+	}
+	var Salary, Lbonus NullInt
+	for rows.Next() {
+		if err := rows.Scan(&Salary, &Lbonus); err != nil {
+			fmt.Println("lastloss err Scan " + err.Error())
+			return nil, err
+		}
+	}
+	fmt.Println(Salary.Value)
+	fmt.Println(Lbonus.Value)
 
 	var Pretax, Aftertax, BusinessIncomeTax, ManagerBonus int
 	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + int(Prepay.Value) + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 0)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)) - int(Lbonus.Value))

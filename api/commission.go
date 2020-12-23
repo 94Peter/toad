@@ -51,10 +51,10 @@ func (api *CommissionAPI) getCommissionEndpoint(w http.ResponseWriter, req *http
 	by_m := (*queryVar)["date"].(string)
 	ey_m := by_m
 
-	if status == "" || status == "all" {
+	if status == "" || status == "all" || status == "ALL" {
 		status = "%"
 	}
-	if branch == "" || branch == "all" {
+	if branch == "" || branch == "all" || branch == "ALL" {
 		branch = "%"
 	}
 

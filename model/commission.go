@@ -115,7 +115,7 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid, dbname string) []*Commission
 	return cm.cList
 }
 
-func (cm *CModel) GetCommissiontData(start, end time.Time, status, dbname string) []*Commission {
+func (cm *CModel) GetCommissiontData(start, end time.Time, status, branch, dbname string) []*Commission {
 	fmt.Println("GetCommissiontData")
 	//if invoiceno is null in Database return ""
 	// where to_timestamp(date_part('epoch',r.date)::int) >= '%s' and to_timestamp(date_part('epoch',r.date)::int) < '%s'::date + '1 month'::interval
@@ -123,13 +123,14 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status, dbname string
 	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
 				FROM public.commission c
 				inner JOIN public.receipt r on r.rid = c.rid
+				inner JOIN public.ConfigSaler cs on cs.sid = c.sid
 				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
-				and c.status like '%s'
+				and c.status like '%s' and cs.branch like '%s'
 				order by sid;`
 
 	db := cm.imr.GetSQLDBwithDbname(dbname)
-	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
-	fmt.Println("debug,", fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
+	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status, branch))
+	//fmt.Println("debug,", fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -139,15 +140,9 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status, dbname string
 	for rows.Next() {
 		var c Commission
 
-		// if err := rows.Scan(&r.ARid, &s); err != nil {
-		// 	fmt.Println("err Scan " + err.Error())
-		// }
 		if err := rows.Scan(&c.Sid, &c.Rid, &c.Date, &c.Item, &c.Amount, &c.Fee, &c.SName, &c.CPercent, &c.SR, &c.Bonus, &c.ARid, &c.Status); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
-		// if err := rows.Scan(&c.Sid, &c.Rid, &c.Date, &c.Item, &c.Amount, &c.Fee, &c.SName, &c.CPercent, &c.SR, &c.Bonus, &c.ARid, &c.Status, &c.Branch, &c.Percent, &c.ReceiveDate, &c.InvoiceNo, &c.Checknumber, &c.Fee, &c.DedectItem); err != nil {
-		// 	fmt.Println("err Scan " + err.Error())
-		// }
 
 		cDataList = append(cDataList, &c)
 
@@ -286,7 +281,7 @@ func (cm *CModel) CreateCommission(rt *Receipt, sqldb *sql.DB) (err error) {
 	if id == 0 {
 		return errors.New("Invalid operation, CreateCommission")
 	}
-	
+
 	return nil
 }
 

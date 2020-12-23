@@ -21,10 +21,10 @@ import (
 type SalaryAPI bool
 
 type inputBranchSalary struct {
-	//Branch string `json:"branch"`
-	Date  time.Time    `json:"date"`
-	Name  string       `json:"name"`
-	CList []*model.Cid `json:"commissionList"`
+	Branch string       `json:"branch"`
+	Date   time.Time    `json:"date"`
+	Name   string       `json:"name"`
+	CList  []*model.Cid `json:"commissionList"`
 	//Total  string `json:"total"`
 	//Lock   int    `json:"Lock"`
 }
@@ -544,6 +544,9 @@ func (iBS *inputBranchSalary) isBranchSalaryValid() (bool, error) {
 	if iBS.Name == "" {
 		return false, errors.New("name is empty")
 	}
+	if iBS.Branch == "" {
+		return false, errors.New("branch is empty")
+	}
 	// if iBS.Date == "" {
 	// 	return false, errors.New("date is empty")
 	// }
@@ -625,10 +628,14 @@ func (iBS *inputBranchSalary) GetBranchSalary() *model.BranchSalary {
 	t = time.Date(y, m, d, 23, 59, 59, 99, loc)
 	//time, _ := time.ParseInLocation("2006-01-02", iBS.Date, time.Local)
 	strDate := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
+	if iBS.Branch == "ALL" || iBS.Branch == "all" {
+		iBS.Branch = "%"
+	}
 	return &model.BranchSalary{
 		Date:    t,
 		Name:    iBS.Name,
 		StrDate: strDate,
+		Branch:  iBS.Branch,
 	}
 }
 

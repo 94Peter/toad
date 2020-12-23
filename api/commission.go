@@ -44,14 +44,18 @@ func (api *CommissionAPI) getCommissionEndpoint(w http.ResponseWriter, req *http
 
 	cm := model.GetCModel(di)
 	dbname := req.Header.Get("dbname")
-	queryVar := util.GetQueryValue(req, []string{"date", "status", "export"}, true)
+	queryVar := util.GetQueryValue(req, []string{"date", "status", "branch", "export"}, true)
 	//export := (*queryVar)["export"].(string)
 	status := (*queryVar)["status"].(string)
+	branch := (*queryVar)["branch"].(string)
 	by_m := (*queryVar)["date"].(string)
 	ey_m := by_m
 
 	if status == "" || status == "all" {
 		status = "%"
+	}
+	if branch == "" || branch == "all" {
+		branch = "%"
 	}
 
 	if by_m == "" {
@@ -72,7 +76,7 @@ func (api *CommissionAPI) getCommissionEndpoint(w http.ResponseWriter, req *http
 	}
 
 	//cm.GetCommissiontData(by_m+"-01", ey_m+"-01", status)
-	cm.GetCommissiontData(b, e, status, dbname)
+	cm.GetCommissiontData(b, e, status, branch, dbname)
 	//data, err := json.Marshal(result)
 	//if export == "" {
 	data, err := cm.Json()

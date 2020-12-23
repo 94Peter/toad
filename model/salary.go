@@ -630,8 +630,8 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 					) tmp on tmp.sid = c.sid
 					where c.rid = r.rid and r.date >= $4 and Date < ( $4::date + '1 month'::interval ) 
 					group by tmp.branch , hasBind
-				) tmp on tmp.branch = cb.branch
-				where tmp.hasbind is null or tmp.hasbind = 0
+				) tmp on tmp.branch = cb.branch				
+				where (tmp.hasbind is null or tmp.hasbind = 0) and cb.branch like $5
 				;`
 	//使得每個BSid + 1
 	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
@@ -644,7 +644,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 	fakeId := time.Now().Unix()
 	bs.BSid = strconv.Itoa(int(fakeId))
 
-	res, err := sqldb.Exec(sql, fakeId, bs.StrDate, bs.Name, bs.Date)
+	res, err := sqldb.Exec(sql, fakeId, bs.StrDate, bs.Name, bs.Date, bs.Branch)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)

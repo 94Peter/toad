@@ -514,7 +514,7 @@ func (irt *inputReceipt) isReceiptValid() (bool, error) {
 }
 
 func (iUAR *inputUpdateAR) isARValid() (bool, error) {
-	if iUAR.Amount < 0 {
+	if iUAR.Amount <= 0 {
 		return false, errors.New("amount is not vaild")
 	}
 

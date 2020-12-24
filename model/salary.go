@@ -63,6 +63,7 @@ type NHISalary struct {
 	BSid           string `json:"bsid"`
 	SName          string `json:"name"`
 	PayrollBracket int    `json:"payrollBracket"`
+	InsuredAmount  int    `json:"insuredAmount"` //勞保投保金額
 	Salary         int    `json:"salary"`
 	Pbonus         int    `json:"pbonus"`
 	Bonus          int    `json:"bonus"`
@@ -74,6 +75,7 @@ type NHISalary struct {
 	FourSP         int    `json:"fourSP"`
 	PTSP           int    `json:"PTSP"`
 	Code           string `json:"code"`
+
 	/////////pdf
 	Title       string `json:"-"`
 	Description string `json:"-"`
@@ -1124,7 +1126,7 @@ func (salaryM *SalaryModel) GetIncomeExpenseData(bsID, dbname string) []*IncomeE
 func (salaryM *SalaryModel) GetNHISalaryData(bsID, dbname string) []*NHISalary {
 
 	fmt.Println("GetNHISalaryData")
-	const spl = `SELECT nhi.sid, nhi.bsid, nhi.sname, nhi.payrollbracket, nhi.salary, nhi.pbonus, nhi.bonus, nhi.total, nhi.pd, nhi.salarybalance, nhi.fourbouns, ss.sp, nhi.foursp, nhi.ptsp, cs.code
+	const spl = `SELECT nhi.sid, nhi.bsid, nhi.sname, nhi.payrollbracket, nhi.salary, nhi.pbonus, nhi.bonus, nhi.total, nhi.pd, nhi.salarybalance, nhi.fourbouns, ss.sp, nhi.foursp, nhi.ptsp, cs.code, cs.insuredamount
 				FROM public.nhisalary nhi
 				inner join (
 					select bsid, sid, sp from public.salersalary 
@@ -1144,7 +1146,7 @@ func (salaryM *SalaryModel) GetNHISalaryData(bsID, dbname string) []*NHISalary {
 		var nhi NHISalary
 
 		if err := rows.Scan(&nhi.Sid, &nhi.BSid, &nhi.SName, &nhi.PayrollBracket, &nhi.Salary, &nhi.Pbonus, &nhi.Bonus, &nhi.Total,
-			&nhi.PD, &nhi.SalaryBalance, &nhi.FourBouns, &nhi.SP, &nhi.FourSP, &nhi.PTSP, &nhi.Code); err != nil {
+			&nhi.PD, &nhi.SalaryBalance, &nhi.FourBouns, &nhi.SP, &nhi.FourSP, &nhi.PTSP, &nhi.Code, &nhi.InsuredAmount); err != nil {
 			fmt.Println("err Scan " + err.Error())
 			return nil
 		}

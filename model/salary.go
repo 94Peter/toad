@@ -1199,12 +1199,41 @@ func (salaryM *SalaryModel) ExportNHISalaryData(bsID, dbname string) []*NHISalar
 
 func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
 
+	// const sql = `INSERT INTO public.nhisalary
+	// (sid, bsid, sname, payrollbracket, salary, pbonus, bonus, total, salarybalance, pd, fourbouns, sp, foursp, ptsp)
+	// SELECT  SS.sid, SS.BSid, SS.Sname, CS.PayrollBracket, SS.Salary, SS.Pbonus, (SS.Lbonus + ie.managerbonus - SS.abonus) bonus,
+	// (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) Total ,
+	// ( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) SalaryBalance,
+	// sum( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) PD ,
+	// (CS.PayrollBracket * 4) FourBouns, 0 SP,
+	// (CASE WHEN sum(SS.Total - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) - (CS.PayrollBracket * 4) > 0 then (SS.Total - CS.PayrollBracket) *CP.nhi2nd /100  ELSE 0 END ) FourSP,
+	// (CASE WHEN CS.association = 0 and CS.PayrollBracket <=0 then SS.Total*CP.nhi2nd ELSE 0 END ) PTSP
+	// FROM public.salersalary SS
+	// 	Inner Join (
+	// 		select A.Sid, A.PayrollBracket, A.association  FROM public.ConfigSaler A
+	// 		Inner Join (
+	// 			select sid, max(zerodate) zerodate from public.configsaler cs
+	// 			where now() > zerodate
+	// 			group by sid
+	// 		) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+	// 	) CS on SS.sid = CS.sid
+	// 	cross join (
+	// 		select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
+	// 		inner join(
+	// 			select  max(date) date from public.ConfigParameter
+	// 		) A on A.date = C.date limit 1
+	// 	) CP
+	// 	inner join (
+	// 		Select bsid , managerbonus from public.incomeexpense
+	// 	) ie on ie.bsid = ss.bsid
+	// 	where year = $1
+	// ON CONFLICT (bsid,sid) DO Nothing ;` //UPDATE SET balance = excluded.balance;`
 	const sql = `INSERT INTO public.nhisalary
 	(sid, bsid, sname, payrollbracket, salary, pbonus, bonus, total, salarybalance, pd, fourbouns, sp, foursp, ptsp)
-	SELECT  SS.sid, SS.BSid, SS.Sname, CS.PayrollBracket, SS.Salary, SS.Pbonus, (SS.Lbonus + ie.managerbonus - SS.abonus) bonus, 
-	(SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) Total ,
-	( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) SalaryBalance,
-	sum( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) PD ,
+	SELECT  SS.sid, SS.BSid, SS.Sname, CS.PayrollBracket, SS.Salary, SS.Pbonus, coalesce(ie.managerbonus,0) bonus, 
+	(SS.Salary + SS.Pbonus + coalesce(ie.managerbonus,0) ) Total ,
+	( (SS.Salary + SS.Pbonus + coalesce(ie.managerbonus,0) ) - CS.PayrollBracket) SalaryBalance,
+	sum( (SS.Salary + SS.Pbonus + coalesce(ie.managerbonus,0) ) - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) PD ,
 	(CS.PayrollBracket * 4) FourBouns, 0 SP,
 	(CASE WHEN sum(SS.Total - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) - (CS.PayrollBracket * 4) > 0 then (SS.Total - CS.PayrollBracket) *CP.nhi2nd /100  ELSE 0 END ) FourSP, 
 	(CASE WHEN CS.association = 0 and CS.PayrollBracket <=0 then SS.Total*CP.nhi2nd ELSE 0 END ) PTSP  
@@ -1223,9 +1252,11 @@ func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
 				select  max(date) date from public.ConfigParameter 
 			) A on A.date = C.date limit 1
 		) CP
-		inner join (
-			Select bsid , managerbonus from public.incomeexpense 
-		) ie on ie.bsid = ss.bsid
+		LEFT join (
+			Select ie.bsid , managerbonus, bs.branch, cb.sid from public.incomeexpense ie
+			inner join public.branchsalary bs on ie.bsid = bs.bsid
+			inner join public.ConfigBranch cb on cb.branch = bs.branch
+		) ie on ie.bsid = ss.bsid and cs.sid = ie.sid
 		where year = $1
 	ON CONFLICT (bsid,sid) DO Nothing ;` //UPDATE SET balance = excluded.balance;`
 
@@ -3004,10 +3035,10 @@ func (salaryM *SalaryModel) RefreshNHISalary(bsid, dbname string) (err error) {
 
 	const sql = `INSERT INTO public.nhisalary
 	(sid, bsid, sname, payrollbracket, salary, pbonus, bonus, total, salarybalance, pd, fourbouns, sp, foursp, ptsp)
-	SELECT  SS.sid, SS.BSid, SS.Sname, CS.PayrollBracket, SS.Salary, SS.Pbonus, (SS.Lbonus + ie.managerbonus - SS.abonus) bonus, 
-	(SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) Total ,
-	( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) SalaryBalance,
-	sum( (SS.Salary + SS.Pbonus + (SS.Lbonus + ie.managerbonus  - SS.abonus) ) - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) PD ,
+	SELECT  SS.sid, SS.BSid, SS.Sname, CS.PayrollBracket, SS.Salary, SS.Pbonus, coalesce(ie.managerbonus,0) bonus, 
+	(SS.Salary + SS.Pbonus + coalesce(ie.managerbonus,0) ) Total ,
+	( (SS.Salary + SS.Pbonus + coalesce(ie.managerbonus,0) ) - CS.PayrollBracket) SalaryBalance,
+	sum( (SS.Salary + SS.Pbonus + coalesce(ie.managerbonus,0) ) - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) PD ,
 	(CS.PayrollBracket * 4) FourBouns, 0 SP,
 	(CASE WHEN sum(SS.Total - CS.PayrollBracket) over (partition by SS.year,SS.sid order by SS.date) - (CS.PayrollBracket * 4) > 0 then (SS.Total - CS.PayrollBracket) *CP.nhi2nd /100  ELSE 0 END ) FourSP, 
 	(CASE WHEN CS.association = 0 and CS.PayrollBracket <=0 then SS.Total*CP.nhi2nd ELSE 0 END ) PTSP  
@@ -3026,9 +3057,11 @@ func (salaryM *SalaryModel) RefreshNHISalary(bsid, dbname string) (err error) {
 				select  max(date) date from public.ConfigParameter 
 			) A on A.date = C.date limit 1
 		) CP
-		inner join (
-			Select bsid , managerbonus from public.incomeexpense 
-		) ie on ie.bsid = ss.bsid
+		LEFT join (
+			Select ie.bsid , managerbonus, bs.branch, cb.sid from public.incomeexpense ie
+			inner join public.branchsalary bs on ie.bsid = bs.bsid
+			inner join public.ConfigBranch cb on cb.branch = bs.branch
+		) ie on ie.bsid = ss.bsid and cs.sid = ie.sid
 		inner join (
 			Select bsid , lock from public.BranchSalary 
 		) bs on bs.bsid = ss.bsid		

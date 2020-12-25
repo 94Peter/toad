@@ -1399,11 +1399,11 @@ func (salaryM *SalaryModel) UpdateIncomeExpenseData(ie *IncomeExpense, bsid, dbn
 		return errors.New("UpdateIncomeExpenseData, not found any salary")
 	}
 
-	ummb_err := salaryM.UpdateManagerByManagerBonus(bsid, dbname)
-	if ummb_err != nil {
-		return nil
-		//return ucias_err
-	}
+	// ummb_err := salaryM.UpdateManagerByManagerBonus(bsid, dbname)
+	// if ummb_err != nil {
+	// 	return nil
+	// 	//return ucias_err
+	// }
 	defer sqldb.Close()
 	return nil
 }
@@ -2983,7 +2983,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid, dbname string) error {
 		return errors.New("not found bsid:" + Bsid)
 	}
 	//TODO:: 紅利店長表更新
-	salaryM.UpdateManagerByManagerBonus(Bsid, dbname)
+	//salaryM.UpdateManagerByManagerBonus(Bsid, dbname)
 	//TODO:: 二代健保表更新
 	salaryM.RefreshNHISalary(Bsid, dbname)
 	//TODO:: 總表更新

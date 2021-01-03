@@ -23,7 +23,8 @@ type AR struct {
 	Customer Customer    `json:"customer"`
 	CaseName string      `json:"caseName"`
 	Amount   int         `json:"amount"`
-	Fee      int         `json:"fee"`
+	Fee      int         `json:"fee"`            //應扣費用
+	Cost     int         `json:"cost"`           //已扣費用
 	Balance  int         `json:"balance"`        //未收金額
 	RA       int         `json:"receivedAmount"` //已收金額
 	Sales    []*MAPSaler `json:"sales"`
@@ -172,8 +173,8 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 	index := "%" + key + "%"
 	sql := "SELECT ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount, " +
 		"	COALESCE((SELECT SUM(d.fee) FROM public.deduct d WHERE ar.arid = d.arid),0) AS SUM_Fee," +
-		"	COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA" +
-		"   " +
+		"	COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA," +
+		"   COALESCE((SELECT SUM(r.fee) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RFee " +
 		"FROM public.ar ar	" +
 		"where ar.arid like '" + index + "' OR ar.cno like '" + index + "' OR ar.casename like '" + index + "' OR ar.type like '" + index + "' OR ar.name like '" + index + "' " +
 		"group by ar.arid order by ar.date desc , ar.cno;"
@@ -201,7 +202,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&r.ARid, &r.Date, &r.CNo, &r.CaseName, &ctm.Action, &ctm.Name, &r.Amount, &r.Fee, &r.RA); err != nil {
+		if err := rows.Scan(&r.ARid, &r.Date, &r.CNo, &r.CaseName, &ctm.Action, &ctm.Name, &r.Amount, &r.Fee, &r.RA, &r.Cost); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 		r.Customer = ctm
@@ -943,4 +944,11 @@ func (am *ARModel) checkEditable(ID string, sqldb *sql.DB) []mapRidBsid {
 	}
 
 	return mapList
+}
+
+func (am *ARModel) ReCount() {
+	arList := am.GetARData("", "0", "toad")
+	for _, element := range arList {
+		am.UpdateAccountReceivable(element.Amount, element.ARid, "toad", element.Sales)
+	}
 }

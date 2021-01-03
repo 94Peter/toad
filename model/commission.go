@@ -265,7 +265,7 @@ func (cm *CModel) CreateCommission(rt *Receipt, sqldb *sql.DB) (err error) {
 	fmt.Println("CreateCommission Rid:", rt.Rid)
 	//fmt.Println(rt.Amount)
 	fmt.Println("CreateCommission ARid:", rt.ARid)
-	res, err := sqldb.Exec(sql, rt.Rid, rt.Amount, rt.ARid)
+	res, err := sqldb.Exec(sql, rt.Rid, rt.Amount-rt.Fee, rt.ARid)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("CreateCommission:", err)

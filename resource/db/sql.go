@@ -676,7 +676,7 @@ func (sdb *SqlDB) CreateReceiptTable() error {
 			//"type character varying(50) not NULL, "+
 			//"name character varying(50) not NULL, "+
 			"amount integer not NULL, "+
-			//"invoiceNo character varying(50) , "+
+			"fee integer not NULL DEFAULT 0, "+
 			"ARid character varying(50) not NULL, "+
 			"PRIMARY KEY (Rid) "+
 			") "+

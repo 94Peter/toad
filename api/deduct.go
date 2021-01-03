@@ -54,7 +54,7 @@ func (api DeductAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/deductFee/{ID}", Next: api.updateDeductFeeEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 
 		&APIHandler{Path: "/v1/deduct/item/{ID}", Next: api.updateDeductItemEndpoint, Method: "PUT", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/deduct/sales/{ID}", Next: api.updateDeductSalesEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		//&APIHandler{Path: "/v1/deduct/sales/{ID}", Next: api.updateDeductSalesEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 	}
 }
 
@@ -116,7 +116,7 @@ func (api *DeductAPI) deleteDeductEndpoint(w http.ResponseWriter, req *http.Requ
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		w.Write([]byte("Error,maybe id is not exist or status is not accepted" + err.Error()))
+		w.Write([]byte(err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}

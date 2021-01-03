@@ -25,6 +25,7 @@ type Deduct struct {
 	Type        string      `json:"type"`
 	CheckNumber string      `json:"checkNumber"`
 	Sales       []*MAPSaler `json:"sales"`
+	ReceiptList []*Receipt  `json:"receiptList"`
 }
 
 // type Receipt struct {
@@ -61,23 +62,24 @@ type DeductModel struct {
 
 func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, dbname string) []*Deduct {
 
-	// `SELECT D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , R.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D
+	// const qspl = `SELECT D.arid, D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , AR.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D
 	// inner join public.ar as AR on AR.arid = D.arid
-	// Left join public.receipt as R on R.rid = D.rid
-	// where ( extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d' or R.date is null )
+	// where ( extract(epoch from ar.date) >= '%d' and extract(epoch from ar.date - '1 month'::interval) < '%d' )
 	// and (D.item like '%s' OR  D.status like '%s');`
+	const sql = `select D.* from (
+		SELECT D.arid, D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , AR.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D 
+			inner join public.ar as AR on AR.arid = D.arid
+			where ( extract(epoch from ar.date) >= '%d' and extract(epoch from ar.date - '1 month'::interval) < '%d' ) 
+			and (D.item like '%s' OR  D.status like '%s')
+		) D
+		Left JOIN (
+		SELECT max(date) date, arid  FROM public.receipt where fee > 0 group by arid
+		) r on D.arid = r.arid
+		 order by  case when r.arid is null then 1 else 0 end asc, r.date desc ;`
 
-	const qspl = `SELECT D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , AR.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D 
-	inner join public.ar as AR on AR.arid = D.arid
-	where ( extract(epoch from ar.date) >= '%d' and extract(epoch from ar.date - '1 month'::interval) < '%d' ) 
-	and (D.item like '%s' OR  D.status like '%s');`
-
-	//where D.rid = R.rid;`
-	//const qspl = `SELECT arid,sales	FROM public.ar;`
-	//fmt.Println(fmt.Sprintf(qspl, by_m+"-01", ey_m+"-01", mtype, mtype))
 	db := decuctModel.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := db.ConnectSQLDB()
-	rows, err := sqldb.Query(fmt.Sprintf(qspl, by_m.Unix(), ey_m.Unix(), mtype, mtype))
+	rows, err := sqldb.Query(fmt.Sprintf(sql, by_m.Unix(), ey_m.Unix(), mtype, mtype))
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -89,14 +91,15 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, dbnam
 		/*null time cannot scan into time.Time */
 		var Ddate, RDate NullTime
 
-		if err := rows.Scan(&d.Did, &Ddate, &d.Status, &d.Item, &d.Fee, &d.Description, &d.CheckNumber, &RDate, &d.CNo, &d.CaseName, &d.Type); err != nil {
+		if err := rows.Scan(&d.ARid, &d.Did, &Ddate, &d.Status, &d.Item, &d.Fee, &d.Description, &d.CheckNumber, &RDate, &d.CNo, &d.CaseName, &d.Type); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
 		d.Date = Ddate.Time
 		d.ReceiveDate = RDate.Time
-
+		d.ReceiptList = []*Receipt{}
 		deductDataList = append(deductDataList, &d)
+
 	}
 
 	//找出sales
@@ -120,6 +123,31 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, dbnam
 				deduct.Sales = append(deduct.Sales, &saler)
 				//fmt.Println(arid)
 				break
+			}
+		}
+
+	}
+
+	//找出receipt
+	const receiptMapsql = `SELECT rid, date, amount, fee, arid FROM public.receipt where fee > 0 order by date desc; `
+	rows, err = sqldb.Query(receiptMapsql)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	for rows.Next() {
+
+		var r Receipt
+
+		if err := rows.Scan(&r.Rid, &r.Date, &r.Amount, &r.Fee, &r.ARid); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		for _, deduct := range deductDataList {
+			if deduct.ARid == r.ARid {
+				//無中斷，需重複使用。
+				deduct.ReceiptList = append(deduct.ReceiptList, &r)
 			}
 		}
 
@@ -197,15 +225,15 @@ func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct, dbname string) (err
 	}
 
 	deduct.Did = fmt.Sprintf("%d", fakeid)
-	decuctModel.setFeeToCommission(sqldb, deduct.Did, deduct.ARid, dbname)
+	//decuctModel.setFeeToCommission(sqldb, deduct.Did, deduct.ARid, dbname)
 	defer sqldb.Close()
 	return nil
 }
 
 //因為傭金明細只需要一筆有應扣費用，hard code更新。
 //如果things有帶入，功能回傳arid用。
-func (decuctModel *DeductModel) setFeeToCommission(sqldb *sql.DB, Did, ARid string, things ...interface{}) (string, error) {
-
+func (decuctModel *DeductModel) setFeeToCommission_backup(sqldb *sql.DB, Did, ARid string, things ...interface{}) (string, error) {
+	fmt.Println("setFeeToCommission")
 	if ARid == "" {
 		const qspl = `SELECT D.Did, D.arid FROM public.deduct as D Where D.Did = '%s';`
 		//db := decuctModel.imr.GetSQLDBwithDbname(dbname)
@@ -230,7 +258,7 @@ func (decuctModel *DeductModel) setFeeToCommission(sqldb *sql.DB, Did, ARid stri
 			return ARid, nil
 		}
 	}
-	fmt.Println("setFeeToCommission")
+
 	// sql := `Update public.commission set fee = COALESCE((select sum(fee) from public.deduct where arid = $1),0)
 	// 		where rid = (SELECT min(rid) FROM public.commission c where arid = $1) and bsid is null`
 	sql := `UPDATE public.commission c 
@@ -341,11 +369,13 @@ func (decuctModel *DeductModel) DeleteDeduct(ID, dbname string) (err error) {
 	 */
 
 	//nothing 回傳arid用
-	arid, _ := decuctModel.setFeeToCommission(sqldb, ID, "", "nothing")
+	//arid, _ := decuctModel.setFeeToCommission(sqldb, ID, "", "nothing")
 
-	const sql = `DELETE FROM public.deduct WHERE Did=$1 and  status != '已支付';`
+	const sql = `DELETE FROM public.deduct WHERE Did=$1 and  status != '已支付'
+	and ( (select COALESCE(SUM(fee),0) FROM public.receipt where arid = $2) <=  (select COALESCE(SUM(fee),0) - $3 FROM public.deduct where arid = $2) ) 
+	;`
 
-	res, err := sqldb.Exec(sql, ID)
+	res, err := sqldb.Exec(sql, ID, d.ARid, d.Fee)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -359,10 +389,10 @@ func (decuctModel *DeductModel) DeleteDeduct(ID, dbname string) (err error) {
 	fmt.Println(id)
 
 	if id == 0 {
-		return errors.New("Invalid operation, Delete Deduct")
+		return errors.New("Invalid operation, 請確認未支付狀態 或 收款金額的已扣款項")
 	}
 
-	decuctModel.setFeeToCommission(sqldb, "", arid)
+	//decuctModel.setFeeToCommission(sqldb, "", arid)
 	defer sqldb.Close()
 	return nil
 }
@@ -402,7 +432,7 @@ func (decuctModel *DeductModel) UpdateDeduct(Did, status, date, checkNumber, dbn
 	if id == 0 {
 		return errors.New("Invalid operation, UpdateDeduct")
 	}
-	decuctModel.setFeeToCommission(sqldb, Did, "")
+	//decuctModel.setFeeToCommission(sqldb, Did, "")
 	defer sqldb.Close()
 	return nil
 }
@@ -424,9 +454,10 @@ func (decuctModel *DeductModel) UpdateDeductFee(Did, dbname string, fee int) (er
 		return
 	}
 
-	sql := fmt.Sprintf("UPDATE public.deduct Set fee = $1 Where did = $2 and status = '未支付'")
+	const sql = `UPDATE public.deduct Set fee = $1 Where did = $2 and status = '未支付'  
+	and ( (select COALESCE(SUM(fee),0) FROM public.receipt where arid = $3) <=  (select COALESCE(SUM(fee),0) - $4 + $1 FROM public.deduct where arid = $3) ) ;`
 
-	res, err := sqldb.Exec(sql, fee, Did)
+	res, err := sqldb.Exec(sql, fee, Did, d.ARid, d.Fee)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -440,9 +471,9 @@ func (decuctModel *DeductModel) UpdateDeductFee(Did, dbname string, fee int) (er
 	fmt.Println(id)
 
 	if id == 0 {
-		return errors.New("Invalid operation, UpdateDeductFee")
+		return errors.New("Invalid operation, 請確認未支付狀態 或 收款金額的已扣款項")
 	}
-	decuctModel.setFeeToCommission(sqldb, Did, "")
+	//decuctModel.setFeeToCommission(sqldb, Did, "")
 	defer sqldb.Close()
 	return nil
 }
@@ -493,22 +524,6 @@ func (decuctModel *DeductModel) UpdateDeductRid(ARid string, sqldb *sql.DB) (err
 					where D.arid = R.arid and R.date = (select MIN(Date) FROM public.receipt where D.arid = $1)
 				) as tmp where arid = tmp.temID`
 
-	// 	/*
-	// Update public.deduct D
-	// set D.rid = ?
-	// FROM (*/
-
-	// 	select MIN(Date) FROM public.receipt  where arid = '1566575681'
-	// -- )as tmp
-	// --where D.arid = '1566575681'
-	// and ( SELECT rid from public.deduct WHERE arid = '1566575681') is null
-
-	// interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
-	// sqldb, err := interdb.ConnectSQLDB()
-	// if err != nil {
-	// 	return err
-	// }
-
 	// fakeid := time.Now().Unix()
 
 	res, err := sqldb.Exec(sql, ARid)
@@ -550,37 +565,39 @@ func (decuctModel *DeductModel) UpdateDeductSales(Did, dbname string, salerList 
 	fmt.Println("UpdateDeductSales")
 	// interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)
 	// sqldb, err := interdb.ConnectSQLDB()
+
 	decuctModel.DeleteDeductMAP(Did, sqldb)
-	decuctModel.SaveDeductMAP(salerList, Did, sqldb)
+	//decuctModel.SaveDeductMAP(salerList, Did, sqldb)
+
 	defer sqldb.Close()
 	return nil
 }
 
-func (decuctModel *DeductModel) SaveDeductMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
-	const mapSql = `INSERT INTO public.DeductMAP(
-		Did, Sid, proportion , SName )
-		VALUES ($1, $2, $3, $4);`
-	count := 0
-	for _, element := range salerList {
-		// element is the element from someSlice for where we are
-		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName)
-		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-		if err != nil {
-			fmt.Println("SaveDeductMAP ", err)
-		}
-		id, err := res.RowsAffected()
-		if err != nil {
-			fmt.Println("PG Affecte Wrong: ", err)
-		}
-		count += int(id)
-	}
-	fmt.Println("SaveDeductMAP:", count)
-	//連動更新傭金
-	if count > 0 {
-		arid, _ := decuctModel.setFeeToCommission(sqldb, ID, "", "nothing")
-		decuctModel.setFeeToCommission(sqldb, "", arid)
-	}
-}
+// func (decuctModel *DeductModel) SaveDeductMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
+// 	const mapSql = `INSERT INTO public.DeductMAP(
+// 		Did, Sid, proportion , SName )
+// 		VALUES ($1, $2, $3, $4);`
+// 	count := 0
+// 	for _, element := range salerList {
+// 		// element is the element from someSlice for where we are
+// 		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName)
+// 		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+// 		if err != nil {
+// 			fmt.Println("SaveDeductMAP ", err)
+// 		}
+// 		id, err := res.RowsAffected()
+// 		if err != nil {
+// 			fmt.Println("PG Affecte Wrong: ", err)
+// 		}
+// 		count += int(id)
+// 	}
+// 	fmt.Println("SaveDeductMAP:", count)
+// 	//連動更新傭金
+// 	if count > 0 {
+// 		arid, _ := decuctModel.setFeeToCommission(sqldb, ID, "", "nothing")
+// 		decuctModel.setFeeToCommission(sqldb, "", arid)
+// 	}
+// }
 
 func (decuctModel *DeductModel) DeleteDeductMAP(Did string, sqldb *sql.DB) {
 
@@ -598,7 +615,7 @@ func getNil(msg string) (response *string) {
 
 func (decuctModel *DeductModel) getDeductByID(ID, dbname string, sqldb *sql.DB) *Deduct {
 
-	const sql = `SELECT did, Date  FROM public.deduct where Did = '%s';`
+	const sql = `SELECT did, Date, arid ,fee  FROM public.deduct where Did = '%s';`
 	//where (Date >= '%s' and Date < ('%s'::date + '1 month'::interval))
 	// db := prepayM.imr.GetSQLDB()
 	// sqldb, err := db.ConnectSQLDB()
@@ -620,7 +637,7 @@ func (decuctModel *DeductModel) getDeductByID(ID, dbname string, sqldb *sql.DB) 
 
 	for rows.Next() {
 		var lasttime NullTime
-		if err := rows.Scan(&deduct.Did, &lasttime); err != nil {
+		if err := rows.Scan(&deduct.Did, &lasttime, &deduct.ARid, &deduct.Fee); err != nil {
 			fmt.Println("err Scan " + err.Error())
 			return nil
 		}

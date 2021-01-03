@@ -19,6 +19,7 @@ type Receipt struct {
 	CustomerType string    `json:"customertType"`
 	Name         string    `json:"customerName"`
 	Amount       int       `json:"amount"` //收款
+	Fee          int       `json:"fee"`    //收款
 	//InvoiceNo    string    `json:"invoiceNo"` //發票號碼
 	// ---
 	InvoiceData []*Invoice `json:"invoiceData"`
@@ -177,10 +178,10 @@ func (rm *RTModel) GetReceiptDataByID(sqldb *sql.DB, rid string) *Receipt {
 
 func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receipt {
 
-	const sql = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount 
+	const sql = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , AR.name , R.amount , R.Fee
 					FROM public.receipt R
 					inner join public.ar AR on AR.arid = R.arid				
-					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '86399999 milliseconds'::interval) <= '%d'
+					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d'
 					order by date asc , AR.cno `
 	db := rm.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(sql, begin.Unix(), end.Unix()))
@@ -196,7 +197,7 @@ func (rm *RTModel) GetReceiptData(begin, end time.Time, dbname string) []*Receip
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount); err != nil {
+		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Name, &rt.Amount, &rt.Fee); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 		rt.InvoiceData = []*Invoice{}
@@ -317,11 +318,12 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 	*arid exist
 	*(加總歷史收款明細 + 此筆單子) <= 應收款項的收款  to_timestamp($2,'YYYY-MM-DD hh24:mi:ss')
 	**/
-	const sql = `INSERT INTO public.receipt (Rid, Date, Amount, ARid)
-				SELECT * FROM (SELECT $1::varchar(50), to_timestamp($2,'YYYY-MM-DD hh24:mi:ss') , $3::INTEGER , $4::varchar(50)) AS tmp
+	const sql = `INSERT INTO public.receipt (Rid, Date, Amount, ARid, Fee)
+				SELECT * FROM (SELECT $1::varchar(50), to_timestamp($2,'YYYY-MM-DD hh24:mi:ss') , $3::INTEGER , $4::varchar(50) , $5::INTEGER ) AS tmp 
 				WHERE  
 					EXISTS ( SELECT arid from public.ar ar WHERE arid = $4 ) 
-				and ( select $3 + COALESCE(SUM(amount),0) FROM public.receipt  where arid = $4 ) <=  (SELECT amount from public.ar ar WHERE arid = $4)				
+				and ( select $3 + COALESCE(SUM(amount),0) FROM public.receipt  where arid = $4 ) <=  (SELECT amount from public.ar ar WHERE arid = $4)
+				and ( select $5 + COALESCE(SUM(fee),0) FROM public.receipt  where arid = $4 ) <=  (SELECT COALESCE(SUM(fee),0) from public.deduct WHERE arid = $4	)			
 				;`
 	//and ( select sum(amount)+$3 FROM public.receipt  where arid = $4 group by arid ) <=  (SELECT amount from public.ar ar WHERE arid = $4);`
 
@@ -333,7 +335,7 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 	//fmt.Println(string(sql))
 
 	t := time.Now().Unix()
-	res, err := sqldb.Exec(sql, t, rt.Date, rt.Amount, rt.ARid)
+	res, err := sqldb.Exec(sql, t, rt.Date, rt.Amount, rt.ARid, rt.Fee)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -348,7 +350,7 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 	fmt.Println(id)
 
 	if id == 0 {
-		return errors.New("Invalid operation, may be the ID does not exist or amount is not vaild")
+		return errors.New("Invalid operation, 請確認 [扣款金額、已收金額] 有無超過應收款設定範圍")
 	}
 	// Rid := fmt.Sprintf("%v", t)
 	// rt.setRid(Rid)

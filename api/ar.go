@@ -67,6 +67,7 @@ type inputReceipt struct {
 	// CustomertType string    `json:"customertType"`
 	// Name          string    `json:"customerName"`
 	Amount int `json:"amount"` //收款
+	Fee    int `json:"fee"`    //扣款金額
 	//InvoiceNo     string    `json:"invoiceNo"` //發票號碼
 }
 
@@ -85,6 +86,7 @@ func (api ARAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: true, Group: permission.All},
 
 		&APIHandler{Path: "/v1/receivable/saler", Next: api.getSalerDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		//&APIHandler{Path: "/v1/receivable/recount", Next: api.getReCountEndpoint, Method: "GET", Auth: true, Group: permission.All},
 
 		// &APIHandler{Path: "/v1/category", Next: api.createCategoryEndpoint, Method: "POST", Auth: true, Group: permission.Backend},
 		// &APIHandler{Path: "/v1/category/{NAME}", Next: api.deleteCategoryEndpoint, Method: "DELETE", Auth: true, Group: permission.Backend},
@@ -204,7 +206,13 @@ func (api *ARAPI) getSalerDataEndpoint(w http.ResponseWriter, req *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
+func (api *ARAPI) getReCountEndpoint(w http.ResponseWriter, req *http.Request) {
 
+	am := model.GetARModel(di)
+	am.ReCount()
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("done"))
+}
 func (api *ARAPI) getHouseGoEndpoint(w http.ResponseWriter, req *http.Request) {
 	dbname := req.Header.Get("dbname")
 	var queryDate time.Time
@@ -504,7 +512,9 @@ func (irt *inputReceipt) isReceiptValid() (bool, error) {
 	if irt.Amount < 1 {
 		return false, errors.New("Amount is not valid")
 	}
-
+	if irt.Fee <= -1 {
+		return false, errors.New("Fee is not valid")
+	}
 	// if t := time.Now().Unix(); t <= irt.Date.Unix() {
 	// 	//未來的成交案 => 不成立
 	// 	return false, errors.New("Date is not valid")
@@ -591,5 +601,6 @@ func (irt *inputReceipt) GetReceipt() *model.Receipt {
 		Amount: irt.Amount,
 		Date:   irt.Date,
 		ARid:   irt.ARid,
+		Fee:    irt.Fee,
 	}
 }

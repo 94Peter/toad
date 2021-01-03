@@ -60,7 +60,7 @@ func (indexMV2 *IndexModelV2) GetInfoData(date time.Time, dbname string) {
 				select d + interval '1 month' - interval '1 second' - interval '8 hour' as mydates from generate_series('%s'::date, '%s'::date, '1 month') as d
 			) dayT LEFT join(
 				select * from public.receipt
-			) r on r.date < dayT.mydates
+			) r on r.date < dayT.mydates and r.date > '%s-12-31 16:00:00'::date
 		) data 
 		group by mydates order by mydates asc`
 
@@ -96,7 +96,8 @@ func (indexMV2 *IndexModelV2) GetInfoData(date time.Time, dbname string) {
 	//t := date
 	y, _, _ := t.Date()
 	year := strconv.Itoa(y)
-	rows, err = sqldb.Query(fmt.Sprintf(sql_performance, year+"-01-01", year+"-12-01"))
+	year_1 := strconv.Itoa(y - 1)
+	rows, err = sqldb.Query(fmt.Sprintf(sql_performance, year+"-01-01", year+"-12-01", year_1))
 	if err != nil {
 		fmt.Println(err)
 		return

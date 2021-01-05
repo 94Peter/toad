@@ -343,8 +343,8 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 	case pdf.Commission: //4
 		cm := model.GetCModel(di)
 		for _, element := range exportId.BSidList {
-			cm.ExportCommissiontDataByBSid(element.BSid, dbname)
-			cm.PDF(pdf.OriPdf)
+			data := cm.ExportCommissiontDataByBSid(element.BSid, dbname)
+			cm.PDF(pdf.OriPdf, data)
 		}
 		w.Write(cm.GetBytePDF())
 		//w.Write(cm.PDF(false))

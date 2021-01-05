@@ -48,6 +48,8 @@ type inputUpdateSales struct {
 func (api DeductAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/deduct", Next: api.getDeductEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/deductCost", Next: api.getReceiptFeeOnDeductDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
+
 		//&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.deleteDeductEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.updateDeductEndpoint, Method: "PUT", Auth: true, Group: permission.All},
@@ -65,10 +67,11 @@ func (api *DeductAPI) getDeductEndpoint(w http.ResponseWriter, req *http.Request
 	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	// end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
-	queryVar := util.GetQueryValue(req, []string{"date", "type"}, true)
+	queryVar := util.GetQueryValue(req, []string{"date", "type", "arid"}, true)
 	by_m := (*queryVar)["date"].(string)
 	ey_m := (*queryVar)["date"].(string)
 	mtype := (*queryVar)["type"].(string)
+	arid := (*queryVar)["arid"].(string)
 	if by_m == "" {
 		by_m = "1980-01-01T00:00:00.000Z"
 		ey_m = "2200-12-31T00:00:00.000Z"
@@ -90,10 +93,48 @@ func (api *DeductAPI) getDeductEndpoint(w http.ResponseWriter, req *http.Request
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	//fmt.Println("by_m:", by_m)
-	dm.GetDeductData(b, e, mtype, dbname)
-	//data, err := json.Marshal(result)
-	data, err := dm.Json()
+	data, err := json.Marshal(dm.GetDeductData(b, e, mtype, arid, dbname))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+func (api *DeductAPI) getReceiptFeeOnDeductDataEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
+	dm := model.GetDecuctModel(di)
+	// var queryDate time.Time
+	// today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
+	// end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
+
+	queryVar := util.GetQueryValue(req, []string{"date", "type"}, true)
+	by_m := (*queryVar)["date"].(string)
+	ey_m := (*queryVar)["date"].(string)
+	mtype := (*queryVar)["type"].(string)
+
+	if by_m == "" {
+		by_m = "1980-01-01T00:00:00.000Z"
+		ey_m = "2200-12-31T00:00:00.000Z"
+	}
+
+	if mtype == "" || mtype == "全部" || strings.ToLower(mtype) == "all" {
+		mtype = "%"
+	}
+
+	b, err := time.Parse(time.RFC3339, by_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+	}
+
+	e, err := time.Parse(time.RFC3339, ey_m)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+	}
+
+	data, err := json.Marshal(dm.GetReceiptFeeOnDeductData(b, e, dbname))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

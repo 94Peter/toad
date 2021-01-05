@@ -18,8 +18,10 @@ type Receipt struct {
 	CaseName     string    `json:"caseName"`
 	CustomerType string    `json:"customertType"`
 	Name         string    `json:"customerName"`
-	Amount       int       `json:"amount"` //收款
-	Fee          int       `json:"fee"`    //收款
+	Amount       int       `json:"amount"`      //收款
+	Fee          int       `json:"fee"`         //收款
+	Item         string    `json:"item"`        //項目
+	Description  string    `json:"description"` //備註
 	//InvoiceNo    string    `json:"invoiceNo"` //發票號碼
 	// ---
 	InvoiceData []*Invoice `json:"invoiceData"`
@@ -318,8 +320,8 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 	*arid exist
 	*(加總歷史收款明細 + 此筆單子) <= 應收款項的收款  to_timestamp($2,'YYYY-MM-DD hh24:mi:ss')
 	**/
-	const sql = `INSERT INTO public.receipt (Rid, Date, Amount, ARid, Fee)
-				SELECT * FROM (SELECT $1::varchar(50), to_timestamp($2,'YYYY-MM-DD hh24:mi:ss') , $3::INTEGER , $4::varchar(50) , $5::INTEGER ) AS tmp 
+	const sql = `INSERT INTO public.receipt (Rid, Date, Amount, ARid, Fee, item , description)
+				SELECT * FROM (SELECT $1::varchar(50), to_timestamp($2,'YYYY-MM-DD hh24:mi:ss') , $3::INTEGER , $4::varchar(50) , $5::INTEGER, $6::varchar(50) , $7::varchar(50)  ) AS tmp 
 				WHERE  
 					EXISTS ( SELECT arid from public.ar ar WHERE arid = $4 ) 
 				and ( select $3 + COALESCE(SUM(amount),0) FROM public.receipt  where arid = $4 ) <=  (SELECT amount from public.ar ar WHERE arid = $4)
@@ -335,7 +337,7 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 	//fmt.Println(string(sql))
 
 	t := time.Now().Unix()
-	res, err := sqldb.Exec(sql, t, rt.Date, rt.Amount, rt.ARid, rt.Fee)
+	res, err := sqldb.Exec(sql, t, rt.Date, rt.Amount, rt.ARid, rt.Fee, rt.Item, rt.Description)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)

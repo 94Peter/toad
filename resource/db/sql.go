@@ -678,6 +678,8 @@ func (sdb *SqlDB) CreateReceiptTable() error {
 			"amount integer not NULL, "+
 			"fee integer not NULL DEFAULT 0, "+
 			"ARid character varying(50) not NULL, "+
+			"item character varying(50) ,"+
+			"description character varying(50) ,"+
 			"PRIMARY KEY (Rid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))

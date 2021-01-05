@@ -60,7 +60,35 @@ type DeductModel struct {
 	deductList []*Deduct
 }
 
-func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, dbname string) []*Deduct {
+func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, dbname string) []*Receipt {
+
+	const sql = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , R.item , R.fee, R.description
+					FROM public.receipt R
+					inner join public.ar AR on AR.arid = R.arid				
+					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d'
+					order by date desc , AR.cno `
+	db := decuctModel.imr.GetSQLDBwithDbname(dbname)
+	rows, err := db.SQLCommand(fmt.Sprintf(sql, begin.Unix(), end.Unix()))
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil
+	}
+
+	var rtDataList []*Receipt
+	for rows.Next() {
+		var rt Receipt
+
+		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Item, &rt.Fee, &rt.Description); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		rt.InvoiceData = []*Invoice{}
+		rtDataList = append(rtDataList, &rt)
+	}
+
+	return rtDataList
+}
+
+func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, arid, dbname string) []*Deduct {
 
 	// const qspl = `SELECT D.arid, D.Did, D.date , D.status, D.item, D.fee, D.Description, D.checkNumber , AR.date, AR.CNo, AR.CaseName, AR.type FROM public.deduct as D
 	// inner join public.ar as AR on AR.arid = D.arid
@@ -71,6 +99,7 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, dbnam
 			inner join public.ar as AR on AR.arid = D.arid
 			where ( extract(epoch from ar.date) >= '%d' and extract(epoch from ar.date - '1 month'::interval) < '%d' ) 
 			and (D.item like '%s' OR  D.status like '%s')
+			and D.arid like '%s'
 		) D
 		Left JOIN (
 		SELECT max(date) date, arid  FROM public.receipt where fee > 0 group by arid
@@ -79,7 +108,7 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, dbnam
 
 	db := decuctModel.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := db.ConnectSQLDB()
-	rows, err := sqldb.Query(fmt.Sprintf(sql, by_m.Unix(), ey_m.Unix(), mtype, mtype))
+	rows, err := sqldb.Query(fmt.Sprintf(sql, by_m.Unix(), ey_m.Unix(), mtype, mtype, "%"+arid+"%"))
 	if err != nil {
 		fmt.Println(err)
 		return nil

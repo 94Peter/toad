@@ -66,9 +66,10 @@ type inputReceipt struct {
 	// CaseName      string    `json:"caseName"`
 	// CustomertType string    `json:"customertType"`
 	// Name          string    `json:"customerName"`
-	Amount int `json:"amount"` //收款
-	Fee    int `json:"fee"`    //扣款金額
-	//InvoiceNo     string    `json:"invoiceNo"` //發票號碼
+	Amount      int    `json:"amount"`      //收款
+	Fee         int    `json:"fee"`         //扣款金額
+	Item        string `json:"item"`        //項目
+	Description string `json:"description"` //備註
 }
 
 func (api ARAPI) GetAPIs() *[]*APIHandler {
@@ -598,9 +599,11 @@ func (iGoAR *inputhouseGoAR) GetAR(action string) *model.AR {
 
 func (irt *inputReceipt) GetReceipt() *model.Receipt {
 	return &model.Receipt{
-		Amount: irt.Amount,
-		Date:   irt.Date,
-		ARid:   irt.ARid,
-		Fee:    irt.Fee,
+		Amount:      irt.Amount,
+		Date:        irt.Date,
+		ARid:        irt.ARid,
+		Fee:         irt.Fee,
+		Item:        irt.Item,
+		Description: irt.Description,
 	}
 }

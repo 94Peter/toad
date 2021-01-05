@@ -42,7 +42,9 @@ type Commission struct {
 	InvoiceNo   string `json:"-"` //發票號碼
 	ReceiveDate string `json:"-"` //收據 入帳日期
 	Checknumber string `json:"-"` //票號
-	DedectItem  string `json:"-"` //pdf 備註 >> dedeuct的Item
+	DedectItem  string `json:"-"` //pdf 備註 >> receipt的Item
+	Description string `json:"-"` //pdf 說明 >> receipt的Description
+
 	//
 	//Code string `json:"-"`
 }
@@ -63,7 +65,7 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid, dbname string) []*Commission
 	//if invoiceno is null in Database return ""
 
 	const qsql = `SELECT c.sid, c.rid, r.date, c.item|| ' ' || ar.name, r.amount, c.sname, c.cpercent, ( r.amount * c.cpercent/100)  - coalesce(c.fee,0) sr, ( ( r.amount * c.cpercent/100)  - coalesce(c.fee,0) ) * cs.percent/100 bonus,
-	r.arid, c.status , cs.branch, cs.percent, to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) , coalesce(d.item,'')
+	r.arid, c.status , cs.branch, cs.percent, to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(r.fee,0) , coalesce(r.item,''), coalesce(r.description,'')
 	FROM public.commission c
 	inner JOIN public.receipt r on r.rid = c.rid
 	inner JOIN public.ar ar on ar.arid = c.arid
@@ -98,21 +100,17 @@ func (cm *CModel) ExportCommissiontDataByBSid(bsid, dbname string) []*Commission
 
 		var c Commission
 
-		if err := rows.Scan(&c.Sid, &c.Rid, &c.Date, &c.Item, &c.Amount, &c.SName, &c.CPercent, &c.SR, &c.Bonus, &c.ARid, &c.Status, &c.Branch, &c.Percent, &c.ReceiveDate, &c.InvoiceNo, &c.Checknumber, &c.Fee, &c.DedectItem); err != nil {
+		if err := rows.Scan(&c.Sid, &c.Rid, &c.Date, &c.Item, &c.Amount, &c.SName, &c.CPercent, &c.SR, &c.Bonus, &c.ARid, &c.Status, &c.Branch, &c.Percent, &c.ReceiveDate, &c.InvoiceNo, &c.Checknumber, &c.Fee, &c.DedectItem, &c.Description); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
-
-		// out2, _ := json.Marshal(c)
-		// fmt.Println("exportCommissiontData c :", string(out2))
 
 		cDataList = append(cDataList, &c)
 	}
 
-	cm.cList = cDataList
-	// out, _ := json.Marshal(cm.cList)
+	// out, _ := json.Marshal(cDataList)
 	// fmt.Println("exportCommissiontData cm.cList :", string(out))
 
-	return cm.cList
+	return cDataList
 }
 
 func (cm *CModel) GetCommissiontData(start, end time.Time, status, branch, dbname string) []*Commission {
@@ -164,7 +162,7 @@ func (cm *CModel) GetBytePDF() []byte {
 	return data
 }
 
-func (cm *CModel) PDF(isNew bool) {
+func (cm *CModel) PDF(isNew bool, commissionData []*Commission) {
 	// var p *pdf.Pdf
 	// if isNew {
 	// 	p = pdf.GetNewPDF()
@@ -175,7 +173,7 @@ func (cm *CModel) PDF(isNew bool) {
 	p := pdf.GetOriPDF()
 
 	tabel := pdf.GetDataTable(pdf.Commission)
-	data, SR, Bonus := cm.addDataIntoTable(tabel, p)
+	data, SR, Bonus := cm.addDataIntoTable(tabel, p, commissionData)
 
 	//p.DrawPDF(pdf.GetDataTable(""))
 	p.DrawTablePDF(data)
@@ -189,8 +187,8 @@ func (cm *CModel) PDF(isNew bool) {
 
 	pdfx += textw
 	BranchName := "此薪資表無傭金"
-	if len(cm.cList) > 0 {
-		BranchName = cm.cList[0].Branch
+	if len(commissionData) > 0 {
+		BranchName = commissionData[0].Branch
 	}
 	p.DrawRectangle(textw, pdf.TextHeight, pdf.ColorWhite, "FD")
 	p.FillText(BranchName, 12, pdf.ColorTableLine, pdf.AlignCenter, pdf.ValignMiddle, textw, pdf.TextHeight)
@@ -219,9 +217,9 @@ func (cm *CModel) CreateCommission(rt *Receipt, sqldb *sql.DB) (err error) {
 
 	**/
 	const sql = `INSERT INTO public.commission
-	(Sid, Rid, Item, SName, CPercent, sr, bonus , arid)
+	(Sid, Rid, Item, SName, CPercent, sr, bonus , arid, fee)
 	select armap.sid, $1, ar.cno ||' '|| ar.casename ||' '|| (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ), armap.sname,
-	armap.proportion, $2 * armap.proportion / 100 ,  $2 * armap.proportion / 100 * cs.percent /100 , $3::VARCHAR
+	armap.proportion, $2 * armap.proportion / 100 ,  $2 * armap.proportion / 100 * cs.percent /100 , $3::VARCHAR , $4 * armap.proportion / 100
 	from public.ar ar
 	inner join 	public.armap armap on armap.arid = ar.arid 
 	inner join 	(			
@@ -265,7 +263,7 @@ func (cm *CModel) CreateCommission(rt *Receipt, sqldb *sql.DB) (err error) {
 	fmt.Println("CreateCommission Rid:", rt.Rid)
 	//fmt.Println(rt.Amount)
 	fmt.Println("CreateCommission ARid:", rt.ARid)
-	res, err := sqldb.Exec(sql, rt.Rid, rt.Amount-rt.Fee, rt.ARid)
+	res, err := sqldb.Exec(sql, rt.Rid, rt.Amount-rt.Fee, rt.ARid, rt.Fee)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("CreateCommission:", err)
@@ -403,7 +401,7 @@ func (cm *CModel) UpdateCommissionStatus(rid, sid, dbname string) (err error) {
 	return nil
 }
 
-func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataTable, float64, float64) {
+func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf, commissionData []*Commission) (*pdf.DataTable, float64, float64) {
 
 	var TotalSR = 0.0
 	var TotalBouns = 0.0
@@ -412,7 +410,7 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 	//tabel.ColumnLen
 	var transactionID = ""
 	var sameRow = true
-	for _, element := range cm.cList {
+	for _, element := range commissionData {
 		if transactionID == element.Rid {
 			sameRow = true
 		} else {
@@ -567,11 +565,12 @@ func (cm *CModel) addDataIntoTable(tabel *pdf.DataTable, p *pdf.Pdf) (*pdf.DataT
 			Front: pdf.ColorTableLine,
 		}
 		tabel.RawData = append(tabel.RawData, vs)
-		//
-		// text = element.Percent
-		// pdf.ResizeWidth(tabel, p.GetTextWidth(text), 12)
+		//說明
+		fmt.Println("element.Description:", element.Description)
+		text = element.Description
+		pdf.ResizeWidth(tabel, p.GetTextWidth(text), 12)
 		vs = &pdf.TableStyle{
-			Text:  "",
+			Text:  text,
 			Bg:    If(true, pdf.ColorWhite, pdf.ColorWhite).(pdf.Color),
 			Front: pdf.ColorTableLine,
 		}

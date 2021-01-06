@@ -17,17 +17,18 @@ var ACTION_SELL = "sell"
 
 //`json:"id"` 回傳重新命名
 type AR struct {
-	ARid     string      `json:"id"`
-	Date     time.Time   `json:"completionDate"`
-	CNo      string      `json:"contractNo"`
-	Customer Customer    `json:"customer"`
-	CaseName string      `json:"caseName"`
-	Amount   int         `json:"amount"`
-	Fee      int         `json:"fee"`            //應扣費用
-	Cost     int         `json:"cost"`           //已扣費用
-	Balance  int         `json:"balance"`        //未收金額
-	RA       int         `json:"receivedAmount"` //已收金額
-	Sales    []*MAPSaler `json:"sales"`
+	ARid       string      `json:"id"`
+	Date       time.Time   `json:"completionDate"`
+	CNo        string      `json:"contractNo"`
+	Customer   Customer    `json:"customer"`
+	CaseName   string      `json:"caseName"`
+	Amount     int         `json:"amount"`
+	Fee        int         `json:"fee"`            //應扣費用
+	Cost       int         `json:"cost"`           //已扣費用
+	Balance    int         `json:"balance"`        //未收金額
+	RA         int         `json:"receivedAmount"` //已收金額
+	Sales      []*MAPSaler `json:"sales"`
+	DeductList []*Deduct   `json:"deductList"`
 }
 
 // type Receipt struct {
@@ -208,6 +209,8 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		r.Customer = ctm
 		r.Balance = r.Amount - r.RA
 
+		r.DeductList = []*Deduct{}
+
 		if status == "0" || r.Balance > 0 {
 			arDataList = append(arDataList, &r)
 		}
@@ -237,14 +240,28 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		}
 
 	}
+
+	by_m := "1980-01-01T00:00:00.000Z"
+	ey_m := "2200-12-31T00:00:00.000Z"
+	b, _ := time.Parse(time.RFC3339, by_m)
+	e, _ := time.Parse(time.RFC3339, ey_m)
+	deductList := decuctModel.GetDeductData(b, e, "%", "", dbname)
+	for _, deduct := range deductList {
+		for _, ar := range arDataList {
+			if ar.ARid == deduct.ARid {
+				ar.DeductList = append(ar.DeductList, deduct)
+				break
+			}
+		}
+	}
 	// out, err := json.Marshal(arList)
 	// if err != nil {
 	// 	panic(err)
 	// }
 	// fmt.Println(string(out))
-	am.arList = arDataList
+	//am.arList = arDataList
 
-	return am.arList
+	return arDataList
 	// influxR := result[0]
 	// if len(influxR.Series) == 0 {
 	// 	return nil

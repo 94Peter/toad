@@ -168,6 +168,7 @@ func (api *ARAPI) updateAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.Request) {
 	dbname := req.Header.Get("dbname")
 	am := model.GetARModel(di)
+	model.GetDecuctModel(di)
 
 	queryVar := util.GetQueryValue(req, []string{"key", "status", "export"}, true)
 	key := (*queryVar)["key"].(string)
@@ -175,9 +176,9 @@ func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.
 	if status == "" {
 		status = "0"
 	}
-	am.GetARData(key, status, dbname)
+	ardata := am.GetARData(key, status, dbname)
 	//data, err := json.Marshal(result)
-	data, err := am.Json("ar")
+	data, err := json.Marshal(ardata)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

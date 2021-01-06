@@ -15,11 +15,12 @@ type Deduct struct {
 	ARid        string      `json:"-"`
 	Did         string      `json:"id"`
 	Status      string      `json:"status"`
-	Date        time.Time   `json:"date"`
+	Date        time.Time   `json:"date"`     // 成交日
+	CostDate    time.Time   `json:"costDate"` // 扣款日
 	Fee         int         `json:"fee"`
 	Description string      `json:"description"`
 	Item        string      `json:"item"`
-	ReceiveDate time.Time   `json:"receiveDate"`
+	ReceiveDate time.Time   `json:"receiveDate"` //支付日
 	CNo         string      `json:"contractNo"`
 	CaseName    string      `json:"caseName"`
 	Type        string      `json:"type"`
@@ -28,16 +29,16 @@ type Deduct struct {
 	ReceiptList []*Receipt  `json:"receiptList"`
 }
 
-// type Receipt struct {
-// 	Rid       string
-// 	Date      time.Time `json:"date"`
-// 	CNo       string
-// 	Customer  customer
-// 	CaseName  string
-// 	ARid      string `json:"id"`
-// 	Amount    int    `json:"amount"` //收款
-// 	InvoiceNo string //發票號碼
-// }
+type DeductCost struct {
+	Date        time.Time `json:"date"`     // 成交日
+	CostDate    time.Time `json:"costDate"` // 扣款日
+	Fee         int       `json:"fee"`
+	Description string    `json:"description"`
+	Item        string    `json:"item"`
+	CNo         string    `json:"contractNo"`
+	CaseName    string    `json:"caseName"`
+	Type        string    `json:"type"`
+}
 
 var (
 	decuctModel *DeductModel
@@ -60,13 +61,13 @@ type DeductModel struct {
 	deductList []*Deduct
 }
 
-func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, dbname string) []*Receipt {
+func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, dbname string) []*DeductCost {
 
-	const sql = `SELECT R.rid, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , R.item , R.fee, R.description
+	const sql = `SELECT AR.date, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , R.item , R.fee, R.description
 					FROM public.receipt R
 					inner join public.ar AR on AR.arid = R.arid				
-					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d'
-					order by date desc , AR.cno `
+					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d' and R.Fee > 0
+					order by r.date desc , AR.cno `
 	db := decuctModel.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(sql, begin.Unix(), end.Unix()))
 	if err != nil {
@@ -74,18 +75,19 @@ func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, 
 		return nil
 	}
 
-	var rtDataList []*Receipt
+	var DataList []*DeductCost
 	for rows.Next() {
-		var rt Receipt
 
-		if err := rows.Scan(&rt.Rid, &rt.Date, &rt.CNo, &rt.CaseName, &rt.CustomerType, &rt.Item, &rt.Fee, &rt.Description); err != nil {
+		var d DeductCost
+
+		if err := rows.Scan(&d.Date, &d.CostDate, &d.CNo, &d.CaseName, &d.Type, &d.Item, &d.Fee, &d.Description); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
-		rt.InvoiceData = []*Invoice{}
-		rtDataList = append(rtDataList, &rt)
+
+		DataList = append(DataList, &d)
 	}
 
-	return rtDataList
+	return DataList
 }
 
 func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, arid, dbname string) []*Deduct {

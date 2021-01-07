@@ -32,7 +32,8 @@ type Deduct struct {
 type DeductCost struct {
 	Date        time.Time `json:"date"`     // 成交日
 	CostDate    time.Time `json:"costDate"` // 扣款日
-	Fee         int       `json:"fee"`
+	Fee         int       `json:"fee"`      //扣款價格
+	Amount      int       `json:"amount"`   //收款價格
 	Description string    `json:"description"`
 	Item        string    `json:"item"`
 	CNo         string    `json:"contractNo"`
@@ -63,7 +64,7 @@ type DeductModel struct {
 
 func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, dbname string) []*DeductCost {
 
-	const sql = `SELECT AR.date, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , R.item , R.fee, R.description
+	const sql = `SELECT AR.date, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , R.item , R.fee, R.description, R.Amount
 					FROM public.receipt R
 					inner join public.ar AR on AR.arid = R.arid				
 					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d' and R.Fee > 0
@@ -80,7 +81,7 @@ func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, 
 
 		var d DeductCost
 
-		if err := rows.Scan(&d.Date, &d.CostDate, &d.CNo, &d.CaseName, &d.Type, &d.Item, &d.Fee, &d.Description); err != nil {
+		if err := rows.Scan(&d.Date, &d.CostDate, &d.CNo, &d.CaseName, &d.Type, &d.Item, &d.Fee, &d.Description, &d.Amount); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 

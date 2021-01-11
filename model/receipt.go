@@ -63,6 +63,11 @@ func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid, dbname string) error
 		return errors.New("not found receipt")
 	}
 
+	c := cm.GetCommissionDataByRID(mdb, Rid)
+	if c.Bsid != "" {
+		return errors.New("此收款傭金已納入薪資")
+	}
+
 	_, err = salaryM.CheckValidCloseDate(r.Date, dbname, mdb)
 	if err != nil {
 		return err
@@ -88,6 +93,14 @@ func (rm *RTModel) UpdateReceiptData(amount int, Date, Rid, dbname string) error
 	if id <= 0 {
 		return errors.New("not found receipt")
 	}
+
+	cm.DeleteCommissionData(Rid, dbname, mdb)
+
+	err = cm.CreateCommission(r, mdb)
+	if err != nil {
+		return err
+	}
+
 	defer mdb.Close()
 	return nil
 }
@@ -103,6 +116,11 @@ func (rm *RTModel) DeleteReceiptData(Rid, dbname string, mdb *sql.DB) (string, e
 	r := rm.GetReceiptDataByID(mdb, Rid)
 	if r == nil || r.Rid == "" {
 		return "", errors.New("not found receipt")
+	}
+
+	c := cm.GetCommissionDataByRID(mdb, Rid)
+	if c.Bsid != "" {
+		return "", errors.New("此收款傭金已納入薪資")
 	}
 
 	ivData := rm.GetInvoiceDataByRid(mdb, Rid)
@@ -375,11 +393,11 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 		return err
 	}
 
-	fmt.Println("UpdateDeductRid [GO]")
-	err = decuctModel.UpdateDeductRid(rt.ARid, sqldb)
-	if err != nil {
-		fmt.Println("UpdateDeductRid:" + err.Error())
-	}
+	// fmt.Println("UpdateDeductRid [GO]")
+	// err = decuctModel.UpdateDeductRid(rt.ARid, sqldb)
+	// if err != nil {
+	// 	fmt.Println("UpdateDeductRid:" + err.Error())
+	// }
 
 	return nil
 }

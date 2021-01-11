@@ -183,6 +183,7 @@ func (api *ReceiptAPI) updateReceiptEndpoint(w http.ResponseWriter, req *http.Re
 	fmt.Println("iuRT.Datedate", iuRT.Date)
 
 	rm := model.GetRTModel(di)
+	model.GetCModel(di)
 	if err := rm.UpdateReceiptData(iuRT.Amount, iuRT.Date, ID, dbname); err != nil {
 		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)

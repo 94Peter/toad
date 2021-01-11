@@ -30,6 +30,7 @@ type Deduct struct {
 }
 
 type DeductCost struct {
+	Rid         string    `json:"rid"`
 	Date        time.Time `json:"date"`     // 成交日
 	CostDate    time.Time `json:"costDate"` // 扣款日
 	Fee         int       `json:"fee"`      //扣款價格
@@ -64,7 +65,7 @@ type DeductModel struct {
 
 func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, dbname string) []*DeductCost {
 
-	const sql = `SELECT AR.date, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , R.item , R.fee, R.description, R.Amount
+	const sql = `SELECT R.rid, AR.date, R.date, AR.cno, AR.casename, (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ) as type , R.item , R.fee, R.description, R.Amount
 					FROM public.receipt R
 					inner join public.ar AR on AR.arid = R.arid				
 					 where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) <= '%d' and R.Fee > 0
@@ -81,7 +82,7 @@ func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, 
 
 		var d DeductCost
 
-		if err := rows.Scan(&d.Date, &d.CostDate, &d.CNo, &d.CaseName, &d.Type, &d.Item, &d.Fee, &d.Description, &d.Amount); err != nil {
+		if err := rows.Scan(&d.Rid, &d.Date, &d.CostDate, &d.CNo, &d.CaseName, &d.Type, &d.Item, &d.Fee, &d.Description, &d.Amount); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -89,6 +90,68 @@ func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, 
 	}
 
 	return DataList
+}
+
+func (decuctModel *DeductModel) UpdateDeductCostData(dc *DeductCost, dbname string) error {
+
+	db := decuctModel.imr.GetSQLDBwithDbname(dbname)
+
+	mdb, err := db.ConnectSQLDB()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	r := rm.GetReceiptDataByID(mdb, dc.Rid)
+	if r.Rid == "" {
+		return errors.New("not found receipt")
+	}
+
+	c := cm.GetCommissionDataByRID(mdb, dc.Rid)
+	if c.Bsid != "" {
+		return errors.New("此收款傭金已納入薪資")
+	}
+
+	_, err = salaryM.CheckValidCloseDate(r.Date, dbname, mdb)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("UpdateReceiptData")
+
+	const sql = `Update public.receipt set amount = $1 ,date = $2 , fee = $3 , item = $4 , description = $5 where Rid = $6;`
+	fmt.Println("UpdateReceiptData:", dc.CostDate)
+	res, err := mdb.Exec(sql, dc.Amount, dc.CostDate, dc.Fee, dc.Item, dc.Description, dc.Rid)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println("RowsAffected: ", id)
+	if id <= 0 {
+		return errors.New("not found receipt")
+	}
+
+	cm.DeleteCommissionData(dc.Rid, dbname, mdb)
+	r.Amount = dc.Amount
+	r.Fee = dc.Fee
+	r.Date = dc.Date
+	r.Item = dc.Item
+	r.Description = dc.Description
+	err = cm.CreateCommission(r, mdb)
+	if err != nil {
+		return err
+	}
+
+	defer mdb.Close()
+	return nil
+
 }
 
 func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, arid, dbname string) []*Deduct {

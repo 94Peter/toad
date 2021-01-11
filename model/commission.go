@@ -46,7 +46,7 @@ type Commission struct {
 	Description string `json:"-"` //pdf 說明 >> receipt的Description
 
 	//
-	//Code string `json:"-"`
+	Bsid string `json:"-"` //綁定薪資表id
 }
 
 func GetCModel(imr interModelRes) *CModel {
@@ -231,35 +231,7 @@ func (cm *CModel) CreateCommission(rt *Receipt, sqldb *sql.DB) (err error) {
 			) tmp on tmp.sid = cs.sid and tmp.zerodate = cs.zerodate		
 		)	cs  on cs.sid = armap.sid or armap.sid = cs.identityNum
 	where ar.arid = $3;`
-	// const sql = `INSERT INTO public.commission
-	// (Sid, Rid, Item, SName, CPercent, sr, bonus , arid, status)
-	// select armap.sid, $1, ar.cno ||' '|| ar.casename ||' '|| (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ), armap.sname, armap.proportion, $2 * armap.proportion / 100 ,  $2 * armap.proportion / 100 * cs.percent /100 , $3::VARCHAR,
-	// ( case when tmp.branch is NULL then 'normal' else 'remove' end) status
-	// from public.ar ar
-	// inner join 	public.armap armap on armap.arid = ar.arid
-	// inner join 	(
-	// 		select cs.branch, cs.sid, cs.percent from public.configsaler cs
-	// 		inner join (
-	// 			select sid, max(zerodate) zerodate from public.configsaler cs
-	// 			where now() > zerodate
-	// 			group by sid
-	// 		) tmp on tmp.sid = cs.sid and tmp.zerodate = cs.zerodate
-	// 	)	cs  on cs.sid = armap.sid
-	// left join (
-	// 	select branch from public.branchsalary BS
-	// 	where BS.date = to_char($4::date ,'YYYY-MM')::varchar(7)
-	// ) tmp on tmp.branch = cs.branch
-	// where ar.arid = $3;`
-	// select armap.sid, $1, ar.cno ||' '|| ar.casename ||' '|| ar.type, armap.sname, armap.proportion
-	// from public.ar ar
-	// inner join 	public.armap armap on armap.arid = ar.arid
-	// where ar.arid = $2 ;`
 
-	// interdb := cm.imr.GetSQLDBwithDbname(dbname)
-	// sqldb, err := interdb.ConnectSQLDB()
-	// if err != nil {
-	// 	return err
-	// }
 	fmt.Println("CreateCommission Rid:", rt.Rid)
 	//fmt.Println(rt.Amount)
 	fmt.Println("CreateCommission ARid:", rt.ARid)
@@ -658,4 +630,52 @@ func (cm *CModel) agentSignTable(tabel *pdf.DataTable) *pdf.DataTable {
 	// rm.GetReceiptData("", "")
 
 	return tabel
+}
+
+func (cm *CModel) GetCommissionDataByRID(sqldb *sql.DB, rid string) *Commission {
+	fmt.Println("GetCommissionDataByRID:", rid)
+	const sql = `SELECT  rid, bsid	FROM public.commission where rid = '%s' limit 1;	`
+
+	rows, err := sqldb.Query(fmt.Sprintf(sql, rid))
+	if err != nil {
+		fmt.Println("[rows err]:", err)
+		return nil
+	}
+
+	var c Commission
+	for rows.Next() {
+
+		fmt.Println("scan start")
+		if err := rows.Scan(&c.Rid, &c.Bsid); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		fmt.Println("scan end")
+	}
+
+	return &c
+}
+
+func (cm *CModel) DeleteCommissionData(Rid, dbname string, mdb *sql.DB) error {
+
+	const sql = ` Delete From public.commission where Rid = '%s'; `
+
+	res, err := mdb.Exec(fmt.Sprintf(sql, Rid))
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+
+	fmt.Println("DeleteCommissionData RowsAffected: ", id)
+
+	if id <= 0 {
+		return errors.New("not found commission")
+	}
+
+	return nil
 }

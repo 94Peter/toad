@@ -45,10 +45,20 @@ type inputUpdateSales struct {
 	SalerList []*model.MAPSaler `json:"salerList"`
 }
 
+type inputUpdateDeductCost struct {
+	CostDate    time.Time `json:"costDate"`
+	Amount      int       `json:"amount"`
+	Fee         int       `json:"fee"`
+	Description string    `json:"description"`
+	Item        string    `json:"item"`
+}
+
 func (api DeductAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/deduct", Next: api.getDeductEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/deductCost", Next: api.getReceiptFeeOnDeductDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/deductCost/{ID}", Next: api.updateReceiptFeeOnDeductDataEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/deductCost/{ID}", Next: api.deleteReceiptFeeOnDeductDataEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
 		//&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.deleteDeductEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
@@ -294,6 +304,66 @@ func (api *DeductAPI) updateDeductSalesEndpoint(w http.ResponseWriter, req *http
 
 }
 
+func (api *DeductAPI) updateReceiptFeeOnDeductDataEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
+	vars := util.GetPathVars(req, []string{"ID"})
+	ID := vars["ID"].(string)
+	fmt.Println(ID)
+	iuDC := inputUpdateDeductCost{}
+	err := json.NewDecoder(req.Body).Decode(&iuDC)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	if ok, err := iuDC.isDeductCostValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	DM := model.GetDecuctModel(di)
+	model.GetRTModel(di)
+	model.GetCModel(di)
+	if err := DM.UpdateDeductCostData(iuDC.GetDeductCost(ID), dbname); err != nil {
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
+			w.WriteHeader(http.StatusLocked)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	// if err := memberModel.Quit(phone); err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
+
+	w.Write([]byte("ok"))
+}
+
+func (api *DeductAPI) deleteReceiptFeeOnDeductDataEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
+	vars := util.GetPathVars(req, []string{"ID"})
+	ID := vars["ID"].(string)
+
+	rm := model.GetRTModel(di)
+	if _, err := rm.DeleteReceiptData(ID, dbname, nil); err != nil {
+		if strings.Contains(err.Error(), ERROR_CloseDate) {
+			w.WriteHeader(http.StatusLocked)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Write([]byte("ok"))
+}
+
 func (iUD *inputUpdateDeduct) isUpdateDeductValid() (bool, error) {
 	// if !util.IsStrInList(iAR.Permission, permission.All...) {
 	// 	return false, errors.New("permission error")
@@ -345,6 +415,15 @@ func (iDeduct *inputDeduct) isDeductValid() (bool, error) {
 	return true, nil
 }
 
+func (iUDC *inputUpdateDeductCost) isDeductCostValid() (bool, error) {
+
+	if iUDC.Fee <= 0 {
+		return false, errors.New("fee is not valid")
+	}
+
+	return true, nil
+}
+
 func (iDeduct *inputDeduct) GetDeduct() *model.Deduct {
 	return &model.Deduct{
 		ARid:        iDeduct.ARid,
@@ -358,6 +437,17 @@ func (iDeduct *inputDeduct) GetDeduct() *model.Deduct {
 func (iDeduct *inputUpdateDeductItem) GetDeduct() *model.Deduct {
 	return &model.Deduct{
 		Item: iDeduct.Item,
+	}
+}
+
+func (iUDC *inputUpdateDeductCost) GetDeductCost(rid string) *model.DeductCost {
+	return &model.DeductCost{
+		Rid:         rid,
+		CostDate:    iUDC.CostDate,
+		Item:        iUDC.Item,
+		Description: iUDC.Description,
+		Amount:      iUDC.Amount,
+		Fee:         iUDC.Fee,
 	}
 }
 

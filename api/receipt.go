@@ -21,8 +21,11 @@ func (api ReceiptAPI) Enable() bool {
 }
 
 type inputUpdateReceipt struct {
-	Date   string `json:"date"`
-	Amount int    `json:"amount"`
+	Date        time.Time `json:"date"`
+	Amount      int       `json:"amount"`
+	Fee         int       `json:"fee"`
+	Description string    `json:"description"`
+	Item        string    `json:"item"`
 }
 
 type exportReceiptId struct {
@@ -58,7 +61,8 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 	//today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
 	//end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 	dbname := req.Header.Get("dbname")
-	queryVar := util.GetQueryValue(req, []string{"begin", "end"}, true)
+	queryVar := util.GetQueryValue(req, []string{"begin", "end", "key"}, true)
+	key := (*queryVar)["key"].(string)
 	by_m := (*queryVar)["begin"].(string)
 	ey_m := (*queryVar)["end"].(string)
 
@@ -81,7 +85,7 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
 	}
 
-	rm.GetReceiptData(b, e, dbname)
+	rm.GetReceiptData(b, e, key, dbname)
 	//data, err := json.Marshal(result)
 	data, err := rm.Json()
 	if err != nil {
@@ -178,13 +182,16 @@ func (api *ReceiptAPI) updateReceiptEndpoint(w http.ResponseWriter, req *http.Re
 		w.Write([]byte("Invalid JSON format"))
 		return
 	}
-	fmt.Println("iuRT.Amount", iuRT.Amount)
-	fmt.Println("ID", ID)
-	fmt.Println("iuRT.Datedate", iuRT.Date)
+
+	if ok, err := iuRT.isUpdateReceiptValid(); !ok {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
 
 	rm := model.GetRTModel(di)
 	model.GetCModel(di)
-	if err := rm.UpdateReceiptData(iuRT.Amount, iuRT.Date, ID, dbname); err != nil {
+	if err := rm.UpdateReceiptData(iuRT.GetUpdateReceipt(ID), dbname); err != nil {
 		if strings.Contains(err.Error(), ERROR_CloseDate) {
 			w.WriteHeader(http.StatusLocked)
 		} else {
@@ -261,4 +268,27 @@ func (iInovice *inputInvoice) isInvoiceValid() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (iUDC *inputUpdateReceipt) isUpdateReceiptValid() (bool, error) {
+
+	if iUDC.Fee < 0 {
+		return false, errors.New("fee is not valid")
+	}
+
+	if iUDC.Amount <= 0 {
+		return false, errors.New("Amount is not valid")
+	}
+	return true, nil
+}
+
+func (iUDC *inputUpdateReceipt) GetUpdateReceipt(rid string) *model.Receipt {
+	return &model.Receipt{
+		Rid:         rid,
+		Date:        iUDC.Date,
+		Item:        iUDC.Item,
+		Description: iUDC.Description,
+		Amount:      iUDC.Amount,
+		Fee:         iUDC.Fee,
+	}
 }

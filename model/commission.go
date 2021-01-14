@@ -644,11 +644,12 @@ func (cm *CModel) GetCommissionDataByRID(sqldb *sql.DB, rid string) *Commission 
 
 	var c Commission
 	for rows.Next() {
-
+		var Bsid NullString
 		fmt.Println("scan start")
-		if err := rows.Scan(&c.Rid, &c.Bsid); err != nil {
+		if err := rows.Scan(&c.Rid, &Bsid); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
+		c.Bsid = Bsid.Value
 		fmt.Println("scan end")
 	}
 

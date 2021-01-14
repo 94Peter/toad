@@ -56,9 +56,9 @@ type inputUpdateDeductCost struct {
 func (api DeductAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/deduct", Next: api.getDeductEndpoint, Method: "GET", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/deductCost", Next: api.getReceiptFeeOnDeductDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/deductCost/{ID}", Next: api.updateReceiptFeeOnDeductDataEndpoint, Method: "PUT", Auth: true, Group: permission.All},
-		&APIHandler{Path: "/v1/deductCost/{ID}", Next: api.deleteReceiptFeeOnDeductDataEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
+		// &APIHandler{Path: "/v1/deductCost", Next: api.getReceiptFeeOnDeductDataEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		// &APIHandler{Path: "/v1/deductCost/{ID}", Next: api.updateReceiptFeeOnDeductDataEndpoint, Method: "PUT", Auth: true, Group: permission.All},
+		// &APIHandler{Path: "/v1/deductCost/{ID}", Next: api.deleteReceiptFeeOnDeductDataEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
 		//&APIHandler{Path: "/v1/deduct", Next: api.createDeductEndpoint, Method: "POST", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/deduct/{ID}", Next: api.deleteDeductEndpoint, Method: "DELETE", Auth: true, Group: permission.All},

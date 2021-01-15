@@ -2,7 +2,6 @@ package model
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -12,21 +11,21 @@ import (
 
 //`json:"id"` 回傳重新命名
 type Deduct struct {
-	ARid        string      `json:"-"`
-	Did         string      `json:"id"`
-	Status      string      `json:"status"`
-	Date        time.Time   `json:"date"`     // 成交日
-	CostDate    time.Time   `json:"costDate"` // 扣款日
+	ARid   string    `json:"-"`
+	Did    string    `json:"id"`
+	Status string    `json:"status"`
+	Date   time.Time `json:"date"` // 支付日
+	//CostDate    time.Time   `json:"costDate"` // 扣款日
 	Fee         int         `json:"fee"`
 	Description string      `json:"description"`
 	Item        string      `json:"item"`
-	ReceiveDate time.Time   `json:"receiveDate"` //支付日
+	ReceiveDate time.Time   `json:"receiveDate"` //成交日
 	CNo         string      `json:"contractNo"`
 	CaseName    string      `json:"caseName"`
 	Type        string      `json:"type"`
 	CheckNumber string      `json:"checkNumber"`
 	Sales       []*MAPSaler `json:"sales"`
-	ReceiptList []*Receipt  `json:"receiptList"`
+	//ReceiptList []*Receipt  `json:"receiptList"`
 }
 
 type DeductCost struct {
@@ -58,9 +57,9 @@ func GetDecuctModel(imr interModelRes) *DeductModel {
 }
 
 type DeductModel struct {
-	imr        interModelRes
-	db         db.InterSQLDB
-	deductList []*Deduct
+	imr interModelRes
+	db  db.InterSQLDB
+	//deductList []*Deduct
 }
 
 func (decuctModel *DeductModel) GetReceiptFeeOnDeductData(begin, end time.Time, dbname string) []*DeductCost {
@@ -192,7 +191,7 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, arid,
 
 		d.Date = Ddate.Time
 		d.ReceiveDate = RDate.Time
-		d.ReceiptList = []*Receipt{}
+		//d.ReceiptList = []*Receipt{}
 		deductDataList = append(deductDataList, &d)
 
 	}
@@ -224,39 +223,39 @@ func (decuctModel *DeductModel) GetDeductData(by_m, ey_m time.Time, mtype, arid,
 	}
 
 	//找出receipt
-	const receiptMapsql = `SELECT rid, date, amount, fee, arid FROM public.receipt where fee > 0 order by date desc; `
-	rows, err = sqldb.Query(receiptMapsql)
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	}
+	// const receiptMapsql = `SELECT rid, date, amount, fee, arid FROM public.receipt where fee > 0 order by date desc; `
+	// rows, err = sqldb.Query(receiptMapsql)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return nil
+	// }
 
-	for rows.Next() {
+	// for rows.Next() {
 
-		var r Receipt
+	// 	var r Receipt
 
-		if err := rows.Scan(&r.Rid, &r.Date, &r.Amount, &r.Fee, &r.ARid); err != nil {
-			fmt.Println("err Scan " + err.Error())
-		}
+	// 	if err := rows.Scan(&r.Rid, &r.Date, &r.Amount, &r.Fee, &r.ARid); err != nil {
+	// 		fmt.Println("err Scan " + err.Error())
+	// 	}
 
-		for _, deduct := range deductDataList {
-			if deduct.ARid == r.ARid {
-				//無中斷，需重複使用。
-				deduct.ReceiptList = append(deduct.ReceiptList, &r)
-			}
-		}
+	// 	for _, deduct := range deductDataList {
+	// 		if deduct.ARid == r.ARid {
+	// 			//無中斷，需重複使用。
+	// 			deduct.ReceiptList = append(deduct.ReceiptList, &r)
+	// 		}
+	// 	}
 
-	}
+	// }
 
-	decuctModel.deductList = deductDataList
+	//decuctModel.deductList = deductDataList
 	defer sqldb.Close()
-	return decuctModel.deductList
+	return deductDataList
 
 }
 
-func (decuctModel *DeductModel) Json() ([]byte, error) {
-	return json.Marshal(decuctModel.deductList)
-}
+// func (decuctModel *DeductModel) Json() ([]byte, error) {
+// 	return json.Marshal(decuctModel.deductList)
+// }
 
 func (decuctModel *DeductModel) CreateDeduct(deduct *Deduct, dbname string) (err error) {
 	interdb := decuctModel.imr.GetSQLDBwithDbname(dbname)

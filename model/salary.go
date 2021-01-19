@@ -162,10 +162,10 @@ type SalaryModel struct {
 
 	TransferSalaryList []*TransferSalary
 
-	SystemAccountList []*SystemAccount
-	CommissionList    []*Commission
-	FnamePdf          string
-	SMTPConf          util.SendMail
+	//SystemAccountList []*SystemAccount
+	CommissionList []*Commission
+	FnamePdf       string
+	SMTPConf       util.SendMail
 
 	CloseAccount *CloseAccount
 }
@@ -2049,14 +2049,14 @@ func (salaryM *SalaryModel) GetAgentSign(bsID, dbname string) {
 		return
 	}
 
-	fmt.Println("SQLCommand Done")
+	fmt.Println("GetAgentSign Done")
 	for rows.Next() {
 		var c Commission
 		var Item, Branch, DedectItem NullString
 		var Amount, Fee NullInt
 		var CPercent, SR, Bonus NullFloat
 		if err := rows.Scan(&c.Sid, &c.SName, &Item, &Amount, &Fee, &CPercent, &SR, &Bonus, &DedectItem, &Branch, &c.Percent); err != nil {
-			fmt.Println("err Scan " + err.Error())
+			fmt.Println("GetAgentSign err Scan " + err.Error())
 		}
 		c.Item = Item.Value
 		c.Amount = int(Amount.Value)
@@ -2069,13 +2069,13 @@ func (salaryM *SalaryModel) GetAgentSign(bsID, dbname string) {
 		salaryM.CommissionList = append(salaryM.CommissionList, &c)
 	}
 	//這邊在做啥小? 忘了
-	if len(salaryM.CommissionList) > 0 {
-		systemM.GetAccountData(dbname)
-		salerList := systemM.systemAccountList
-		for _, element := range salerList {
-			salaryM.SystemAccountList = append(salaryM.SystemAccountList, element)
-		}
-	}
+	// if len(salaryM.CommissionList) > 0 {
+	// 	systemM.GetAccountData(dbname)
+	// 	salerList := systemM.systemAccountList
+	// 	for _, element := range salerList {
+	// 		salaryM.SystemAccountList = append(salaryM.SystemAccountList, element)
+	// 	}
+	// }
 
 	return
 }

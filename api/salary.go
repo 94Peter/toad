@@ -416,7 +416,7 @@ func (api *SalaryAPI) exportBranchSalaryEndpoint(w http.ResponseWriter, req *htt
 		return
 
 	case pdf.AgentSign: //5
-		SalaryM.SystemAccountList = []*model.SystemAccount{}
+		//SalaryM.SystemAccountList = []*model.SystemAccount{}
 		SalaryM.CommissionList = []*model.Commission{}
 
 		for _, element := range exportId.BSidList {

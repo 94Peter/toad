@@ -475,7 +475,11 @@ func (salaryM *SalaryModel) DeleteSalary(ID, dbname string) (err error) {
 				delete from public.incomeexpense where bsid = '%s';
 				UPDATE public.commission SET bsid = null , status = 'normal' WHERE bsid = '%s';
 				`
-
+	// delete from public.SalerSalary;
+	// delete from public.NHISalary;
+	// delete from public.BranchSalary ;
+	// delete from public.incomeexpense ;
+	// UPDATE public.commission SET bsid = null , status = 'normal';
 	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 	sqldb, err := interdb.ConnectSQLDB()
 	if err != nil {
@@ -645,7 +649,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 
 	fakeId := time.Now().Unix()
 	bs.BSid = strconv.Itoa(int(fakeId))
-
+	fmt.Println("init bsID:", bs.BSid)
 	res, err := sqldb.Exec(sql, fakeId, bs.StrDate, bs.Name, bs.Date, bs.Branch)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -779,6 +783,7 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbna
 	}
 
 	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
+	//後續有改動，可根據單獨店家建立、選擇區間內的傭金建立。
 	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid, dbname)
 
 	//綁定更改BSid後才可建立紅利表，預設使用5%成本(年終提撥)
@@ -963,9 +968,9 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 				FROM public.receipt r
 				inner join public.commission c on c.rid = r.rid and c.status = 'normal' and
 				extract(epoch from r.date) <= $1 and c.bsid is null
-				inner join public.SalerSalary SS on  SS.Sid = C.sid
+				inner join public.SalerSalary SS on  SS.Sid = C.sid and SS.bsid > $2
 				) AS subquery
-				where com.sid = subquery.sid and com.rid = subquery.rid	;	
+				where com.sid = subquery.sid and com.rid = subquery.rid	;
 				`
 
 	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
@@ -974,12 +979,12 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 		return err
 	}
 	//fmt.Println("BSID:" + bs.BSid)
-	//fmt.Println(bs.Date)
+	fmt.Println(bs.Date)
 	// b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
-	//fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
+	fmt.Println("UpdateCommissionBSidAndStatus:", bs.Date.Unix())
 	//b, _ := time.ParseInLocation("2006-01-02", bs.Date+"-01", time.Local)
 	//fmt.Println("UpdateCommissionBSidAndStatus:", bs.Date+"-01 =>", b.Unix())
-	res, err := sqldb.Exec(sql, bs.Date.Unix())
+	res, err := sqldb.Exec(sql, bs.Date.Unix(), bs.BSid)
 	//res, err := sqldb.Exec(sql, salaryM.CloseAccount.CloseDate.Unix())
 	if err != nil {
 		fmt.Println("[UpdateCommissionBSidAndStatus err] ", err)
@@ -990,7 +995,7 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 		fmt.Println("PG Affecte Wrong: ", err)
 		return err
 	}
-	fmt.Println(id)
+	fmt.Println("UpdateCommissionBSidAndStatus num:", id)
 
 	if id == 0 {
 		fmt.Println("UpdateCommissionBSidAndStatus, not found any commission")

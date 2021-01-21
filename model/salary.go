@@ -1968,16 +1968,13 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID, dbname string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, (tmp.sr * cs.percent/100) bonus , tmp.remark , cs.branch, tmp.mdate  from salersalary ss
 				left join(
 					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100 - coalesce(c.fee,0)) sr, 
-					r.arid, c.status ,  to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') mdate, COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
+					r.arid, c.status ,  to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') mdate,  coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid		
 					inner JOIN public.ar ar on ar.arid = c.arid	
 					left join(
 						select rid, checknumber , fee, item from public.deduct
-					) d on d.rid = r.rid		
-					left join(
-						select rid,  invoiceno from public.invoice 
-					) iv on r.rid = iv.rid
+					) d on d.rid = r.rid						
 				) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 			Inner Join (
 				SELECT A.sid, A.branch, A.percent, A.title,A.code
@@ -2029,16 +2026,13 @@ func (salaryM *SalaryModel) GetAgentSign(bsID, dbname string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, cs.percent   from salersalary ss
 				inner join(
 					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100- coalesce(c.fee,0)) sr, 
-					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd') , COALESCE(NULLIF(iv.invoiceno, null),'') , coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
+					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd')  , coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid	
 					inner JOIN public.ar ar on ar.arid = c.arid			
 					left join(
 						select rid, checknumber , fee, item from public.deduct
-					) d on d.rid = r.rid		
-					left join(
-						select rid,  invoiceno from public.invoice 
-					) iv on r.rid = iv.rid
+					) d on d.rid = r.rid						
 				) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 			Inner Join (
 				SELECT A.sid, A.branch, A.percent, A.title, A.code

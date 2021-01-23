@@ -84,44 +84,18 @@ func GetDataTable(mtype int) *DataTable {
 		ColumnLen: len(header),
 		RawData:   header,
 	}
-	//fmt.Println("header:", header)
-	//fmt.Println("header:", len(header))
+
 	initWidth := []float64{}
 	for i := 0; i < len(header); i++ {
 		initWidth = append(initWidth, TextWidth)
 	}
 	DataTable.ColumnWidth = initWidth
 
-	// header := []TextBlockStyle{}
-	// for i := 0; i < len(salaryTableHeader); i++ {
-	// 	var tbs = TextBlockStyle{
-	// 		Text:        salaryTableHeader[i],
-	// 		Color:       ColorTableLine,
-	// 		ColumnWidth: 30,
-	// 	}
-	// 	header = append(header, tbs)
-	// }
-	// data := [5][]TextBlockStyle{}
-	// tmp := []TextBlockStyle{}
-	// for i := 0; i < len(salaryTableHeader); i++ {
-	// 	var tbs = TextBlockStyle{
-	// 		Text:        salaryTableHeader[i],
-	// 		Color:       ColorTableLine,
-	// 		ColumnWidth: 30,
-	// 	}
-	// 	tmp = append(tmp, tbs)
-	// }
-	// data[0] = tmp
-
-	// ts := &TableStyle{
-	// 	Header: header,
-	// 	Data:   data,
-	// }
-
 	return DataTable
 }
 
 func ResizeWidth(table *DataTable, new float64, index int) {
+	//fmt.Println("table.ColumnWidth:", table.ColumnWidth[index])
 	if table.ColumnWidth[index] < new {
 		//fmt.Println("ResizeWidth:", table.ColumnWidth[index], " to new ", new)
 		table.ColumnWidth[index] = new + 20

@@ -331,17 +331,19 @@ func (salaryM *SalaryModel) PDF(dbname string, mtype int, isNew bool, things ...
 			//systemM.GetAccountData()
 			//mailList, err := salaryM.getSalerEmail()
 
-			for index, element := range salaryM.salerSalaryList {
+			for _, element := range salaryM.salerSalaryList {
+
 				p := pdf.GetNewPDF()
 				table := pdf.GetDataTable(mtype)
 				//Header長度重製
-				for index, e := range table.RawData {
+				for index_r, e := range table.RawData {
 					//fmt.Println(e)
-					pdf.ResizeWidth(table, p.GetTextWidth(e.Text), index)
+					pdf.ResizeWidth(table, p.GetTextWidth(e.Text), index_r)
 				}
 
-				data := salaryM.addSalerSalaryInfoTable(table, p, index, element)
+				data := salaryM.addSalerSalaryInfoTable(table, p, element.Code, element)
 				//fmt.Println("DrawTablePDF:type:7")
+
 				p.DrawTablePDF(data)
 				date, _ := util.ADtoROC(element.Date, "file")
 				fname := element.Branch + "-" + element.SName + "-" + element.Code + "-" + "薪資表" + date
@@ -1721,12 +1723,11 @@ func (salaryM *SalaryModel) addBranchSalaryInfoTable(table *pdf.DataTable, p *pd
 	return
 }
 
-func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf.Pdf, index int, element *SalerSalary) (table_final *pdf.DataTable) {
-
-	fmt.Println(index)
+func (salaryM *SalaryModel) addSalerSalaryInfoTable(table *pdf.DataTable, p *pdf.Pdf, code string, element *SalerSalary) (table_final *pdf.DataTable) {
 
 	///
-	text := strconv.Itoa(index + 1)
+	//text := strconv.Itoa(index + 1)
+	text := code
 	pdf.ResizeWidth(table, p.GetTextWidth(text), 0)
 	var vs = &pdf.TableStyle{
 		Text:  text,
@@ -1968,13 +1969,10 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID, dbname string) {
 	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, (tmp.sr * cs.percent/100) bonus , tmp.remark , cs.branch, tmp.mdate  from salersalary ss
 				left join(
 					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100 - coalesce(c.fee,0)) sr, 
-					r.arid, c.status ,  to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') mdate,  coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
+					r.arid, c.status ,  to_char(r.date at time zone 'UTC' at time zone 'Asia/Taipei','yyyy-MM-dd') mdate,  coalesce(r.fee,0) fee , coalesce(r.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid		
-					inner JOIN public.ar ar on ar.arid = c.arid	
-					left join(
-						select rid, checknumber , fee, item from public.deduct
-					) d on d.rid = r.rid						
+					inner JOIN public.ar ar on ar.arid = c.arid												
 				) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 			Inner Join (
 				SELECT A.sid, A.branch, A.percent, A.title,A.code
@@ -2023,16 +2021,13 @@ func (salaryM *SalaryModel) GetSalerCommission(bsID, dbname string) {
 }
 
 func (salaryM *SalaryModel) GetAgentSign(bsID, dbname string) {
-	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, ( (tmp.amount - coalesce(tmp.fee,0) )* tmp.cpercent/100 * cs.percent/100) bonus , tmp.remark , cs.branch, cs.percent   from salersalary ss
+	const qsql = `SELECT ss.sid, ss.sname , tmp.item, tmp.amount, tmp.fee, tmp.cpercent, tmp.sr, (tmp.sr * cs.percent /100) bonus , tmp.remark , cs.branch, cs.percent   from salersalary ss
 				inner join(
 					SELECT c.bsid, c.sid, c.rid, r.date, (c.item || ' ' || ar.name) item, r.amount, 0 , c.sname, c.cpercent, ( r.amount * c.cpercent/100- coalesce(c.fee,0)) sr, 
-					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd')  , coalesce(d.checknumber,'') , coalesce(c.fee,0) fee , coalesce(d.item,'') remark
+					r.arid, c.status ,  to_char(r.date,'yyyy-MM-dd')  , coalesce(r.fee,0) fee , coalesce(r.item,'') remark
 					FROM public.commission c
 					inner JOIN public.receipt r on r.rid = c.rid	
-					inner JOIN public.ar ar on ar.arid = c.arid			
-					left join(
-						select rid, checknumber , fee, item from public.deduct
-					) d on d.rid = r.rid						
+					inner JOIN public.ar ar on ar.arid = c.arid											
 				) tmp on ss.bsid = tmp.bsid and tmp.sid = ss.sid
 			Inner Join (
 				SELECT A.sid, A.branch, A.percent, A.title, A.code

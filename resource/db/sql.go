@@ -627,6 +627,7 @@ func (sdb *SqlDB) CreateARMAPTable() error {
 			"Sid character varying(50) not NULL,"+
 			"Proportion double precision DEFAULT 0,"+
 			"SName  character varying(50) not NULL,"+
+			"Branch  character varying(50) DEFAULT NULL,"+
 			"PRIMARY KEY (ARid,Sid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))

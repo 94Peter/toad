@@ -170,10 +170,10 @@ func (p *Pdf) DrawTablePDF(dataTable *DataTable) {
 			//for i := 0; i < len(drawData); i++ {
 			//fmt.Println("len(drawData)", len(drawData))
 			for i := 0; i < len(drawData); i++ {
-				TextWidth = dataTable.ColumnWidth[i]
+				textWidth := dataTable.ColumnWidth[i]
 				//fmt.Println("i:", i)
 				//fmt.Println("data:", drawData[i].Text, " width:", dataTable.ColumnWidth[i])
-				p.DrawRectangle(TextWidth, TextHeight, ColorWhite, "FD")
+				p.DrawRectangle(textWidth, TextHeight, ColorWhite, "FD")
 				//fmt.Println("DrawRectangle")
 				Align := AlignCenter
 				Valign := ValignMiddle
@@ -183,9 +183,9 @@ func (p *Pdf) DrawTablePDF(dataTable *DataTable) {
 				if drawData[i].Valign != 0 {
 					Valign = drawData[i].Valign
 				}
-				p.FillText(drawData[i].Text, 12, ColorTableLine, Align, Valign, TextWidth, TextHeight)
+				p.FillText(drawData[i].Text, 12, ColorTableLine, Align, Valign, textWidth, TextHeight)
 				//fmt.Println("FillText")
-				pdf.SetX(pdf.GetX() + TextWidth)
+				pdf.SetX(pdf.GetX() + textWidth)
 				//fmt.Println("SetX")
 			}
 			//fmt.Println("****")

@@ -59,6 +59,7 @@ type MAPSaler struct {
 	SName   string  `json:"name"`
 	Percent float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
 	Sid     string  `json:"account"`
+	Branch  string  `json:"branch"`
 }
 
 type HouseGoMAPSaler struct {
@@ -120,9 +121,9 @@ func GetARModel(imr interModelRes) *ARModel {
 }
 
 type ARModel struct {
-	imr       interModelRes
-	db        db.InterSQLDB
-	arList    []*AR
+	imr interModelRes
+	db  db.InterSQLDB
+	//arList    []*AR
 	salerList []*Saler
 	hgList    []*HouseGo
 }
@@ -216,7 +217,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		}
 	}
 
-	const Mapsql = `SELECT arid, sid, proportion, sname	FROM public.armap; `
+	const Mapsql = `SELECT arid, sid, proportion, sname, branch	FROM public.armap; `
 	rows, err = db.SQLCommand(Mapsql)
 	if err != nil {
 		fmt.Println(err)
@@ -227,7 +228,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		var arid string
 		var saler MAPSaler
 
-		if err := rows.Scan(&arid, &saler.Sid, &saler.Percent, &saler.SName); err != nil {
+		if err := rows.Scan(&arid, &saler.Sid, &saler.Percent, &saler.SName, &saler.Branch); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -309,8 +310,8 @@ func (am *ARModel) GetHouseGoData(today, end time.Time, key, dbname string) []*H
 
 func (am *ARModel) Json(mtype string) ([]byte, error) {
 	switch mtype {
-	case "ar":
-		return json.Marshal(am.arList)
+	// case "ar":
+	// 	return json.Marshal(am.arList)
 	case "saler":
 		return json.Marshal(am.salerList)
 	case "housego":

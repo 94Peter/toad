@@ -627,7 +627,8 @@ func (sdb *SqlDB) CreateARMAPTable() error {
 			"Sid character varying(50) not NULL,"+
 			"Proportion double precision DEFAULT 0,"+
 			"SName  character varying(50) not NULL,"+
-			"Branch  character varying(50) DEFAULT NULL,"+
+			"Branch  character varying(50) DEFAULT '',"+
+			"Percent double precision DEFAULT 0,"+
 			"PRIMARY KEY (ARid,Sid) "+
 			") "+
 			"WITH ( OIDS = FALSE);"+ //))
@@ -841,6 +842,7 @@ func (sdb *SqlDB) CreateCommissionTable() error {
 			"bonus integer DEFAULT 0 ,"+
 			"status character varying(50) DEFAULT 'normal',"+
 			//"bankaccount character varying(50) DEFAULT 'normal',"+
+			"branch character varying(50) precision DEFAULT NULL , "+
 			"PRIMARY KEY (Sid,Rid)"+
 			") "+
 			"WITH ( OIDS = FALSE);"+

@@ -677,7 +677,8 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 	// 	//return css_err
 	// }
 
-	cssErr := salaryM.CreateSalerSalary(bs, cid, dbname)
+	//cssErr := salaryM.CreateSalerSalary(bs, cid, dbname)
+	cssErr := salaryM.CreateSalerSalary_V2(bs, cid, dbname)
 	if cssErr != nil {
 		return nil
 		//return css_err
@@ -770,6 +771,110 @@ func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbna
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println("[Insert err] ", err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println("CreateSalerSalary:", id)
+
+	if id == 0 {
+		fmt.Println("CreateSalerSalary, no create anyone ")
+		return errors.New("CreateSalerSalary, not found any commission")
+	}
+
+	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
+	//後續有改動，可根據單獨店家建立、選擇區間內的傭金建立。
+	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid, dbname)
+
+	//綁定更改BSid後才可建立紅利表，預設使用5%成本(年終提撥)
+	cieErr := salaryM.CreateIncomeExpense(bs, dbname)
+	if cieErr != nil {
+		return nil
+		//return css_err
+	}
+
+	ucnhi_err := salaryM.CreateNHISalary(year, dbname)
+	if ucnhi_err != nil {
+		return nil
+		//return ucias_err
+	}
+
+	return nil
+}
+
+func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
+	//須注意未到職的人不給薪水。
+	const sql = `INSERT INTO public.salersalary
+			(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
+		select tmp2.bsid, tmp2.sid, $1, tmp2.branch, tmp2.sname, tmp2.salary, tmp2.pbonus, tmp2.total, tmp2.laborfee, tmp2.healthfee, tmp2.welfare, tmp2.mcommercialfee, 
+		$2, tmp2.sp , (tmp2.total - tmp2.Welfare - tmp2.mcommercialFee - tmp2.laborfee - tmp2.healthfee - tmp2.sp)  Tamount from (
+		select ROUND(COALESCE(total)*0.01) Welfare, ROUND(COALESCE(total) * tmp.commercialFee/100 ) mcommercialFee,
+			(CASE WHEN tmp.salary = 0 and tmp.association = 1 then 0 
+				WHEN tmp.total <= tmp.mmw then 0	 	
+			WHEN tmp.salary = 0 and tmp.association = 0 then ROUND(tmp.total * tmp.nhi2nd / 100) 	 	
+			else
+				( CASE WHEN ( tmp.total - 4 * tmp.PayrollBracket) > 0 then ROUND(( tmp.total - 4 * tmp.PayrollBracket) * tmp.nhi2nd / 100) else 0 end)
+			end
+			) sp ,
+			* from (
+			select  COALESCE(BS.Salary +  COALESCE(C.Pbonus,0), BS.Salary) total, ROUND(BS.InsuredAmount*CP.LI*0.2/100) LaborFee , ROUND(BS.PayrollBracket*CP.nhi*0.3/100) HealthFee,
+			BS.*, COALESCE(C.Pbonus,0) Pbonus, CB.commercialFee, CP.* from (
+				select  tmp.*, CS.percent, COALESCE(CS.salary,0) salary, COALESCE(CS.payrollbracket, 0) payrollbracket, COALESCE(CS.association,0) association, COALESCE(CS.InsuredAmount,0) InsuredAmount from (				
+					select * from (
+						select BS.bsid, CS.branch, CS.sid, CS.sname from public.branchsalary BS
+						LEFT join public.ConfigSaler CS on  CS.branch = BS.branch  and extract(epoch from CS.zerodate) <= $4
+						where bsid >= $3
+						) t1 union (
+						select BS.bsid, BS.branch, ARMAP.sid, ARMAP.sname from public.branchsalary BS
+						INNER join public.ARMAP ARMAP on  ARMAP.branch = BS.branch 	
+						where bsid >= $3
+					)
+				) tmp LEFT JOIN public.ConfigSaler CS on CS.sid = tmp.SID and CS.branch = tmp.Branch
+			) BS
+			left join (
+				SELECT c.sid csid, sum(c.bonus) Pbonus , c.branch
+				FROM public.receipt r, public.commission c
+				where c.rid = r.rid and c.bsid is null and c.status = 'normal' and extract(epoch from Date)  <= $4
+				group by  c.sid , c.branch
+			) C on C.branch = BS.branch and C.csid = BS.Sid
+			left join(
+				select branch , commercialFee from public.configbranch 
+			) CB on CB.branch = BS.branch
+			cross join (
+					select  c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
+					inner join(
+						select  max(date) date from public.ConfigParameter 
+					) A on A.date = C.date limit 1
+			) CP
+		) tmp
+		) tmp2
+		ON CONFLICT (bsid,sid,date,branch) DO Nothing;	
+	`
+
+	year := bs.StrDate[0:4]
+	fmt.Println(year)
+
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	defer sqldb.Close()
+	//fmt.Println("BSID:" + bs.BSid)
+	//fmt.Println(bs.Date)
+	//GCP local time zone是+0時區，預設前端丟進來的是+8時區
+
+	// b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
+	// fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
+
+	//res, err := sqldb.Exec(sql, bs.StrDate, year, salaryM.CloseAccount.CloseDate.Unix())
+	res, err := sqldb.Exec(sql, bs.StrDate, year, bs.BSid, bs.Date.Unix())
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("[CreateSalerSalary_V2 Insert err] ", err)
 		return err
 	}
 	id, err := res.RowsAffected()

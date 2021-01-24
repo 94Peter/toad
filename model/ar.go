@@ -308,6 +308,34 @@ func (am *ARModel) GetHouseGoData(today, end time.Time, key, dbname string) []*H
 
 }
 
+func (am *ARModel) GetSalerDataByID(sqldb *sql.DB, id string) *Saler {
+
+	sql := "SELECT branch, percent, sid FROM public.configsaler where sid = $1"
+
+	rows, err := sqldb.Query(sql, id)
+	if err != nil {
+		fmt.Println("am GetSalerDataByID:", err)
+		return nil
+	}
+	var data *Saler
+	data = nil
+	for rows.Next() {
+		var s Saler
+		//var col_sales string
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&s.Branch, &s.Percent, &s.Sid); err != nil {
+			fmt.Println("err Scan " + err.Error())
+			return nil
+		}
+		data = &s
+	}
+
+	return data
+
+}
+
 func (am *ARModel) Json(mtype string) ([]byte, error) {
 	switch mtype {
 	// case "ar":
@@ -417,11 +445,7 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID, dbname string, salerL
 			}
 		}
 	}
-	//連動更改ARMAP TABLE的數值 (目前重新建立，不須連動了)
-	//am.UpdateAccountReceivableSalerProportion(salerList, ID)
 
-	//連動更改傭金明細TABLE的數值
-	//am.RefreshCommissionBonus(ID, dbname) //重新建立後，數值理應是新的
 	defer sqldb.Close()
 	return nil
 }
@@ -449,17 +473,23 @@ func (am *ARModel) SaveDeductMAP(ID string, sqldb *sql.DB) {
 
 }
 
-func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
+func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) error {
 	const mapSql = `INSERT INTO public.ARMAP(
-		ARid, Sid, proportion , SName )
-		VALUES ($1, $2, $3, $4);`
+		ARid, Sid, proportion , SName, branch, percent)
+		VALUES ($1, $2, $3, $4, $5, $6);`
 	count := 0
 	for _, element := range salerList {
 		// element is the element from someSlice for where we are
-		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName)
-		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		//res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName, element.Branch)
+		s := am.GetSalerDataByID(sqldb, element.Sid)
+		if s == nil {
+			fmt.Println("SaveARMAP unknown error")
+			return errors.New("SaveARMAP unknown error")
+		}
+		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName, s.Branch, s.Percent)
 		if err != nil {
 			fmt.Println("SaveARMAP ", err)
+			return err
 		}
 		id, err := res.RowsAffected()
 		if err != nil {
@@ -468,6 +498,7 @@ func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) {
 		count += int(id)
 	}
 	fmt.Println("SaveARMAP:", count)
+	return nil
 }
 
 //;
@@ -482,74 +513,6 @@ func (am *ARModel) DeleteARandDeductMAP(ID string, sqldb *sql.DB) (err error) {
 
 	_, err = sqldb.Exec(sql, ID)
 
-	return nil
-}
-
-func (am *ARModel) UpdateAccountReceivableSalerProportion(salerList []*MAPSaler, ID, dbname string) (err error) {
-	fmt.Println("UpdateAccountReceivable")
-	const sql = `Update public.armap set proportion = $1				
-				where arid = $2 and sid = $3`
-
-	interdb := am.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-	for _, element := range salerList {
-		// element is the element from someSlice for where we are
-		res, err := sqldb.Exec(sql, element.Percent, ID, element.Sid)
-		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-		if err != nil {
-			fmt.Println("ARMAP ", err)
-			return err
-		}
-		id, err := res.RowsAffected()
-		if err != nil {
-			fmt.Println("PG Affecte Wrong: ", err)
-			return err
-		}
-		fmt.Println("UpdateAccountReceivableSalerProportion:", id)
-	}
-	defer sqldb.Close()
-	return nil
-}
-
-func (am *ARModel) RefreshCommissionBonus(ID, dbname string) (err error) {
-
-	const sql = `Update public.commission t1
-					set cpercent = t2.proportion, sr= (t2.amount - t2.fee)*t2.proportion/100, bonus= (t2.amount - t2.fee)*t2.proportion/100*t2.percent /100
-				FROM(	
-					SELECT  map.proportion , c.bsid, c.sid, c.rid, r.amount, c.fee , c.sr, c.bonus,  cs.percent
-						FROM public.commission c
-						inner JOIN public.receipt r on r.rid = c.rid 			
-						inner join public.configsaler cs on cs.sid = c.sid
-						inner join public.armap map on map.sid = c.sid  and map.arid = r.arid and map.arid = $1
-						WHERE c.bsid is null
-				) as t2 where t1.sid = t2.sid and t1.rid = t2.rid `
-	interdb := am.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-
-	res, err := sqldb.Exec(sql, ID)
-	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	id, err := res.RowsAffected()
-	if err != nil {
-		fmt.Println("PG Affecte Wrong: ", err)
-		return err
-	}
-
-	if id >= 1 {
-		fmt.Println("RefreshCommissionBonus success")
-	} else {
-		fmt.Println("RefreshCommissionBonus error : something error")
-	}
-	defer sqldb.Close()
 	return nil
 }
 
@@ -681,25 +644,34 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR, json, dbname string) 
 
 	//應收帳款成功才建立應收帳款的業務對應表
 	if id > 0 {
-		const mapSql = `INSERT INTO public.ARMAP(
-			ARid, Sid, proportion , SName )
-			VALUES ($1, $2, $3, $4);`
-
-		for _, element := range receivable.Sales {
-			// element is the element from someSlice for where we are
-			res, err := sqldb.Exec(mapSql, fakeId, element.Sid, element.Percent, element.SName)
-			//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-			if err != nil {
-				fmt.Println("ARMAP ", err)
-				return err
-			}
-			id, err := res.RowsAffected()
-			if err != nil {
-				fmt.Println("PG Affecte Wrong: ", err)
-				return err
-			}
-			fmt.Println(id)
+		err = am.SaveARMAP(receivable.Sales, fakeId, sqldb)
+		if err != nil {
+			return err
 		}
+		// const mapSql = `INSERT INTO public.ARMAP(
+		// 	ARid, Sid, proportion , SName, branch, percent)
+		// 	VALUES ($1, $2, $3, $4, $5, $6);`
+
+		// for _, element := range receivable.Sales {
+		// 	s := am.GetSalerDataByID(sqldb, element.Sid)
+		// 	if s == nil {
+		// 		fmt.Println("ARMAP unknown error")
+		// 		return errors.New("ARMAP unknown error")
+		// 	}
+		// 	// element is the element from someSlice for where we are
+		// 	res, err := sqldb.Exec(mapSql, fakeId, element.Sid, element.Percent, element.SName, s.Branch, s.Percent)
+		// 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		// 	if err != nil {
+		// 		fmt.Println("ARMAP ", err)
+		// 		return err
+		// 	}
+		// 	id, err := res.RowsAffected()
+		// 	if err != nil {
+		// 		fmt.Println("PG Affecte Wrong: ", err)
+		// 		return err
+		// 	}
+		// 	fmt.Println(id)
+		// }
 	}
 	if id == 0 {
 		am.CreateHouseGoDuplicate(fakeId, json, dbname)

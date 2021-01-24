@@ -260,7 +260,7 @@ func (api *ARAPI) createAccountReceivableEndpoint(w http.ResponseWriter, req *ht
 	_err := am.CreateAccountReceivable(iAR.GetAR(), "nil", dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error"))
+		w.Write([]byte("Error:" + _err.Error()))
 	} else {
 		w.Write([]byte("OK"))
 	}
@@ -498,6 +498,7 @@ func (iAR *inputAR) isARValid() (bool, error) {
 		if element.SName == "" {
 			return false, errors.New("name is empty")
 		}
+
 	}
 	if len(iAR.Sales) == 0 {
 		return false, errors.New("Sales is empty")
@@ -544,6 +545,7 @@ func (iUAR *inputUpdateAR) isARValid() (bool, error) {
 		if element.SName == "" {
 			return false, errors.New("name is empty")
 		}
+
 	}
 	return true, nil
 }

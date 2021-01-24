@@ -217,19 +217,11 @@ func (cm *CModel) CreateCommission(rt *Receipt, sqldb *sql.DB) (err error) {
 
 	**/
 	const sql = `INSERT INTO public.commission
-	(Sid, Rid, Item, SName, CPercent, sr, bonus , arid, fee)
+	(Sid, Rid, Item, SName, CPercent, sr, bonus , arid, fee, branch)
 	select armap.sid, $1, ar.cno ||' '|| ar.casename ||' '|| (Case When AR.type = 'buy' then '買' When AR.type = 'sell' then '賣' else 'unknown' End ), armap.sname,
-	armap.proportion, $2 * armap.proportion / 100 ,  $2 * armap.proportion / 100 * cs.percent /100 , $3::VARCHAR , $4 * armap.proportion / 100
+	armap.proportion, $2 * armap.proportion / 100 ,  $2 * armap.proportion / 100 * armap.percent / 100 , $3::VARCHAR , $4 * armap.proportion / 100, armap.branch
 	from public.ar ar
-	inner join 	public.armap armap on armap.arid = ar.arid 
-	inner join 	(			
-			select cs.branch, cs.sid, cs.percent, cs.identitynum from public.configsaler cs 
-			inner join (
-				select sid, max(zerodate) zerodate from public.configsaler cs 
-				where now() > zerodate
-				group by sid
-			) tmp on tmp.sid = cs.sid and tmp.zerodate = cs.zerodate		
-		)	cs  on cs.sid = armap.sid or armap.sid = cs.identityNum
+	inner join 	public.armap armap on armap.arid = ar.arid 	
 	where ar.arid = $3;`
 
 	fmt.Println("CreateCommission Rid:", rt.Rid)

@@ -218,7 +218,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		}
 	}
 
-	const Mapsql = `SELECT arid, sid, proportion, sname, branch	FROM public.armap; `
+	const Mapsql = `SELECT arid, sid, proportion, sname, branch, percent	FROM public.armap; `
 	rows, err = db.SQLCommand(Mapsql)
 	if err != nil {
 		fmt.Println(err)
@@ -229,7 +229,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		var arid string
 		var saler MAPSaler
 
-		if err := rows.Scan(&arid, &saler.Sid, &saler.Percent, &saler.SName, &saler.Branch); err != nil {
+		if err := rows.Scan(&arid, &saler.Sid, &saler.Percent, &saler.SName, &saler.Branch, &saler.BonusPercent); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 

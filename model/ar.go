@@ -56,10 +56,11 @@ type Saler struct {
 }
 
 type MAPSaler struct {
-	SName   string  `json:"name"`
-	Percent float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
-	Sid     string  `json:"account"`
-	Branch  string  `json:"branch"`
+	SName        string  `json:"name"`
+	Percent      float64 `json:"proportion"` //{"{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}","{\"BName\":\"123\",\"Bid\":\"13\",\"Persent\":12}"}
+	Sid          string  `json:"account"`
+	Branch       string  `json:"branch"`
+	BonusPercent float64 `json:"percent"`
 }
 
 type HouseGoMAPSaler struct {
@@ -488,7 +489,7 @@ func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) er
 		// 	return errors.New("SaveARMAP unknown error")
 		// }
 
-		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName, element.Branch, element.Percent)
+		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName, element.Branch, element.BonusPercent)
 		if err != nil {
 			fmt.Println("SaveARMAP ", err)
 			return err

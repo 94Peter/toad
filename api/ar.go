@@ -490,7 +490,7 @@ func (iAR *inputAR) isARValid() (bool, error) {
 	// }
 	for _, element := range iAR.Sales {
 		if element.Percent < 0 {
-			return false, errors.New("Percent is not valid")
+			return false, errors.New("proportion is not valid")
 		}
 		if element.Sid == "" {
 			return false, errors.New("account is empty")
@@ -501,7 +501,7 @@ func (iAR *inputAR) isARValid() (bool, error) {
 		if element.Branch == "" {
 			return false, errors.New("branch is empty")
 		}
-		if element.Percent > 0 {
+		if element.BonusPercent <= 0 {
 			return false, errors.New("percent is not valid")
 		}
 
@@ -543,7 +543,7 @@ func (iUAR *inputUpdateAR) isARValid() (bool, error) {
 
 	for _, element := range iUAR.SalerList {
 		if element.Percent < 0 {
-			return false, errors.New("Percent is not valid")
+			return false, errors.New("proportion is not valid")
 		}
 		if element.Sid == "" {
 			return false, errors.New("account is empty")
@@ -554,7 +554,7 @@ func (iUAR *inputUpdateAR) isARValid() (bool, error) {
 		if element.Branch == "" {
 			return false, errors.New("branch is empty")
 		}
-		if element.Percent > 0 {
+		if element.BonusPercent <= 0 {
 			return false, errors.New("percent is not valid")
 		}
 

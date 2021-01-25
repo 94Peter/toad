@@ -498,6 +498,12 @@ func (iAR *inputAR) isARValid() (bool, error) {
 		if element.SName == "" {
 			return false, errors.New("name is empty")
 		}
+		if element.Branch == "" {
+			return false, errors.New("branch is empty")
+		}
+		if element.Percent > 0 {
+			return false, errors.New("percent is not valid")
+		}
 
 	}
 	if len(iAR.Sales) == 0 {
@@ -544,6 +550,12 @@ func (iUAR *inputUpdateAR) isARValid() (bool, error) {
 		}
 		if element.SName == "" {
 			return false, errors.New("name is empty")
+		}
+		if element.Branch == "" {
+			return false, errors.New("branch is empty")
+		}
+		if element.Percent > 0 {
+			return false, errors.New("percent is not valid")
 		}
 
 	}

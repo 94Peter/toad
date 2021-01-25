@@ -652,6 +652,8 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 	fakeId := time.Now().Unix()
 	bs.BSid = strconv.Itoa(int(fakeId))
 	fmt.Println("init bsID:", bs.BSid)
+	fmt.Println("bs.StrDate:", bs.StrDate)
+	fmt.Println("bs.Date:", bs.Date)
 	res, err := sqldb.Exec(sql, fakeId, bs.StrDate, bs.Name, bs.Date, bs.Branch)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {

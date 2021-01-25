@@ -481,12 +481,14 @@ func (am *ARModel) SaveARMAP(salerList []*MAPSaler, ID string, sqldb *sql.DB) er
 	for _, element := range salerList {
 		// element is the element from someSlice for where we are
 		//res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName, element.Branch)
-		s := am.GetSalerDataByID(sqldb, element.Sid)
-		if s == nil {
-			fmt.Println("SaveARMAP unknown error")
-			return errors.New("SaveARMAP unknown error")
-		}
-		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName, s.Branch, s.Percent)
+
+		// s := am.GetSalerDataByID(sqldb, element.Sid)
+		// if s == nil {
+		// 	fmt.Println("SaveARMAP unknown error")
+		// 	return errors.New("SaveARMAP unknown error")
+		// }
+
+		res, err := sqldb.Exec(mapSql, ID, element.Sid, element.Percent, element.SName, element.Branch, element.Percent)
 		if err != nil {
 			fmt.Println("SaveARMAP ", err)
 			return err

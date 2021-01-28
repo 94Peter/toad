@@ -198,17 +198,10 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	where branch = '%s'
 	group by subtable.branch
 	`
-	const incomeSql = ` WITH  vals  AS (VALUES ( 'none' ) )
-	SELECT SUM(SR) SR, SUM(bonus) bonus
-
-	FROM vals as v
-	cross join (
-	 select data.* , cs.branch from ( 
-		 select c.sr, c.bonus, c.sid, c.rid from commission c inner join receipt r on r.rid = c.rid
-	     where c.status != 'remove'  and extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
-	) data left join configsaler cs on cs.sid = data.sid	
-		where cs.branch='%s'
-	) subtable `
+	const incomeSql = ` SELECT SUM(SR) SR, SUM(bonus) bonus	from (	
+		 select c.sr, c.bonus, c.sid, c.rid, c.branch from commission c inner join receipt r on r.rid = c.rid
+	     where c.status != 'remove'  and extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval + '1 day'::interval) < '%d'  and c.branch='%s'
+		) t `
 
 	const configBranchSql = `select rent, agentsign, commercialfee , annualratio from public.configbranch where branch='%s';`
 
@@ -345,8 +338,6 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 			return nil, err
 		}
 	}
-	fmt.Println(Salary.Value)
-	fmt.Println(Lbonus.Value)
 
 	var Pretax, Aftertax, BusinessIncomeTax, ManagerBonus int
 	Pretax = Salesamounts - (Amor + Agentsign + Rent + Pocket + int(Salary.Value) + int(Prepay.Value) + int(Bonus.Value) + int(round(Commmercialfee*float64(int(Salary.Value)+int(Bonus.Value))/100, 0)) + int(round(Annualratio*float64(int(SR.Value))/100, 1)) - int(Lbonus.Value))

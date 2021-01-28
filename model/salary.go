@@ -499,13 +499,13 @@ func (salaryM *SalaryModel) DeleteSalary(ID, dbname string) (err error) {
 	return nil
 }
 
-func (salaryM *SalaryModel) isOK_CreateSalary(dbname string) (err error) {
+func (salaryM *SalaryModel) isOK_CreateSalary(sqlDB *sql.DB) (err error) {
 	// //( (case when cb.sid is not null then ie.managerbonus else 0 end) + ss.tamount )
 	sql := `select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C `
 	// //where ss.bsid = '%s' and ss.sid like '%s'`
 	var Tag = true
-	db := salaryM.imr.GetSQLDBwithDbname(dbname)
-	rows, err := db.SQLCommand(sql)
+	//db := salaryM.imr.GetSQLDBwithDbname(dbname)
+	rows, err := sqlDB.Query(sql)
 	if err != nil {
 		return err
 	}
@@ -520,7 +520,7 @@ func (salaryM *SalaryModel) isOK_CreateSalary(dbname string) (err error) {
 	//######
 	Tag = false
 	sql = `select branch , sid  from public.configbranch`
-	rows, err = db.SQLCommand(sql)
+	rows, err = sqlDB.Query(sql)
 	if err != nil {
 		return err
 	}
@@ -544,13 +544,12 @@ func (salaryM *SalaryModel) isOK_CreateSalary(dbname string) (err error) {
 
 	return nil
 }
-func (salaryM *SalaryModel) getNextDayFromLastTimeSalary(dbname string) (mtime time.Time, err error) {
+func (salaryM *SalaryModel) getNextDayFromLastTimeSalary(branch string, sqlDB *sql.DB) (mtime time.Time, err error) {
 	mtime = time.Now()
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
 
-	const sql = `SELECT max(date) FROM public.BranchSalary;`
+	sql := "SELECT max(date) FROM public.BranchSalary where branch like $1"
 
-	rows, err := interdb.SQLCommand(fmt.Sprintf(sql))
+	rows, err := sqlDB.Query(fmt.Sprintf(sql), branch)
 	if err != nil {
 		return
 	}
@@ -587,7 +586,14 @@ func (salaryM *SalaryModel) getNextDayFromLastTimeSalary(dbname string) (mtime t
 **/
 func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, permission string) (err error) {
 
-	err = salaryM.isOK_CreateSalary(dbname)
+	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+	defer sqldb.Close()
+
+	err = salaryM.isOK_CreateSalary(sqldb)
 	if err != nil {
 		fmt.Println("CreateSalary err:" + err.Error())
 		return err
@@ -609,7 +615,7 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 	fmt.Println(bs.Date)
 	fmt.Println(bs.StrDate)
 
-	t, err := salaryM.getNextDayFromLastTimeSalary(dbname)
+	t, err := salaryM.getNextDayFromLastTimeSalary(bs.Branch, sqldb)
 	bs.LastDate = t
 	fmt.Println("bs.LastDate:", bs.LastDate)
 
@@ -642,12 +648,6 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 				where (tmp.hasbind is null or tmp.hasbind = 0) and cb.branch like $5
 				;`
 	//使得每個BSid + 1
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-	defer sqldb.Close()
 
 	fakeId := time.Now().Unix()
 	bs.BSid = strconv.Itoa(int(fakeId))

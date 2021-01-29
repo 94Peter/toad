@@ -29,6 +29,8 @@ type BranchSalary struct {
 	Total    string    `json:"total"`
 	Lock     string    `json:"lock"`
 	//SalerSalaryList []*SalerSalary `json:"commissionList"`
+	Lastloss int `json:"-"` //
+	Aftertax int `json:"-"` //
 }
 
 type SalerSalary struct {
@@ -559,7 +561,7 @@ func (salaryM *SalaryModel) getNextDayFromLastTimeSalary(branch string, sqlDB *s
 	y, m, _ := t.Date()
 	t = time.Date(y, m, 1, 0, 0, 0, 0, loc)
 	strTime := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), 1) //default 月初
-	//Scan失敗使用default值,now + 1 day
+	//Scan失敗使用default值,now first day
 	for rows.Next() {
 		if err := rows.Scan(&strTime); err != nil {
 			fmt.Println("getNextDayFromLastTimeSalary err Scan " + err.Error())
@@ -654,6 +656,9 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 	fmt.Println("init bsID:", bs.BSid)
 	fmt.Println("bs.StrDate:", bs.StrDate)
 	fmt.Println("bs.Date:", bs.Date)
+	fmt.Println("bs.Date Unix:", bs.Date.Unix())
+	fmt.Println("bs.Date Unix:", bs.Date.Unix()-86400*31)
+
 	res, err := sqldb.Exec(sql, fakeId, bs.StrDate, bs.Name, bs.Date, bs.Branch)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -680,13 +685,13 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 	// }
 
 	//cssErr := salaryM.CreateSalerSalary(bs, cid, dbname)
-	cssErr := salaryM.CreateSalerSalary_V2(bs, cid, dbname)
+	cssErr := salaryM.CreateSalerSalary_V2(bs, cid, sqldb)
 	if cssErr != nil {
 		return nil
 		//return css_err
 	}
 
-	_err := salaryM.UpdateBranchSalaryTotal(dbname)
+	_err := salaryM.UpdateBranchSalaryTotal(sqldb)
 	if _err != nil {
 		return nil
 		//return css_err
@@ -701,113 +706,113 @@ func (salaryM *SalaryModel) CreateSalary(bs *BranchSalary, cid []*Cid, dbname, p
 	*0.01 vs *1/100 答案是不一樣的。
 	所以使用CAST轉型後用ROUND去修正答案。
 */
-func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
+// func (salaryM *SalaryModel) CreateSalerSalary(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
 
-	const sql = `INSERT INTO public.salersalary
-	(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
-	SELECT BS.bsid, A.sid, $1 dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0) Pbonus, 
-	COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary) total, ROUND(A.InsuredAmount*CP.LI*0.2/100) LaborFee,ROUND(A.PayrollBracket*CP.nhi*0.3/100) HealthFee,
-	ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) Welfare,  ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) ) commercialFee,
-	$2 ,
-	(CASE WHEN A.salary = 0 and A.association = 1 then 0 
-		WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0	 	
-	   WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) * cp.nhi2nd / 100 	 	
-	   else
-		   ( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
-	   end
-	  ) sp ,
-	  (COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) - ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) - ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) ) 
-	  -  ROUND(A.InsuredAmount*CP.LI*0.2/100) - ROUND(A.PayrollBracket*CP.nhi*0.3/100) ) - 
-	 (CASE WHEN A.salary = 0 and A.association = 1 then 0 
-		 WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0	 	
-		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) * cp.nhi2nd / 100 	 	
-		else
-			( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
-		end
-	   ) Tamount
-	FROM public.ConfigSaler A
-	Inner Join ( 
-		select sid, max(zerodate) zerodate from public.configsaler cs 
-		where now() > zerodate
-		group by sid 
-	) B on A.sid=B.sid and A.zeroDate = B.zeroDate
-	left join (
-	SELECT c.sid , sum(c.bonus) Pbonus
-	FROM public.receipt r, public.commission c
-	where c.rid = r.rid and c.bsid is null and c.status = 'normal' and extract(epoch from Date)  <= $3
-	group by  c.sid 
-	) C on C.sid = A.Sid 
-	cross join (
-		select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
-		inner join(
-			select  max(date) date from public.ConfigParameter 
-		) A on A.date = C.date limit 1
-	) CP
-	left join public.branchsalary BS on BS.branch = A.Branch and BS.date = $1
-	
-	left join(
-		select branch , commercialFee from public.configbranch 
-	) CB on CB.branch = A.branch
-	where BS.bsid is not null
-	ON CONFLICT (bsid,sid,date,branch) DO Nothing;	
-	`
+// 	const sql = `INSERT INTO public.salersalary
+// 	(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
+// 	SELECT BS.bsid, A.sid, $1 dateID, A.branch, A.sname,  A.Salary, COALESCE(C.Pbonus,0) Pbonus,
+// 	COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary) total, ROUND(A.InsuredAmount*CP.LI*0.2/100) LaborFee,ROUND(A.PayrollBracket*CP.nhi*0.3/100) HealthFee,
+// 	ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) Welfare,  ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) ) commercialFee,
+// 	$2 ,
+// 	(CASE WHEN A.salary = 0 and A.association = 1 then 0
+// 		WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0
+// 	   WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) * cp.nhi2nd / 100
+// 	   else
+// 		   ( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+// 	   end
+// 	  ) sp ,
+// 	  (COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) - ROUND(COALESCE(A.Salary+  COALESCE(C.Pbonus,0), A.Salary)*0.01) - ROUND( CAST(COALESCE(A.Salary+  COALESCE(C.Pbonus,0) ,A.Salary) *(cb.commercialFee/100) as numeric) )
+// 	  -  ROUND(A.InsuredAmount*CP.LI*0.2/100) - ROUND(A.PayrollBracket*CP.nhi*0.3/100) ) -
+// 	 (CASE WHEN A.salary = 0 and A.association = 1 then 0
+// 		 WHEN (COALESCE(A.Salary + COALESCE(C.Pbonus,0) ,A.Salary)) <= CP.mmw then 0
+// 		WHEN A.salary = 0 and A.association = 0 then COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary) * cp.nhi2nd / 100
+// 		else
+// 			( CASE WHEN ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) > 0 then ((COALESCE(A.Salary+  COALESCE(C.Pbonus,0),A.Salary)) - 4 * A.PayrollBracket) * cp.nhi2nd / 100 else 0 end)
+// 		end
+// 	   ) Tamount
+// 	FROM public.ConfigSaler A
+// 	Inner Join (
+// 		select sid, max(zerodate) zerodate from public.configsaler cs
+// 		where now() > zerodate
+// 		group by sid
+// 	) B on A.sid=B.sid and A.zeroDate = B.zeroDate
+// 	left join (
+// 	SELECT c.sid , sum(c.bonus) Pbonus
+// 	FROM public.receipt r, public.commission c
+// 	where c.rid = r.rid and c.bsid is null and c.status = 'normal' and extract(epoch from Date)  <= $3
+// 	group by  c.sid
+// 	) C on C.sid = A.Sid
+// 	cross join (
+// 		select  c.date, c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
+// 		inner join(
+// 			select  max(date) date from public.ConfigParameter
+// 		) A on A.date = C.date limit 1
+// 	) CP
+// 	left join public.branchsalary BS on BS.branch = A.Branch and BS.date = $1
 
-	year := bs.StrDate[0:4]
-	fmt.Println(year)
+// 	left join(
+// 		select branch , commercialFee from public.configbranch
+// 	) CB on CB.branch = A.branch
+// 	where BS.bsid is not null
+// 	ON CONFLICT (bsid,sid,date,branch) DO Nothing;
+// 	`
 
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-	defer sqldb.Close()
-	//fmt.Println("BSID:" + bs.BSid)
-	//fmt.Println(bs.Date)
-	//GCP local time zone是+0時區，預設前端丟進來的是+8時區
+// 	year := bs.StrDate[0:4]
+// 	fmt.Println(year)
 
-	// b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
-	// fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
+// 	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
+// 	sqldb, err := interdb.ConnectSQLDB()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer sqldb.Close()
+// 	//fmt.Println("BSID:" + bs.BSid)
+// 	//fmt.Println(bs.Date)
+// 	//GCP local time zone是+0時區，預設前端丟進來的是+8時區
 
-	//res, err := sqldb.Exec(sql, bs.StrDate, year, salaryM.CloseAccount.CloseDate.Unix())
-	res, err := sqldb.Exec(sql, bs.StrDate, year, bs.Date.Unix())
-	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-	if err != nil {
-		fmt.Println("[Insert err] ", err)
-		return err
-	}
-	id, err := res.RowsAffected()
-	if err != nil {
-		fmt.Println("PG Affecte Wrong: ", err)
-		return err
-	}
-	fmt.Println("CreateSalerSalary:", id)
+// 	// b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
+// 	// fmt.Println("CreateSalerSalary:", bs.Date+"-01 =>", b.Unix())
 
-	if id == 0 {
-		fmt.Println("CreateSalerSalary, no create anyone ")
-		return errors.New("CreateSalerSalary, not found any commission")
-	}
+// 	//res, err := sqldb.Exec(sql, bs.StrDate, year, salaryM.CloseAccount.CloseDate.Unix())
+// 	res, err := sqldb.Exec(sql, bs.StrDate, year, bs.Date.Unix())
+// 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+// 	if err != nil {
+// 		fmt.Println("[Insert err] ", err)
+// 		return err
+// 	}
+// 	id, err := res.RowsAffected()
+// 	if err != nil {
+// 		fmt.Println("PG Affecte Wrong: ", err)
+// 		return err
+// 	}
+// 	fmt.Println("CreateSalerSalary:", id)
 
-	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
-	//後續有改動，可根據單獨店家建立、選擇區間內的傭金建立。
-	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid, dbname)
+// 	if id == 0 {
+// 		fmt.Println("CreateSalerSalary, no create anyone ")
+// 		return errors.New("CreateSalerSalary, not found any commission")
+// 	}
 
-	//綁定更改BSid後才可建立紅利表，預設使用5%成本(年終提撥)
-	cieErr := salaryM.CreateIncomeExpense(bs, dbname)
-	if cieErr != nil {
-		return nil
-		//return css_err
-	}
+// 	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
+// 	//後續有改動，可根據單獨店家建立、選擇區間內的傭金建立。
+// 	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid, dbname)
 
-	ucnhi_err := salaryM.CreateNHISalary(year, dbname)
-	if ucnhi_err != nil {
-		return nil
-		//return ucias_err
-	}
+// 	//綁定更改BSid後才可建立紅利表，預設使用5%成本(年終提撥)
+// 	cieErr := salaryM.CreateIncomeExpense(bs, dbname)
+// 	if cieErr != nil {
+// 		return nil
+// 		//return css_err
+// 	}
 
-	return nil
-}
+// 	ucnhi_err := salaryM.CreateNHISalary(year, dbname)
+// 	if ucnhi_err != nil {
+// 		return nil
+// 		//return ucias_err
+// 	}
 
-func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
+// 	return nil
+// }
+
+func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, sqldb *sql.DB) (err error) {
 	//須注意未到職的人不給薪水。
 	const sql = `INSERT INTO public.salersalary
 			(bsid, sid, date,  branch, sname, salary, pbonus, total, laborfee, healthfee, welfare, commercialfee, year, sp, tamount)
@@ -859,12 +864,6 @@ func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, d
 	year := bs.StrDate[0:4]
 	fmt.Println(year)
 
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-	defer sqldb.Close()
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
 	//GCP local time zone是+0時區，預設前端丟進來的是+8時區
@@ -893,16 +892,16 @@ func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, d
 
 	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
 	//後續有改動，可根據單獨店家建立、選擇區間內的傭金建立。
-	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid, dbname)
+	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid, sqldb)
 
 	//綁定更改BSid後才可建立紅利表，預設使用5%成本(年終提撥)
-	cieErr := salaryM.CreateIncomeExpense(bs, dbname)
+	cieErr := salaryM.CreateIncomeExpense(bs, sqldb)
 	if cieErr != nil {
 		return nil
 		//return css_err
 	}
 
-	ucnhi_err := salaryM.CreateNHISalary(year, dbname)
+	ucnhi_err := salaryM.CreateNHISalary(year, sqldb)
 	if ucnhi_err != nil {
 		return nil
 		//return ucias_err
@@ -972,103 +971,140 @@ func (salaryM *SalaryModel) SetCommissionBSid(bs *BranchSalary, cid []*Cid, dbna
 	return nil
 }
 
-func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary, dbname string) (err error) {
+func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary, sqldb *sql.DB) (err error) {
 	//(subtable.pretaxTotal + subtable.PreTax )  lastloss ,   應該不包含這期虧損
 	const sql = `INSERT INTO public.incomeexpense
-	(bsid, Pbonus ,LBonus, salary, prepay, pocket, amorcost, sr, annualbonus, salesamounts,  businesstax, agentsign, rent, commercialfee, pretax, businessincometax, aftertax,  lastloss, managerbonus, annualratio )	
-	WITH  vals  AS (VALUES ( 'none' ) )
-	SELECT subtable.bsid , subtable.Pbonus, subtable.LBonus , subtable.salary, subtable.prepay, subtable.pocket , subtable.thisMonthAmor , subtable.sr, subtable.annualbonus, subtable.salesamounts , subtable.businesstax , subtable.agentsign , subtable.rent,
-	subtable.tCFee, subtable.PreTax , ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) BusinessIncomeTax, 
-	subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) AfterTax , 
-	(subtable.pretaxTotal)  lastloss ,  
-	( CASE WHEN (subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end )) + (subtable.pretaxTotal) + 0 > 0 then 
-				(subtable.PreTax - ( CASE WHEN subtable.PreTax > 0 then subtable.PreTax * 0.2 else 0 end ) + (subtable.pretaxTotal) + 0) * 0.2
-	  else 0 end
-	) managerbonus  , subtable.annualratio
-	FROM vals as v
-	cross join (
-	SELECT incomeexpense.branch , COALESCE(incomeexpense.pretaxTotal ,0) pretaxTotal , BS.Bsid,BonusTable.PBonus , BonusTable.LBonus , BonusTable.Salary , COALESCE(prepayTable.prepay,0) prepay , COALESCE(pocketTable.pocket,0) pocket , COALESCE(amorTable.thisMonthAmor,0) thisMonthAmor,
-	COALESCE(commissionTable.SR,0) SR, COALESCE(commissionTable.SR / 1.05 ,0) salesamounts , COALESCE(commissionTable.SR - commissionTable.SR / 1.05 ,0) businesstax, configTable.agentsign, configTable.rent, configTable.commercialfee, 
-	( COALESCE(commissionTable.SR,0)/1.05  - COALESCE(amorTable.thisMonthAmor,0) - configTable.agentsign - configTable.rent - COALESCE(pocketTable.pocket,0) - COALESCE(prepayTable.prepay,0) - BonusTable.PBonus - 
-	BonusTable.Salary - BonusTable.LBonus - COALESCE(commissionTable.SR,0) * 0.05 - BonusTable.tCFee - 0  ) PreTax ,
-	COALESCE(commissionTable.SR * configTable.annualratio / 100 ,0) Annualbonus , configTable.annualratio, BonusTable.tCFee
-	FROM public.branchsalary  BS
-	inner join (
-	  SELECT sum(BonusTable.pbonus) PBonus , sum(BonusTable.lbonus) LBonus, sum(BonusTable.Salary) Salary, sum(commercialfee) tCFee, bsid  FROM public.SalerSalary BonusTable group by bsid
-	) BonusTable on BonusTable.bsid = BS.bsid
-	left join (
-		SELECT sum(cost) prepay , branch FROM public.prepay PP 
-		inner join public.BranchPrePay BPP on PP.ppid = BPP.ppid 	
-		where  extract(epoch from date) >= $3 and extract(epoch from date) <= $4
-		group by branch
-	) prepayTable on prepayTable.branch = BS.branch
-	left join(
-		SELECT sum(fee) pocket , branch FROM public.Pocket 		
-		where extract(epoch from date) >= $3 and extract(epoch from date) <= $4
-		group by branch
-	) pocketTable on pocketTable.branch = BS.branch
-	left join(
-	    SELECT  branch , sum(cost) thismonthamor FROM public.amortization amor
-		inner join (
-			SELECT amorid, date, cost FROM public.amormap
-			where date >= $2 and date <= $1
-		) amormap on amormap.amorid = amor.amorid
-		where isover = 0 
-		group by  amor.branch		
-	) amorTable on amorTable.branch = BS.branch
-	left join(
-		Select sum(SR) SR , bsid FROM public.commission 
-		where bsid is not null
-		group by bsid
-	) commissionTable on commissionTable.bsid = BS.bsid 
-	inner join(
-		Select branch, rent, agentsign, commercialfee , annualratio FROM public.configbranch	
-	) configTable on configTable.branch = BS.branch 
-	left join(
-		Select sum(pretax) OVER (partition by branch Order by Date asc) pretaxTotal , branch , Date qq , IE.bsid FROM public.incomeexpense IE
-		inner join public.BranchSalary BS on  IE.bsid = BS.bsid
-		where date >  $1
-	) incomeexpense on incomeexpense.bsid = BS.bsid 	
-	where date = $1
-	) subtable
-	ON CONFLICT (bsid) DO Nothing;
+	(bsid, Pbonus ,LBonus, salary, prepay, pocket, amorcost, sr, annualbonus, salesamounts,  businesstax, agentsign, rent, commercialfee, pretax, businessincometax, aftertax, annualratio, lastloss, managerbonus  )	
+   select *, ( CASE WHEN($7)> 0 then 0 else $7 end )  lastloss ,  ROUND( CASE WHEN ((tmp.AfterTax + $7 - 0)*0.2) > 0 then ((tmp.AfterTax + $7 - 0)*0.2) else 0 end) managerbonus from (
+	   select data.bsid, data.Pbonus, data.LBonus, data.salary, data.prepay, data.pocket, data.amorcost, data.sr, data.annualbonus, data.salesamounts, data.businesstax, data.agentsign ,
+	   data.rent, data.tCFee, data.pretax, round( ( CASE WHEN data.PreTax > 0 then data.PreTax * 0.2 else 0 end )) BusinessIncomeTax,  
+		(data.PreTax - round( CASE WHEN data.PreTax > 0 then data.PreTax * 0.2 else 0 end )) AfterTax ,   data.annualratio from (
+   select *, (salesamounts - amorcost - agentsign - rent - pocket - prepay - PBonus - Salary - LBonus - Annualbonus - tCFee) PreTax from (
+	   select bs.bsid _bsid, bs.branch, SS.*, COALESCE(PP.prepay,0) prepay, COALESCE(pocketTable.pocket,0) pocket, COALESCE(amorTable.thismonthamor,0) amorcost, COALESCE(SR, 0) SR,
+	   configTable.* , Round(COALESCE(commissionTable.SR * configTable.annualratio / 100 ,0)) Annualbonus, Round(COALESCE(commissionTable.SR / 1.05 ,0)) salesamounts,
+	   round(COALESCE(commissionTable.SR - commissionTable.SR / 1.05 ,0)) businesstax FROM public.branchsalary BS
+	   LEFT JOIN (
+		   select * from (
+			   SELECT sum(BonusTable.pbonus) PBonus , sum(BonusTable.lbonus) LBonus, sum(BonusTable.Salary) Salary, sum(commercialfee) tCFee, bsid  FROM public.SalerSalary BonusTable 
+			   where bsid >= $2
+			   group by bsid
+		   ) SS
+	   ) SS on SS.bsid = BS.Bsid
+	   LEFT JOIN (
+		   SELECT sum(cost) prepay , branch FROM public.prepay PP 
+		   inner join public.BranchPrePay BPP on PP.ppid = BPP.ppid 	
+		   where  extract(epoch from date) >= $3 and extract(epoch from date) <= $4
+		   group by branch
+	   ) PP on PP.branch = BS.branch
+	   left join(
+		   SELECT sum(fee) pocket , branch FROM public.Pocket 		
+		   where extract(epoch from date) >= $3 and extract(epoch from date) <= $4
+		   group by branch
+	   ) pocketTable on pocketTable.branch = BS.branch
+	   left join(
+		   SELECT  branch , sum(cost) thismonthamor FROM public.amortization amor
+		   inner join (
+			   SELECT amorid, date, cost FROM public.amormap
+				where date >= $5 and date <= $6
+		   ) amormap on amormap.amorid = amor.amorid
+		   where isover = 0 
+		   group by  amor.branch		
+	   ) amorTable on amorTable.branch = BS.branch
+	   left join(
+		   Select sum(SR) SR , bsid FROM public.commission 
+		   where bsid is not null
+		   group by bsid
+	   ) commissionTable on commissionTable.bsid = BS.bsid
+	   inner join(
+		   Select branch, rent, agentsign, annualratio FROM public.configbranch	
+	   ) configTable on configTable.branch = BS.branch
+	   where BS.bsid  >= $2 and bs.branch like $1
+   ) subtable
+   ) data
+   ) tmp
+    ON CONFLICT (bsid) DO UPDATE SET amorcost = excluded.amorcost, prepay= excluded.prepay,	pocket= excluded.pocket, 
+    Salary = excluded.Salary, businessincometax= excluded.businessincometax, pretax= excluded.pretax, aftertax= excluded.aftertax , 
+   	managerbonus= excluded.managerbonus, lastloss= excluded.lastloss 
 	`
 
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
-	defer sqldb.Close()
 	////////////
 	loc, _ := time.LoadLocation("Asia/Taipei")
-	t := bs.LastDate.In(loc)
-	lastDate := fmt.Sprintf("%d-%02d-%02d", t.Year(), t.Month(), t.Day())
+	t := bs.Date.In(loc)
+	firstDay := fmt.Sprintf("%d-%02d-01", t.Year(), t.Month())
 	///////////
-	//fmt.Println("BSID:" + bs.BSid)
-	//fmt.Println(bs.Date)
-	res, err := sqldb.Exec(sql, bs.StrDate, lastDate, bs.LastDate.Unix(), bs.Date.Unix())
-	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-	if err != nil {
-		fmt.Println("[Insert err] ", err)
-		return err
-	}
-	id, err := res.RowsAffected()
-	if err != nil {
-		fmt.Println("PG Affecte Wrong: ", err)
-		return err
-	}
-	fmt.Println("CreateIncomEexpense:", id, " bs.Date:", bs.StrDate)
+	bslastList := salaryM.getNextDayFromLastLossTimeSalary(bs.Branch, bs.BSid, sqldb) //取上一次建立薪資時候的紅利表
+	if len(bslastList) == 0 {
+		fmt.Println("getNextDayFromLastLossTimeSalary,查無上期紅利表薪資")
+		res, err := sqldb.Exec(sql, bs.Branch, bs.BSid, bs.Date.Unix()-86400*31, bs.Date.Unix(), firstDay, bs.StrDate, 0)
+		if err != nil {
+			fmt.Println("[Insert err] ", err)
+			return err
+		}
+		id, _ := res.RowsAffected()
+		if id == 0 {
+			fmt.Println("CreateIncomEexpense, no create anyone ")
+			return errors.New("CreateIncomeExpense, no create anyone ")
+		}
+	} else {
+		for _, element := range bslastList {
+			if element.Branch == bs.Branch || bs.Branch == "%" {
+				t1 := element.LastDate
+				lastStrDate := fmt.Sprintf("%d-%02d-%02d", t1.Year(), t1.Month(), t1.Day())
+				fmt.Println(element)
+				_, err := sqldb.Exec(sql, element.Branch, bs.BSid, element.LastDate.Unix(), bs.Date.Unix(), lastStrDate, bs.StrDate, element.Lastloss+element.Aftertax)
+				if err != nil {
+					fmt.Println("[Insert err] ", err)
+					return err
+				}
+			}
+		}
 
-	if id == 0 {
-		fmt.Println("CreateIncomEexpense, no create anyone ")
-		return errors.New("CreateIncomeExpense, no create anyone ")
 	}
 
 	return nil
 }
 
-func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid []*Cid, dbname string) (err error) {
+func (salaryM *SalaryModel) getNextDayFromLastLossTimeSalary(branch, bsid string, sqlDB *sql.DB) []*BranchSalary {
+
+	const sql = `select tmp.branch, tmp.date, ie.lastloss, ie.aftertax  from incomeexpense ie 
+				inner join (
+					select tmp.branch, tmp.date, bs.bsid from public.branchsalary bs
+					inner join(
+					select  max(date) date, branch from public.branchsalary
+					where bsid < $2
+					group by branch
+					) tmp on bs.date = tmp.date and tmp.branch = bs.branch
+					where tmp.branch like $1 
+				) tmp on ie.bsid = tmp.bsid
+				order by ie.bsid;`
+	fmt.Println(branch)
+	rows, err := sqlDB.Query(fmt.Sprintf(sql), branch, bsid)
+	if err != nil {
+		fmt.Println("getNextDayFromLastLossTimeSalary:", err)
+		return nil
+	}
+
+	loc, _ := time.LoadLocation("Asia/Taipei")
+
+	var bsDataList []*BranchSalary
+
+	for rows.Next() {
+		var bs BranchSalary
+		if err := rows.Scan(&bs.Branch, &bs.StrDate, &bs.Lastloss, &bs.Aftertax); err != nil {
+			fmt.Println("getNextDayFromLastLossTimeSalary err Scan " + err.Error())
+		}
+		nextDay, _ := time.Parse(time.RFC3339, bs.StrDate+"T00:00:00+08:00")
+		year, month, day := nextDay.Date()
+		mtime := time.Date(year, month, day+1, 0, 0, 0, 0, loc)
+		bs.LastDate = mtime
+		bsDataList = append(bsDataList, &bs)
+	}
+	fmt.Println("getNextDayFromLastLossTimeSalary done")
+
+	return bsDataList
+}
+
+func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid []*Cid, sqldb *sql.DB) (err error) {
 
 	const sql = `Update public.commission as com
 				set bsid = subquery.bsid, status = 'join'
@@ -1082,11 +1118,6 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 				where com.sid = subquery.sid and com.rid = subquery.rid	;
 				`
 
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 	//fmt.Println("BSID:" + bs.BSid)
 	fmt.Println(bs.Date)
 	// b, _ := time.Parse(time.RFC3339, bs.Date+"-01T00:00:00+08:00")
@@ -1110,11 +1141,11 @@ func (salaryM *SalaryModel) UpdateCommissionBSidAndStatus(bs *BranchSalary, cid 
 		fmt.Println("UpdateCommissionBSidAndStatus, not found any commission")
 		//return errors.New("UpdateCommissionBSidAndStatus, not found any commission")
 	}
-	defer sqldb.Close()
+
 	return nil
 }
 
-func (salaryM *SalaryModel) UpdateBranchSalaryTotal(dbname string) (err error) {
+func (salaryM *SalaryModel) UpdateBranchSalaryTotal(sqldb *sql.DB) (err error) {
 
 	const sql = `UPDATE public.branchsalary BS
 				set total = tmp.total
@@ -1123,12 +1154,7 @@ func (salaryM *SalaryModel) UpdateBranchSalaryTotal(dbname string) (err error) {
 					group by bsid 
 				)as tmp where tmp.bsid = bs.bsid;	
 				`
-	//where date = $1
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
+
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
 	res, err := sqldb.Exec(sql)
@@ -1148,7 +1174,7 @@ func (salaryM *SalaryModel) UpdateBranchSalaryTotal(dbname string) (err error) {
 		fmt.Println("UpdateBranchSalaryTotal, not found any salary")
 		return errors.New("UpdateBranchSalaryTotal, not found any salary")
 	}
-	defer sqldb.Close()
+
 	return nil
 }
 
@@ -1313,7 +1339,7 @@ func (salaryM *SalaryModel) ExportNHISalaryData(bsID, dbname string) []*NHISalar
 	return salaryM.NHISalaryList
 }
 
-func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
+func (salaryM *SalaryModel) CreateNHISalary(year string, sqldb *sql.DB) (err error) {
 
 	// const sql = `INSERT INTO public.nhisalary
 	// (sid, bsid, sname, payrollbracket, salary, pbonus, bonus, total, salarybalance, pd, fourbouns, sp, foursp, ptsp)
@@ -1376,11 +1402,6 @@ func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
 		where year = $1
 	ON CONFLICT (bsid,sid) DO Nothing ;` //UPDATE SET balance = excluded.balance;`
 
-	interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
-	sqldb, err := interdb.ConnectSQLDB()
-	if err != nil {
-		return err
-	}
 	//fmt.Println("BSID:" + bs.BSid)
 	//fmt.Println(bs.Date)
 	res, err := sqldb.Exec(sql, year)
@@ -1399,7 +1420,7 @@ func (salaryM *SalaryModel) CreateNHISalary(year, dbname string) (err error) {
 	if id == 0 {
 		fmt.Println("CreateNHISalary, not found any salary ")
 	}
-	defer sqldb.Close()
+
 	return nil
 }
 
@@ -1619,7 +1640,7 @@ func (salaryM *SalaryModel) LockBranchSalary(bsid, lock, dbname string) (err err
 		return errors.New("LockBranchSalary, not found any salary")
 	}
 
-	_err := salaryM.UpdateBranchSalaryTotal(dbname)
+	_err := salaryM.UpdateBranchSalaryTotal(sqldb)
 	if _err != nil {
 		return nil
 		//return css_err
@@ -3088,7 +3109,7 @@ func (salaryM *SalaryModel) ReFreshSalerSalary(Bsid, dbname string) error {
 	//TODO:: 二代健保表更新
 	salaryM.RefreshNHISalary(Bsid, dbname)
 	//TODO:: 總表更新
-	_err := salaryM.UpdateBranchSalaryTotal(dbname)
+	_err := salaryM.UpdateBranchSalaryTotal(sqldb)
 	if _err != nil {
 		fmt.Println(_err)
 		return nil

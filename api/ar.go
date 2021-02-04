@@ -458,7 +458,6 @@ func (iAR *inputAR) isARValid() (bool, error) {
 	// if !util.IsStrInList(iAR.Permission, permission.All...) {
 	// 	return false, errors.New("permission error")
 	// }
-	fmt.Println("iAR.Date:", iAR.Date)
 
 	// if t := time.Now().Unix(); t <= iAR.Date.Unix() {
 	// 	//未來的成交案 => 不成立
@@ -490,19 +489,19 @@ func (iAR *inputAR) isARValid() (bool, error) {
 	// }
 	for _, element := range iAR.Sales {
 		if element.Percent < 0 {
-			return false, errors.New("proportion is not valid")
+			return false, errors.New("proportion is not valid: " + element.SName)
 		}
 		if element.Sid == "" {
-			return false, errors.New("account is empty")
+			return false, errors.New("account is empty: " + element.SName)
 		}
 		if element.SName == "" {
 			return false, errors.New("name is empty")
 		}
 		if element.Branch == "" {
-			return false, errors.New("branch is empty")
+			return false, errors.New("branch is empty: " + element.SName)
 		}
-		if element.BonusPercent <= 0 {
-			return false, errors.New("percent is not valid")
+		if element.BonusPercent < 0 {
+			return false, errors.New("percent is not valid: " + element.SName)
 		}
 
 	}

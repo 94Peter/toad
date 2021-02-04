@@ -200,7 +200,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	`
 	const incomeSql = ` SELECT SUM(SR) SR, SUM(bonus) bonus	from (	
 		 select c.sr, c.bonus, c.sid, c.rid, c.branch from commission c inner join receipt r on r.rid = c.rid
-	     where c.status != 'remove'  and extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval + '1 day'::interval) < '%d'  and c.branch='%s'
+	     where c.status != 'remove'  and extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval ) <= '%d'  and c.branch='%s'
 		) t `
 
 	const configBranchSql = `select rent, agentsign, commercialfee , annualratio from public.configbranch where branch='%s';`
@@ -218,8 +218,13 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	//layout := "2006-01-02"
 	//curDate := fmt.Sprintf("2020-01")
 
-	mdate, _ := time.Parse(time.RFC3339, "2020-11-01T00:00:00+08:00")
+	mdate, _ := time.Parse(time.RFC3339, "2020-12-01T00:00:00+08:00")
 
+	firstOfMonth := time.Date(mdate.Year(), mdate.Month(), 1, 0, 0, 0, 0, time.Now().Location())
+	lastOfMonth := firstOfMonth.AddDate(0, 1, 0).Add(-1)
+	fmt.Println(mdate)
+	fmt.Println(firstOfMonth)
+	fmt.Println(lastOfMonth)
 	curDate := fmt.Sprintf("%d-%02d", mdate.Year(), mdate.Month())
 	fmt.Println(curDate)
 	//t, _ := time.Parse(layout, curDate+"-01")
@@ -228,7 +233,7 @@ func (indexM *IndexModel) GetIncomeStatement(branch, dbname string, date time.Ti
 	db, err := mdb.ConnectSQLDB()
 	defer db.Close()
 
-	rows, err := db.Query(fmt.Sprintf(incomeSql, mdate.Unix(), mdate.Unix(), branch))
+	rows, err := db.Query(fmt.Sprintf(incomeSql, firstOfMonth.Unix(), lastOfMonth.Unix(), branch))
 	if err != nil {
 		fmt.Println(err)
 		return nil, nil

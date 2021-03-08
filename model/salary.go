@@ -844,6 +844,7 @@ func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, s
 				) tmp LEFT JOIN (
 					select distinct on (sid) * from configsalary where extract(epoch from TO_DATE(zerodate,'YYYY-MM-DD')) <= $4 order by sid, TO_DATE(zerodate,'YYYY-MM-DD') DESC
 				) CS on CS.sid = tmp.SID and CS.branch = tmp.Branch
+				INNER join public.configsaler css on (css.sid = cs.sid or css.sid = tmp.sid)  and (extract(epoch from css.leaveDate) >= $4  or leaveDate is null)
 			) BS
 			left join (
 				SELECT c.sid csid, sum(c.bonus) Pbonus , c.branch

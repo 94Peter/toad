@@ -759,7 +759,8 @@ func (sdb *SqlDB) CreateConfigSalerTable() error {
 			"Sname character varying(50) ,"+
 			"Code integer DEFAULT 200,"+ //員工代號
 			"Branch character varying(50) ,"+
-			"ZeroDate timestamp(0) without time zone not NULL, "+
+			"ZeroDate timestamp(0) without time zone not NULL, "+ //起始日
+			"LeaveDate timestamp(0) without time zone not NULL, "+ //離職日
 			//"ValidDate  timestamp(0) without time zone not NULL, "+
 			"Title character varying(50) ,"+
 			"Percent double precision DEFAULT 0, "+

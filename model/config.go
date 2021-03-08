@@ -55,8 +55,9 @@ type NullTime struct {
 type ConfigSaler struct {
 	Sid string `json:"sid"`
 	//Csid     string    `json:"csid"`
-	SName    string    `json:"name"`
-	ZeroDate time.Time `json:"zeroDate"`
+	SName     string    `json:"name"`
+	ZeroDate  time.Time `json:"zeroDate"`
+	LeaveDate time.Time `json:"leaveDate"` //離職日
 	//ValidDate time.Time `json:"validDate"`
 	Title  string `json:"title"`
 	Salary int    `json:"salary"`
@@ -497,7 +498,7 @@ func (configM *ConfigModel) GetConfigSalerData(branch, dbname string) []*ConfigS
 
 	const qspl = `SELECT  sid, sname, branch, zerodate,  title, percent, 
 				  salary, insuredamount,  payrollbracket, enrollment, association, address, birth, identityNum , 
-				  bankAccount , email, phone , remark , code
+				  bankAccount , email, phone , remark , code , leavedate
 				  FROM public.ConfigSaler where branch like '%s' order by branch,code;`
 	//const qspl = `SELECT arid,sales	FROM public.ar;`
 	db := configM.imr.GetSQLDBwithDbname(dbname)
@@ -517,7 +518,7 @@ func (configM *ConfigModel) GetConfigSalerData(branch, dbname string) []*ConfigS
 		// }
 		if err := rows.Scan(&cs.Sid, &cs.SName, &cs.Branch, &cs.ZeroDate, &cs.Title, &cs.Percent,
 			&cs.Salary, &cs.InsuredAmount, &cs.PayrollBracket, &cs.Enrollment, &cs.Association, &cs.Address,
-			&cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Phone, &cs.Remark, &cs.Code); err != nil {
+			&cs.Birth, &cs.IdentityNum, &cs.BankAccount, &cs.Email, &cs.Phone, &cs.Remark, &cs.Code, &cs.LeaveDate); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 
@@ -669,6 +670,44 @@ func (configM *ConfigModel) UpdateConfigSaler(cs *ConfigSaler, Sid, dbname strin
 	// res, err := sqldb.Exec(sql, Sid, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
 	// 	cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark, cs.InsuredAmount)
 	res, err := sqldb.Exec(sql, Sid, cs.Address, cs.Birth, cs.BankAccount, cs.Email, cs.Code)
+
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println(id)
+
+	if id == 0 {
+		return errors.New("Invalid operation, maybe not found the saler")
+	}
+	defer sqldb.Close()
+	return nil
+}
+
+func (configM *ConfigModel) SetLeaveDateConfigSaler(t time.Time, Sid, dbname string) (err error) {
+
+	// const sql = `UPDATE public.configsaler
+	// SET zerodate=$2,  title=$3, percent=$4, salary=$5,
+	// payrollbracket=$6, enrollment=$7, association=$8, address=$9, birth=$10, identitynum=$11, bankaccount= $12 , email = $13  ,branch = $14, remark = $15 , insuredamount=$16
+	// WHERE sid=$1`
+
+	const sql = `UPDATE public.configsaler
+	SET	leavedate=$2 WHERE sid=$1`
+
+	interdb := configM.imr.GetSQLDBwithDbname(dbname)
+	sqldb, err := interdb.ConnectSQLDB()
+	if err != nil {
+		return err
+	}
+
+	// res, err := sqldb.Exec(sql, Sid, cs.ZeroDate, cs.Title, cs.Percent, cs.Salary,
+	// 	cs.PayrollBracket, cs.Enrollment, cs.Association, cs.Address, cs.Birth, cs.IdentityNum, cs.BankAccount, cs.Email, cs.Branch, cs.Remark, cs.InsuredAmount)
+	res, err := sqldb.Exec(sql, Sid, t)
 
 	if err != nil {
 		fmt.Println(err)

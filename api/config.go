@@ -26,12 +26,12 @@ type inputAccountItem struct {
 	ItemName string `json:"itemName"`
 }
 type inputConfigSaler struct {
-	Sid      string `json:"id"`
-	SName    string `json:"name"`
-	ZeroDate string `json:"zeroDate"`
-	//ValidDate string  `json:"validDate"`
-	Title  string `json:"title"`
-	Salary int    `json:"salary"`
+	Sid       string    `json:"id"`
+	SName     string    `json:"name"`
+	ZeroDate  string    `json:"zeroDate"`
+	LeaveDate time.Time `json:"leaveDate"`
+	Title     string    `json:"title"`
+	Salary    int       `json:"salary"`
 	//Pay       int     `json:"pay"`
 	Percent float64 `json:"percent"`
 	//FPercent       float64 `json:"fPercent"`
@@ -103,6 +103,7 @@ func (api ConfigAPI) GetAPIs() *[]*APIHandler {
 
 		&APIHandler{Path: "/v1/config/saler", Next: api.getConfigSalerEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/config/saler", Next: api.createConfigSalerEndpoint, Method: "POST", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/config/saler/leaveDate/{id}", Next: api.setLeaveDateConfigSalerEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/config/saler/{id}", Next: api.updateConfigSalerEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/config/saler/{id}", Next: api.deleteConfigSalerEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 
@@ -550,6 +551,32 @@ func (api *ConfigAPI) createConfigSalerEndpoint(w http.ResponseWriter, req *http
 	configM := model.GetConfigModel(di)
 
 	_err := configM.CreateConfigSaler(iCSaler.GetConfigSaler(), dbname)
+	if _err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error,maybe already exist"))
+	} else {
+		w.Write([]byte("OK"))
+	}
+
+}
+func (api *ConfigAPI) setLeaveDateConfigSalerEndpoint(w http.ResponseWriter, req *http.Request) {
+	//Get params from body
+	dbname := req.Header.Get("dbname")
+
+	vars := util.GetPathVars(req, []string{"id"})
+	id := vars["id"].(string)
+
+	iCSaler := inputConfigSaler{}
+	err := json.NewDecoder(req.Body).Decode(&iCSaler)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Invalid JSON format"))
+		return
+	}
+
+	configM := model.GetConfigModel(di)
+
+	_err := configM.SetLeaveDateConfigSaler(iCSaler.LeaveDate, id, dbname)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Error,maybe already exist"))

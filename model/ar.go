@@ -171,15 +171,16 @@ func (am *ARModel) GetSalerData(branch, dbname string) []*Saler {
 	return am.salerList
 }
 
-func (am *ARModel) GetARData(key, status, dbname string) []*AR {
-
+func (am *ARModel) GetARData(key, status, branch, dbname string, date time.Time) []*AR {
+	begin_str := strconv.Itoa(int(date.Unix()))
 	index := "%" + key + "%"
 	sql := "SELECT ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount, " +
 		"	COALESCE((SELECT SUM(d.fee) FROM public.deduct d WHERE ar.arid = d.arid),0) AS SUM_Fee," +
 		"	COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA," +
 		"   COALESCE((SELECT SUM(r.fee) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RFee " +
 		"FROM public.ar ar	" +
-		"where ar.arid like '" + index + "' OR ar.cno like '" + index + "' OR ar.casename like '" + index + "' OR ar.type like '" + index + "' OR ar.name like '" + index + "' " +
+		"where (ar.arid like '" + index + "' OR ar.cno like '" + index + "' OR ar.casename like '" + index + "' OR ar.type like '" + index + "' OR ar.name like '" + index + "')" +
+		" and extract(epoch from ar.date) >= '" + begin_str + "' " +
 		"group by ar.arid order by ar.date desc , ar.cno;"
 	/*
 	*balance equal ar.amount - COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA
@@ -196,7 +197,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		return nil
 	}
 	var arDataList []*AR
-
+	var Final_arDataList []*AR
 	for rows.Next() {
 		var r AR
 
@@ -209,16 +210,27 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 			fmt.Println("err Scan " + err.Error())
 		}
 		r.Customer = ctm
-		r.Balance = r.Amount - r.RA
-
+		r.Balance = r.Amount - r.RA //未收 = 應收 - 已收
+		r.Sales = []*MAPSaler{}
 		//r.DeductList = []*Deduct{}
 
-		if status == "0" || r.Balance > 0 {
+		if status == "0" { //全部
+			arDataList = append(arDataList, &r)
+		} else if status == "1" && r.Balance == 0 { //已完款
+			fmt.Println("status=1,", r)
+			arDataList = append(arDataList, &r)
+		} else if status == "2" && r.Balance > 0 { //未完款
+			fmt.Println("status=2,", r)
 			arDataList = append(arDataList, &r)
 		}
+
 	}
 
-	const Mapsql = `SELECT arid, sid, proportion, sname, branch, percent	FROM public.armap; `
+	Mapsql := "SELECT arid, sid, proportion, sname, branch, percent " +
+		"		FROM public.armap " +
+		" where arid in ( " +
+		" SELECT arid from public.armap where branch like '%" + branch + "%' " +
+		") ;"
 	rows, err = db.SQLCommand(Mapsql)
 	if err != nil {
 		fmt.Println(err)
@@ -240,7 +252,19 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 				break
 			}
 		}
+	}
 
+	if branch == "" {
+		return arDataList
+	} else {
+		for _, ar := range arDataList {
+			for _, saler := range ar.Sales {
+				if saler.Branch == branch {
+					Final_arDataList = append(Final_arDataList, ar)
+					break
+				}
+			}
+		}
 	}
 
 	// by_m := "1980-01-01T00:00:00.000Z"
@@ -264,7 +288,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 	// fmt.Println(string(out))
 	//am.arList = arDataList
 
-	return arDataList
+	return Final_arDataList
 
 }
 
@@ -919,7 +943,12 @@ func (am *ARModel) checkEditable(ID string, sqldb *sql.DB) []mapRidBsid {
 }
 
 func (am *ARModel) ReCount() {
-	arList := am.GetARData("", "0", "toad")
+
+	date := "1980-12-31T00:00:00.000Z"
+
+	t, _ := time.Parse(time.RFC3339, date)
+
+	arList := am.GetARData("", "0", "", "toad", t)
 	for _, element := range arList {
 		am.UpdateAccountReceivable(element.Amount, element.ARid, "toad", element.Sales)
 	}

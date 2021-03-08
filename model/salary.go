@@ -894,6 +894,8 @@ func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, s
 		fmt.Println("CreateSalerSalary, no create anyone ")
 		return errors.New("CreateSalerSalary, not found any commission")
 	}
+	//特製勞保級距。 2021年。
+	salaryM.SetLaborFee(bs, sqldb)
 
 	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
 	//後續有改動，可根據單獨店家建立、選擇區間內的傭金建立。
@@ -912,6 +914,52 @@ func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, s
 		//return ucias_err
 	}
 
+	return nil
+}
+
+//根據特定數字改變勞保金額
+func (salaryM *SalaryModel) SetLaborFee(bs *BranchSalary, sqldb *sql.DB) (err error) {
+
+	const sql = `SELECT ss.bsid, ss.sid, ss.date, ss.laborfee, cs.insuredamount FROM public.salersalary ss
+	inner join public.configsaler cs on cs.sid = ss.sid 
+	where bsid >=$1 and laborfee != 0 and insuredamount = '45800';
+				`
+	var ssDataList []*SalerSalary
+
+	rows, err := sqldb.Query(fmt.Sprintf(sql, bs.BSid))
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	for rows.Next() {
+		var ss SalerSalary
+
+		if err := rows.Scan(&ss.BSid, &ss.Sid, &ss.Date, &ss.LaborFee, &ss.HealthFee); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+
+		ssDataList = append(ssDataList, &ss)
+	}
+
+	fmt.Println("[SetLaborFee] data:", ssDataList)
+	Usql := `update public.salersalary set laborfee = '1054' where bsid = $1 and sid =$2;`
+	for _, ss := range ssDataList {
+		res, err := sqldb.Exec(Usql, ss.BSid, ss.Sid)
+		if err != nil {
+			fmt.Println("[SetLaborFee Update err] ", err)
+			return err
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+			return err
+		}
+		if id == 0 {
+			fmt.Println("[SetLaborFee], not found any salersalary ")
+
+		}
+	}
 	return nil
 }
 

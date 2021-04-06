@@ -17,17 +17,18 @@ var ACTION_SELL = "sell"
 
 //`json:"id"` 回傳重新命名
 type AR struct {
-	ARid     string      `json:"id"`
-	Date     time.Time   `json:"completionDate"`
-	CNo      string      `json:"contractNo"`
-	Customer Customer    `json:"customer"`
-	CaseName string      `json:"caseName"`
-	Amount   int         `json:"amount"`
-	Fee      int         `json:"fee"`            //應扣費用
-	Cost     int         `json:"cost"`           //已扣費用
-	Balance  int         `json:"balance"`        //未收金額
-	RA       int         `json:"receivedAmount"` //已收金額
-	Sales    []*MAPSaler `json:"sales"`
+	ARid         string      `json:"id"`
+	Date         time.Time   `json:"completionDate"`
+	CNo          string      `json:"contractNo"`
+	Customer     Customer    `json:"customer"`
+	CaseName     string      `json:"caseName"`
+	Amount       int         `json:"amount"`
+	Fee          int         `json:"fee"`            //應扣費用
+	Cost         int         `json:"cost"`           //已扣費用
+	Balance      int         `json:"balance"`        //未收金額
+	RA           int         `json:"receivedAmount"` //已收金額
+	ReturnAmount int         `json:"returnAmount"`   //折讓金額
+	Sales        []*MAPSaler `json:"sales"`
 	//DeductList []*Deduct   `json:"deductList"`
 }
 
@@ -177,6 +178,7 @@ func (am *ARModel) GetARData(key, status, branch, dbname string, date time.Time)
 	sql := "SELECT ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount, " +
 		"	COALESCE((SELECT SUM(d.fee) FROM public.deduct d WHERE ar.arid = d.arid),0) AS SUM_Fee," +
 		"	COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA," +
+		"   COALESCE((SELECT SUM(re.amount) FROM public.returns re WHERE ar.arid = re.arid),0) AS SUM_Return," +
 		"   COALESCE((SELECT SUM(r.fee) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RFee " +
 		"FROM public.ar ar	" +
 		"where (ar.arid like '" + index + "' OR ar.cno like '" + index + "' OR ar.casename like '" + index + "' OR ar.type like '" + index + "' OR ar.name like '" + index + "')" +
@@ -206,7 +208,7 @@ func (am *ARModel) GetARData(key, status, branch, dbname string, date time.Time)
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&r.ARid, &r.Date, &r.CNo, &r.CaseName, &ctm.Action, &ctm.Name, &r.Amount, &r.Fee, &r.RA, &r.Cost); err != nil {
+		if err := rows.Scan(&r.ARid, &r.Date, &r.CNo, &r.CaseName, &ctm.Action, &ctm.Name, &r.Amount, &r.Fee, &r.RA, &r.ReturnAmount, &r.Cost); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 		r.Customer = ctm
@@ -552,6 +554,8 @@ func (am *ARModel) DeleteAccountReceivable(ID, dbname string) (err error) {
 				DELETE FROM public.deductmap WHERE did IN (SELECT did FROM public.deduct WHERE arid = '%s') ;
 				delete from public.deduct where arid = '%s';					 			
 				delete from public.armap where arid = '%s';			
+				delete from public.returns where arid = '%s';			
+				delete from public.returnsbmap where arid = '%s';			
 				`
 
 	interdb := am.imr.GetSQLDBwithDbname(dbname)
@@ -560,7 +564,7 @@ func (am *ARModel) DeleteAccountReceivable(ID, dbname string) (err error) {
 		return err
 	}
 	fmt.Println("sqldb Exec")
-	res, err := sqldb.Exec(fmt.Sprintf(sql, ID, ID, ID, ID, ID, ID))
+	res, err := sqldb.Exec(fmt.Sprintf(sql, ID, ID, ID, ID, ID, ID, ID, ID))
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)

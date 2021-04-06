@@ -81,6 +81,7 @@ func (api SalaryAPI) Enable() bool {
 func (api SalaryAPI) GetAPIs() *[]*APIHandler {
 	return &[]*APIHandler{
 		&APIHandler{Path: "/v1/download", Next: api.DownloadTest, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/test", Next: api.test, Method: "GET", Auth: true, Group: permission.All},
 
 		&APIHandler{Path: "/v1/salary", Next: api.getBranchSalaryEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/salary", Next: api.createBranchSalaryEndpoint, Method: "POST", Auth: true, Group: permission.All},
@@ -103,6 +104,15 @@ func (api SalaryAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.getCloseAccountSettlementEndpoint, Method: "GET", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/closeAccountSettlement", Next: api.deleteCloseAccountSettlementEndpoint, Method: "DELETE", Auth: true, Group: permission.All},
 	}
+
+}
+func (api *SalaryAPI) test(w http.ResponseWriter, req *http.Request) {
+
+	//dbname := req.Header.Get("dbname")
+	//SalaryM := model.GetSalaryModel(di)
+	//SalaryM.SetReturnsCommissionBSid(nil, dbname, nil)
+
+	w.Write([]byte("OK"))
 
 }
 

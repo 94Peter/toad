@@ -58,6 +58,7 @@ func main() {
 		apiConf,
 		mapi.AdminAPI(true),
 		mapi.ARAPI(true),
+		mapi.ReturnsAPI(true),
 		mapi.ReceiptAPI(true),
 		mapi.DeductAPI(true),
 		mapi.CommissionAPI(true),

@@ -61,7 +61,8 @@ type Invoice struct {
 	Remark      string    `json:"remark"`
 	Detail      []*Detail `json:"-"`
 
-	Rid string `json:"id"`
+	Rid string `json:"rid"`
+	Sid string `json:"sid"`
 	//Date    time.Time `json:"date"`
 	Title     string `json:"title"`
 	InvoiceNo string `json:"invoice_no"`
@@ -69,6 +70,7 @@ type Invoice struct {
 	//Invoice      string `json:"invoice"`
 	Left_qrcode  string //解析字串要用到，回傳前端就當作多餘的吧
 	Right_qrcode string //解析字串要用到，回傳前端就當作多餘的吧
+	Status       string `json:"status"`
 
 	Branch string `json:"branch"` //
 }
@@ -111,7 +113,7 @@ func GetInvoiceModel(imr interModelRes) *InvoiceModel {
 
 func (invoiceM *InvoiceModel) GetInvoiceData(rid, dbname string) *Invoice {
 
-	const qspl = `SELECT rid, invoiceno, buyerID, sellerID, randomnum, title, date, amount, left_qrcode, right_qrcode FROM public.Invoice where rid = '%s';`
+	const qspl = `SELECT rid, sid, invoiceno, buyerID, sellerID, randomnum, title, date, amount, left_qrcode, right_qrcode FROM public.Invoice where rid = '%s';`
 	db := invoiceM.imr.GetSQLDBwithDbname(dbname)
 	rows, err := db.SQLCommand(fmt.Sprintf(qspl, rid))
 	if err != nil {
@@ -124,7 +126,7 @@ func (invoiceM *InvoiceModel) GetInvoiceData(rid, dbname string) *Invoice {
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&invoice.Rid, &invoice.InvoiceNo, &invoice.BuyerID, &invoice.SellerID, &invoice.RandNum, &invoice.Title, &invoice.Date, &invoice.TotalAmount, &invoice.Left_qrcode, &invoice.Right_qrcode); err != nil {
+		if err := rows.Scan(&invoice.Rid, &invoice.Sid, &invoice.InvoiceNo, &invoice.BuyerID, &invoice.SellerID, &invoice.RandNum, &invoice.Title, &invoice.Date, &invoice.TotalAmount, &invoice.Left_qrcode, &invoice.Right_qrcode); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 		fmt.Println(invoice)
@@ -139,7 +141,42 @@ func (invoiceM *InvoiceModel) GetInvoiceData(rid, dbname string) *Invoice {
 
 	return nil
 }
+func (invoiceM *InvoiceModel) GetInvoiceDataByArid(arid, dbname string) []*Invoice {
 
+	const qspl = `SELECT iv.rid, iv.sid, invoiceno, buyerid, sellerid, randomnum, title, iv.date, iv.amount, left_qrcode, right_qrcode, iv.status
+				FROM public.invoice iv
+				inner join public.receipt r on iv.rid = r.rid
+				inner join public.ar ar on r.arid = ar.arid and ar.arid = '%s';`
+
+	db := invoiceM.imr.GetSQLDBwithDbname(dbname)
+	rows, err := db.SQLCommand(fmt.Sprintf(qspl, arid))
+	if err != nil {
+		fmt.Println("GetInvoiceDataByArid:", err)
+		return nil
+	}
+
+	ivList := []*Invoice{}
+
+	for rows.Next() {
+		invoice := &Invoice{}
+
+		// if err := rows.Scan(&r.ARid, &s); err != nil {
+		// 	fmt.Println("err Scan " + err.Error())
+		// }
+		if err := rows.Scan(&invoice.Rid, &invoice.Sid, &invoice.InvoiceNo, &invoice.BuyerID, &invoice.SellerID, &invoice.RandNum, &invoice.Title, &invoice.Date, &invoice.TotalAmount, &invoice.Left_qrcode, &invoice.Right_qrcode, &invoice.Status); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		ivList = append(ivList, invoice)
+	}
+
+	// out, err := json.Marshal(arList)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
+
+	return ivList
+}
 func (invoiceM *InvoiceModel) Json() ([]byte, error) {
 	return json.Marshal(invoiceM.invoiceList)
 }

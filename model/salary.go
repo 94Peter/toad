@@ -894,12 +894,15 @@ func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, s
 		fmt.Println("CreateSalerSalary, no create anyone ")
 		return errors.New("CreateSalerSalary, not found any commission")
 	}
-	//特製勞保級距。 2021年。
-	salaryM.SetLaborFee(bs, sqldb)
 
 	//綁定更改BSid (一筆都沒有也無所謂(表示只有底薪))
 	//後續有改動，可根據單獨店家建立、選擇區間內的傭金建立。
 	_ = salaryM.UpdateCommissionBSidAndStatus(bs, cid, sqldb)
+	//傭金綁定後Bsid後進行折讓單確認
+	salaryM.SetReturnsCommissionBSid(bs.BSid, sqldb)
+
+	//特製勞保級距。 2021年。
+	salaryM.SetLaborFee(bs, sqldb) //Tamount 也會-1。
 
 	//綁定更改BSid後才可建立紅利表，預設使用5%成本(年終提撥)
 	cieErr := salaryM.CreateIncomeExpense(bs, sqldb)
@@ -917,18 +920,132 @@ func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, s
 	return nil
 }
 
+//設定折讓單產生的傭金。
+func (salaryM *SalaryModel) SetReturnsCommissionBSid(bsid string, sqldb *sql.DB) (err error) {
+
+	const sql = `select c.rid, c.sid, c.bonus, ss.bsid, c.branch from public.salersalary ss 
+	INNER JOIN (
+		select c.rid, c.sid, c.bonus, c.branch from public.commission c where c.rid like 'r%' and c.status = 'normal' and c.bsid is  null
+	) c on ss.sid = c.sid and ss.pbonus >= c.bonus
+	where ss.pbonus > 0 and ss.bsid >= $1;
+	`
+	//var cList []*Commission
+
+	//interdb := salaryM.imr.GetSQLDBwithDbname(dbname)
+	//sqldb, err = interdb.ConnectSQLDB()
+
+	rows, err := sqldb.Query(sql, bsid)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	const updateSql = `update public.commission set bsid = $1 , status = 'join' where rid = $2 and sid = $3;`
+
+	for rows.Next() {
+
+		var c Commission
+
+		if err := rows.Scan(&c.Rid, &c.Sid, &c.Bonus, &c.Bsid, &c.Branch); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		fmt.Println(c)
+		//cList = append(cList, &c)
+		res, err := sqldb.Exec(updateSql, c.Bsid, c.Rid, c.Sid)
+		//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+		if err != nil {
+			fmt.Println("[Update err] ", err)
+			return err
+		}
+		id, err := res.RowsAffected()
+		if err != nil {
+			fmt.Println("PG Affecte Wrong: ", err)
+			return err
+		}
+		if id == 0 {
+			fmt.Println("SetReturnsCommissionBSid, not found any commission ")
+		} else {
+			fmt.Println("SetReturnsCommissionBSid: bsid:", c.Bsid, " rid:", c.Rid, " sid:", c.Sid)
+			salaryM.refreshSalerSalary_V2(c.Bsid, c.Sid, c.Branch, sqldb)
+		}
+	}
+	// out, err := json.Marshal(cList)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
+	return nil
+}
+
+//根據sid bsid重新計算(更新) 不包含日期
+func (salaryM *SalaryModel) refreshSalerSalary_V2(bsid, sid, branch string, sqldb *sql.DB) (err error) {
+	//須注意未到職的人不給薪水。
+	const sql = `update public.salersalary ss set Pbonus = subQuery.pbonus , total = subQuery.total, Welfare = subQuery.Welfare , commercialFee = subQuery.mcommercialFee ,sp=subQuery.sp,tamount =subQuery.tamount
+	FROM(
+	select tmp2.sid,  tmp2.branch, tmp2.sname, tmp2.salary, tmp2.pbonus, tmp2.total, tmp2.laborfee, tmp2.healthfee, tmp2.welfare, tmp2.mcommercialfee, 
+			 tmp2.sp , (tmp2.total - tmp2.Welfare - tmp2.mcommercialFee - tmp2.laborfee - tmp2.healthfee - tmp2.sp)  Tamount from (
+			select ROUND(COALESCE(total)*0.01) Welfare, ROUND(COALESCE(total) * tmp.commercialFee/100 ) mcommercialFee,
+				(CASE WHEN tmp.salary = 0 and tmp.association = 1 then 0 
+					WHEN tmp.total <= tmp.mmw then 0	 	
+				WHEN tmp.salary = 0 and tmp.association = 0 then ROUND(tmp.total * tmp.nhi2nd / 100) 	 	
+				else
+					( CASE WHEN ( tmp.total - 4 * tmp.PayrollBracket) > 0 then ROUND(( tmp.total - 4 * tmp.PayrollBracket) * tmp.nhi2nd / 100) else 0 end)
+				end
+				) sp ,
+				* from (
+				select  COALESCE(BS.Salary +  COALESCE(C.Pbonus,0), BS.Salary) total, ROUND(BS.InsuredAmount*CP.LI*0.2/100) LaborFee , ROUND(BS.PayrollBracket*CP.nhi*0.3/100) HealthFee,
+				BS.*, COALESCE(C.Pbonus,0) Pbonus, CB.commercialFee, CP.* from (
+					select Salary, Sid, branch, InsuredAmount, PayrollBracket, association, sname from public.configsalary where sid = $2 and branch = $3 order by ZERODATE desc
+				) BS
+				left join (
+					SELECT sum(c.bonus) Pbonus, $2 sid from public.commission c
+					where c.bsid = $1 and  c.sid = $2		
+				) C on C.sid = BS.Sid
+				left join(
+					select branch , commercialFee from public.configbranch 
+				) CB on CB.branch = BS.branch
+				cross join (
+						select  c.nhi, c.li, c.nhi2nd, c.mmw from public.ConfigParameter C
+						inner join(
+							select  max(date) date from public.ConfigParameter 
+						) A on A.date = C.date limit 1
+				) CP
+			) tmp
+		) tmp2
+	) subQuery where ss.bsid = $1 and ss.sid = $2;	
+	`
+
+	res, err := sqldb.Exec(sql, bsid, sid, branch)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("[refreshSalerSalary_V2 update err] ", err)
+		return err
+	}
+	id, err := res.RowsAffected()
+	if err != nil {
+		fmt.Println("PG Affecte Wrong: ", err)
+		return err
+	}
+	fmt.Println("refreshSalerSalary_V2:", id)
+
+	if id == 0 {
+		fmt.Println("refreshSalerSalary_V2, no create anyone ")
+	}
+
+	return nil
+}
+
 //根據特定數字改變勞保金額
 func (salaryM *SalaryModel) SetLaborFee(bs *BranchSalary, sqldb *sql.DB) (err error) {
 
 	const sql = `SELECT ss.bsid, ss.sid, ss.date, ss.laborfee, cs.insuredamount FROM public.salersalary ss
 	inner join public.configsaler cs on cs.sid = ss.sid 
-	where bsid >=$1 and laborfee != 0 and insuredamount = '45800';
-				`
+	where bsid >=$1 and laborfee != 0 and insuredamount = '45800';`
 	var ssDataList []*SalerSalary
 
-	rows, err := sqldb.Query(fmt.Sprintf(sql, bs.BSid))
+	rows, err := sqldb.Query(sql, bs.BSid)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("[ERROR] SetLaborFee:", err)
 		return nil
 	}
 
@@ -943,7 +1060,7 @@ func (salaryM *SalaryModel) SetLaborFee(bs *BranchSalary, sqldb *sql.DB) (err er
 	}
 
 	fmt.Println("[SetLaborFee] data:", ssDataList)
-	Usql := `update public.salersalary set laborfee = '1054' where bsid = $1 and sid =$2;`
+	Usql := `update public.salersalary set laborfee = '1054', tamount = tamount - 1 where bsid = $1 and sid =$2;`
 	for _, ss := range ssDataList {
 		res, err := sqldb.Exec(Usql, ss.BSid, ss.Sid)
 		if err != nil {
@@ -1064,9 +1181,14 @@ func (salaryM *SalaryModel) CreateIncomeExpense(bs *BranchSalary, sqldb *sql.DB)
 		   group by  amor.branch		
 	   ) amorTable on amorTable.branch = BS.branch
 	   left join(
-		   Select sum(SR) SR , bsid FROM public.commission 
-		   where bsid is not null
-		   group by bsid
+			select  SUM(SR) SR , bsid  from (
+				Select SR , bsid FROM public.commission C where bsid is not null
+				union all (
+				SELECT rb.sr * (-1), c.bsid 
+					FROM public.returnsbmap rb
+					inner join public.commission c on rb.return_id = c.rid where bsid is not null
+				)	
+			) t group by bsid
 	   ) commissionTable on commissionTable.bsid = BS.bsid
 	   inner join(
 		   Select branch, rent, agentsign, annualratio FROM public.configbranch	

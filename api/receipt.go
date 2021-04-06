@@ -51,6 +51,9 @@ func (api ReceiptAPI) GetAPIs() *[]*APIHandler {
 		&APIHandler{Path: "/v1/invoice", Next: api.createInvoiceEndpoint, Method: "POST", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/invoice/export", Next: api.exportInvoiceEndpoint, Method: "POST", Auth: true, Group: permission.All},
 		&APIHandler{Path: "/v1/invoice/{ID}", Next: api.getInvoiceDetailEndpoint, Method: "GET", Auth: true, Group: permission.All},
+		&APIHandler{Path: "/v1/invoice/arid/{ID}", Next: api.getInvoiceByAREndpoint, Method: "GET", Auth: true, Group: permission.All},
+
+		&APIHandler{Path: "/v1/invoice/status/{Rid}/{Sid}", Next: api.updateInvoiceStatusEndpoint, Method: "PUT", Auth: true, Group: permission.All},
 	}
 }
 
@@ -90,6 +93,50 @@ func (api *ReceiptAPI) getReceiptEndpoint(w http.ResponseWriter, req *http.Reque
 	data, err := rm.Json()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+
+func (api *ReceiptAPI) getInvoiceByAREndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
+	im := model.GetInvoiceModel(di)
+	//var queryDate time.Time
+	//today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
+	//end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
+	vars := util.GetPathVars(req, []string{"ID"})
+
+	ID := vars["ID"].(string)
+
+	iv := im.GetInvoiceDataByArid(ID, dbname)
+	data, err := json.Marshal(iv)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+
+func (api *ReceiptAPI) updateInvoiceStatusEndpoint(w http.ResponseWriter, req *http.Request) {
+	dbname := req.Header.Get("dbname")
+	im := model.GetInvoiceModel(di)
+	//var queryDate time.Time
+	//today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
+	//end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
+
+	vars := util.GetPathVars(req, []string{"Rid", "Sid"})
+	Rid := vars["Rid"].(string)
+	Sid := vars["Sid"].(string)
+	fmt.Println(Rid, Sid)
+
+	iv := im.GetInvoiceDataByArid(Sid, dbname)
+	data, err := json.Marshal(iv)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

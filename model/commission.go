@@ -118,17 +118,34 @@ func (cm *CModel) GetCommissiontData(start, end time.Time, status, branch, dbnam
 	//if invoiceno is null in Database return ""
 	// where to_timestamp(date_part('epoch',r.date)::int) >= '%s' and to_timestamp(date_part('epoch',r.date)::int) < '%s'::date + '1 month'::interval
 
-	const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
+	// const qsql = `SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
+	// 			FROM public.commission c
+	// 			inner JOIN public.receipt r on r.rid = c.rid
+	// 			where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
+	// 			and c.status like '%s' and c.branch like '%s'
+	// 			order by sid;`
+
+	const qsql = `select * from (
+				SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
 				FROM public.commission c
 				inner JOIN public.receipt r on r.rid = c.rid
-				inner JOIN public.ConfigSaler cs on cs.sid = c.sid
 				where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
-				and c.status like '%s' and cs.branch like '%s'
-				order by sid;`
+				and c.status like '%s' and c.branch like '%s'
+				) t1
+				union (
+					SELECT c.sid, c.rid, r.date, c.item, r.amount, c.fee , c.sname, c.cpercent, c.sr, c.bonus, r.arid, c.status
+					FROM public.commission c
+					inner JOIN public.returns r on r.return_id = c.rid
+						where extract(epoch from r.date) >= '%d' and extract(epoch from r.date - '1 month'::interval) < '%d'
+						and c.status like '%s' and c.branch like '%s'
+				) order by sid ;
+				`
 
 	db := cm.imr.GetSQLDBwithDbname(dbname)
-	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status, branch))
-	//fmt.Println("debug,", fmt.Sprintf(qsql, start.Unix(), end.Unix(), status))
+	rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status, branch, start.Unix(), end.Unix(), status, branch))
+	//rows, err := db.SQLCommand(fmt.Sprintf(qsql, start.Unix(), end.Unix(), status, branch))
+	//fmt.Println("debug,", fmt.Sprintf(qsql, start.Unix(), end.Unix(), status, branch, start.Unix(), end.Unix(), status, branch))
+	//fmt.Println("debug,", fmt.Sprintf(qsql, start.Unix(), end.Unix(), status, branch))
 	if err != nil {
 		fmt.Println(err)
 		return nil

@@ -31,9 +31,10 @@ type updateReturns struct {
 	Description string `json:"description"`
 	Amount      int    `json:"amount"`
 	//Status      string    `json:"status"`
-	Arid       string                   `json:"arid"`
-	Sales      []*model.ReturnMAPSaler  `json:"sales"`
-	BranchList []*model.ReturnMAPBranch `json:"branchList"`
+	Arid        string                   `json:"arid"`
+	Sales       []*model.ReturnMAPSaler  `json:"sales"`
+	BranchList  []*model.ReturnMAPBranch `json:"branchList"`
+	InvoiceList []*model.Invoice         `json:"invoiceList"`
 }
 
 func (api ReturnsAPI) GetAPIs() *[]*APIHandler {
@@ -133,6 +134,7 @@ func (api *ReturnsAPI) updateReturnsEndpoint(w http.ResponseWriter, req *http.Re
 
 	rm := model.GetReturnsModel(di)
 	model.GetConfigModel(di)
+	model.GetInvoiceModel(di)
 
 	data, _ := ioutil.ReadAll(req.Body) //把  body 内容读入字符串
 
@@ -211,9 +213,7 @@ func (uR *updateReturns) isValid() (bool, error) {
 		}
 
 	}
-	if len(uR.Sales) == 0 {
-		return false, errors.New("Sales is empty")
-	}
+
 	for _, element := range uR.BranchList {
 
 		if element.Branch == "" {
@@ -222,6 +222,18 @@ func (uR *updateReturns) isValid() (bool, error) {
 
 		if element.SR < 0 {
 			return false, errors.New("SR is not valid")
+		}
+
+	}
+
+	for _, element := range uR.InvoiceList {
+
+		if element.InvoiceNo == "" {
+			return false, errors.New("InvoiceNo is empty")
+		}
+
+		if !(element.Status == "-4" || element.Status == "-7" || element.Status == "0") {
+			return false, errors.New("invoice Status is not valid, should be 0 -4 -7")
 		}
 
 	}
@@ -245,5 +257,6 @@ func (uR *updateReturns) GetReturns() *model.Returns {
 		Description: uR.Description,
 		Sales:       uR.Sales,
 		BranchList:  uR.BranchList,
+		InvoiceList: uR.InvoiceList,
 	}
 }

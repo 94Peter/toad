@@ -79,6 +79,7 @@ func main() {
 	// configM := model.GetConfigModel(myDI)
 	// configM.WorkValidDate()
 	startTimer(myDI)
+	startTimerInvoice(myDI)
 	log.Printf("Listening on port %s", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), router))
 
@@ -92,7 +93,6 @@ func startTimer(myDI *resource.DI) {
 	const DATE_FORMAT = "2006-01-02"
 	go func() {
 		for {
-
 			// 计算下一个月初
 			now := time.Now()
 			year, month, day := now.Date()
@@ -120,6 +120,30 @@ func startTimer(myDI *resource.DI) {
 			// timer1 := time.NewTimer(time.Second * 5)
 			// <-timer1.C
 
+		}
+	}()
+}
+
+func startTimerInvoice(myDI *resource.DI) {
+	ivM := model.GetInvoiceModel(myDI)
+	const DATE_FORMAT = "2006-01-02"
+	go func() {
+		for {
+			// 计算下一个月初
+			now := time.Now()
+			year, month, day := now.Date()
+			nextDay := time.Date(year, month, day, 23, 50, 0, 0, time.Local)
+			ivM.UpdateInvoiceStatus()
+			if nextDay.Sub(now) > 0 {
+				fmt.Println("startTimerInvoice 距離下次執行時間:", nextDay.Sub(now))
+				t := time.NewTimer(nextDay.Sub(now))
+				<-t.C
+			} else {
+				nextDay = time.Date(year, month, day+1, 23, 50, 0, 0, time.Local)
+				fmt.Println("startTimerInvoice 距離下次執行時間:", nextDay.Sub(now))
+				t := time.NewTimer(nextDay.Sub(now))
+				<-t.C
+			}
 		}
 	}()
 }

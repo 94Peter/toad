@@ -20,6 +20,7 @@ type Returns struct {
 	Arid        string             `json:"arid"`
 	Sales       []*ReturnMAPSaler  `json:"sales"`
 	BranchList  []*ReturnMAPBranch `json:"branchList"`
+	InvoiceList []*Invoice         `json:"invoiceList"`
 }
 
 var (
@@ -255,9 +256,9 @@ func (returnsM *ReturnsModel) UpdateReturns(returns *Returns, dbname string) (er
 	if len(returns.BranchList) > 0 {
 		status = "2"
 	}
-	// if len(returns.Sales) > 0 {
-	// 	status = "1"
-	// }
+	if len(returns.InvoiceList) > 0 {
+		status = "3"
+	}
 	res, err := sqldb.Exec(sql, returns.Amount, returns.Description, returns.Return_id, status)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
@@ -296,10 +297,30 @@ func (returnsM *ReturnsModel) UpdateReturns(returns *Returns, dbname string) (er
 			return err
 		}
 	}
-
+	for i := 0; i < len(returns.InvoiceList); i++ {
+		iv := returns.InvoiceList[i]
+		err = invoiceM.updateInvoiceStatusByIvNo(iv.InvoiceNo, iv.Status, sqldb)
+		if err != nil {
+			fmt.Println("[ERROR] 更新發票作業失敗")
+			return err
+		}
+	}
 	defer sqldb.Close()
 	return nil
 }
+
+// func (returnsM *ReturnsModel) updateInvoiceStatus(rid, sid, status string, sqldb *sql.DB) (err error) {
+
+// 	const sql = `UPDATE public.invoice set status = $1 where rid = $2 and sid = $3;;`
+
+// 	_, err = sqldb.Exec(sql, status, rid, sid)
+// 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+// 	if err != nil {
+// 		fmt.Println("updateInvoiceStatus:", err)
+// 	}
+
+// 	return nil
+// }
 
 func (returnsM *ReturnsModel) SaveReturnMAP(return_id, arid string, bms *ReturnMAPBranch, sqldb *sql.DB) (err error) {
 
@@ -318,10 +339,10 @@ func (returnsM *ReturnsModel) SaveReturnMAP(return_id, arid string, bms *ReturnM
 
 func (returnsM *ReturnsModel) DeleteReturns(ID, dbname string) (err error) {
 
-	const sql = `
-				delete from public.returns where return_id = '%s';			
+	const sql = `				
 				delete from public.returnsbmap where return_id = '%s';
 				delete from public.commission where rid = '%s';
+				delete from public.returns where return_id = '%s';			
 				`
 
 	interdb := returnsM.imr.GetSQLDBwithDbname(dbname)

@@ -628,7 +628,8 @@ func (sdb *SqlDB) CreateInvoiceTable() error {
 			"Title character varying(50) DEFAULT NULL,"+
 			"Date  character varying(50) DEFAULT NULL, "+
 			"Amount  integer not NULL, "+
-			"Status  character varying(10) DEFAULT '', "+
+			"Status  character varying(10) DEFAULT '0', "+
+			"invoice_status integer varying(10) DEFAULT '0', "+
 			"left_qrcode  character varying(200) DEFAULT NULL, "+
 			"right_qrcode character varying(200) DEFAULT NULL, "+
 			"PRIMARY KEY (Rid,Sid) "+

@@ -121,26 +121,37 @@ func (api *ReceiptAPI) getInvoiceByAREndpoint(w http.ResponseWriter, req *http.R
 }
 
 func (api *ReceiptAPI) updateInvoiceStatusEndpoint(w http.ResponseWriter, req *http.Request) {
-	dbname := req.Header.Get("dbname")
+	// dbname := req.Header.Get("dbname")
 	im := model.GetInvoiceModel(di)
-	//var queryDate time.Time
-	//today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
-	//end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
+	// //var queryDate time.Time
+	// //today := time.Date(queryDate.Year(), queryDate.Month(), 1, 0, 0, 0, 0, queryDate.Location())
+	// //end := time.Date(queryDate.Year(), queryDate.Month()+1, 1, 0, 0, 0, 0, queryDate.Location())
 
-	vars := util.GetPathVars(req, []string{"Rid", "Sid"})
-	Rid := vars["Rid"].(string)
-	Sid := vars["Sid"].(string)
-	fmt.Println(Rid, Sid)
-
-	iv := im.GetInvoiceDataByArid(Sid, dbname)
-	data, err := json.Marshal(iv)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
+	// vars := util.GetPathVars(req, []string{"Rid", "Sid"})
+	// Rid := vars["Rid"].(string)
+	// Sid := vars["Sid"].(string)
+	// fmt.Println(Rid, Sid)
+	// iv, err := im.ReturnsInvoiceFromAPI(nil, dbname)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
+	im.UpdateInvoiceStatusFromAPI(nil, nil)
+	// iv, err = im.DeleteInvoiceFromAPI(nil, dbname)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
+	// data, err := json.Marshal(iv)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusBadRequest)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
+	// w.Header().Set("Content-Type", "application/json")
+	// w.Write(data)
 }
 
 func (api *ReceiptAPI) getInvoiceDetailEndpoint(w http.ResponseWriter, req *http.Request) {

@@ -547,8 +547,7 @@ func (am *ARModel) DeleteARandDeductMAP(ID string, sqldb *sql.DB) (err error) {
 
 func (am *ARModel) DeleteAccountReceivable(ID, dbname string) (err error) {
 	fmt.Println("DeleteAccountReceivable")
-	const sql = `
-				delete from public.ar where arid = '%s';
+	const sql = `				
 				delete from public.receipt where arid = '%s';
 				delete from public.commission where arid = '%s';
 				DELETE FROM public.deductmap WHERE did IN (SELECT did FROM public.deduct WHERE arid = '%s') ;
@@ -556,6 +555,7 @@ func (am *ARModel) DeleteAccountReceivable(ID, dbname string) (err error) {
 				delete from public.armap where arid = '%s';			
 				delete from public.returns where arid = '%s';			
 				delete from public.returnsbmap where arid = '%s';			
+				delete from public.ar where arid = '%s';
 				`
 
 	interdb := am.imr.GetSQLDBwithDbname(dbname)

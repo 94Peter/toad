@@ -28,9 +28,9 @@ type createReturns struct {
 type updateReturns struct {
 	//Date        time.Time `json:"date"` //成交日期
 	Return_id   string
-	Description string `json:"description"`
-	Amount      int    `json:"amount"`
-	//Status      string    `json:"status"`
+	Description string                   `json:"description"`
+	Amount      int                      `json:"amount"`
+	Status      string                   `json:"status"`
 	Arid        string                   `json:"arid"`
 	Sales       []*model.ReturnMAPSaler  `json:"sales"`
 	BranchList  []*model.ReturnMAPBranch `json:"branchList"`
@@ -194,6 +194,10 @@ func (cR *createReturns) isValid() (bool, error) {
 }
 func (uR *updateReturns) isValid() (bool, error) {
 
+	if uR.Status == "" {
+		return false, errors.New("status is empty")
+	}
+
 	for _, element := range uR.Sales {
 		// if element.Percent < 0 {
 		// 	return false, errors.New("proportion is not valid")
@@ -253,6 +257,7 @@ func (uR *updateReturns) GetReturns() *model.Returns {
 	return &model.Returns{
 		Return_id: uR.Return_id,
 		Amount:    uR.Amount,
+		Status:    uR.Status,
 		//Date:        cR.Date,
 		Description: uR.Description,
 		Sales:       uR.Sales,

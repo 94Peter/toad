@@ -20,7 +20,7 @@ type Returns struct {
 	Arid        string             `json:"arid"`
 	Sales       []*ReturnMAPSaler  `json:"sales"`
 	BranchList  []*ReturnMAPBranch `json:"branchList"`
-	InvoiceList []*Invoice         `json:"invoiceList"`
+	InvoiceList []*Invoice         `json:"-"`
 }
 
 var (
@@ -249,17 +249,7 @@ func (returnsM *ReturnsModel) UpdateReturns(returns *Returns, dbname string) (er
 	//確認可以更新的話，每次都重建資料。
 	returnsM.resetReturns(returns.Return_id, sqldb)
 
-	status := "0"
-	if len(returns.Sales) > 0 {
-		status = "1"
-	}
-	if len(returns.BranchList) > 0 {
-		status = "2"
-	}
-	if len(returns.InvoiceList) > 0 {
-		status = "3"
-	}
-	res, err := sqldb.Exec(sql, returns.Amount, returns.Description, returns.Return_id, status)
+	res, err := sqldb.Exec(sql, returns.Amount, returns.Description, returns.Return_id, returns.Status)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -513,48 +503,38 @@ func (returnsM *ReturnsModel) CreateReturns(returns *Returns, dbname string) (st
 		return "", err
 	}
 
-	fmt.Println(id)
+	fmt.Println("CreateReturns:", id)
 
-	// //住通重複ID的話，需要刪除本來的ID對應，重新建立。
-	// if receivable.ARid != "" {
-	// 	const mapClearSql = `DELETE FROM public.ARMAP WHERE ARid = $1`
-	// 	_, err := sqldb.Exec(mapClearSql, receivable.ARid)
-	// 	if err != nil {
-	// 		fmt.Println("DELETE ARMAP ", err)
-	// 	}
-	// }
+	Mapsql := `SELECT sid, proportion, sname, branch, percent FROM public.armap 
+	where arid = $1;`
 
-	// if id > 0 {
-	// 	err = returnsM.SaveReturnMAP(fakeId, sqldb)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
-	// 	// const mapSql = `INSERT INTO public.ARMAP(
-	// 	// 	ARid, Sid, proportion , SName, branch, percent)
-	// 	// 	VALUES ($1, $2, $3, $4, $5, $6);`
+	rows, err := sqldb.Query(Mapsql, returns.Arid)
+	if err != nil {
+		fmt.Println(err)
+		return "", nil
+	}
 
-	// 	// for _, element := range receivable.Sales {
-	// 	// 	s := am.GetSalerDataByID(sqldb, element.Sid)
-	// 	// 	if s == nil {
-	// 	// 		fmt.Println("ARMAP unknown error")
-	// 	// 		return errors.New("ARMAP unknown error")
-	// 	// 	}
-	// 	// 	// element is the element from someSlice for where we are
-	// 	// 	res, err := sqldb.Exec(mapSql, fakeId, element.Sid, element.Percent, element.SName, s.Branch, s.Percent)
-	// 	// 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
-	// 	// 	if err != nil {
-	// 	// 		fmt.Println("ARMAP ", err)
-	// 	// 		return err
-	// 	// 	}
-	// 	// 	id, err := res.RowsAffected()
-	// 	// 	if err != nil {
-	// 	// 		fmt.Println("PG Affecte Wrong: ", err)
-	// 	// 		return err
-	// 	// 	}
-	// 	// 	fmt.Println(id)
-	// 	// }
-	// }
+	for rows.Next() {
+		var saler MAPSaler
+
+		if err := rows.Scan(&saler.Sid, &saler.Percent, &saler.SName, &saler.Branch, &saler.BonusPercent); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		fmt.Println("public.armap :", saler)
+		//saler := returns.Sales[i]
+		returnSaler := &ReturnMAPSaler{
+			SName:  saler.SName,
+			SR:     int(round(float64(returns.Amount)*saler.Percent/100, 0)), //對第一位小數 四捨五入
+			Sid:    saler.Sid,
+			Branch: saler.Branch,
+		}
+		err = returnsM.CreateCommissionByReturns(strInt64, returns.Arid, returnSaler, sqldb)
+		if err != nil {
+			fmt.Println("[ERROR] 建立折扣傭金錯誤 returns.Return_id:", strInt64)
+			return "", err
+		}
+
+	}
 
 	defer sqldb.Close()
 	return strInt64, nil
@@ -589,49 +569,6 @@ func (returnsM *ReturnsModel) CreateCommissionByReturns(return_id, arid string, 
 	return nil
 }
 
-// func (am *ARModel) CreateHouseGoDuplicate(ID, data, dbname string) (err error) {
-
-// 	//不知道為什麼用$字號 放入數字會報錯。
-// 	const sql = `INSERT INTO public.housego
-// 				(arid, id, data)
-// 				VALUES ('%d', '%s', '%s');
-// 				`
-
-// 	interdb := am.imr.GetSQLDBwithDbname(dbname)
-// 	sqldb, err := interdb.ConnectSQLDB()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Println("CreateHouseGoDuplicate Exec")
-
-// 	//fakeId := time.Now().Unix()
-// 	fakeId := time.Now().Unix()
-
-// 	///fmt.Println("fakeId ", fakeId)
-// 	//fmt.Println("ID ", ID)
-// 	//fmt.Println("data :", data)
-// 	data = strings.Replace(data, " ", "", -1)
-// 	data = strings.Replace(data, "\n", "", -1)
-// 	// ID 不取 "_b" && "_s"
-// 	sss := fmt.Sprintf(sql, fakeId, ID[0:len(ID)-2], data)
-// 	//fmt.Println("sss :", sss)
-// 	res, err := sqldb.Exec(sss)
-// 	if err != nil {
-// 		fmt.Println("[error]CreateHouseGoDuplicate:", err)
-// 		return err
-// 	}
-
-// 	id, err := res.RowsAffected()
-// 	if err != nil {
-// 		fmt.Println("PG Affecte Wrong: ", err)
-// 		return err
-// 	}
-// 	if id <= 0 {
-// 		return errors.New("CreateHouseGoDuplicate not found anything")
-// 	}
-// 	defer sqldb.Close()
-// 	return nil
-// }
 func (returnsM *ReturnsModel) GetCommissionDataByRerutnsId(sqldb *sql.DB, return_id string) []*Commission {
 
 	const sql = `SELECT bsid, rid, sid, sname, branch

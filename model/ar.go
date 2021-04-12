@@ -17,17 +17,18 @@ var ACTION_SELL = "sell"
 
 //`json:"id"` 回傳重新命名
 type AR struct {
-	ARid     string      `json:"id"`
-	Date     time.Time   `json:"completionDate"`
-	CNo      string      `json:"contractNo"`
-	Customer Customer    `json:"customer"`
-	CaseName string      `json:"caseName"`
-	Amount   int         `json:"amount"`
-	Fee      int         `json:"fee"`            //應扣費用
-	Cost     int         `json:"cost"`           //已扣費用
-	Balance  int         `json:"balance"`        //未收金額
-	RA       int         `json:"receivedAmount"` //已收金額
-	Sales    []*MAPSaler `json:"sales"`
+	ARid         string      `json:"id"`
+	Date         time.Time   `json:"completionDate"`
+	CNo          string      `json:"contractNo"`
+	Customer     Customer    `json:"customer"`
+	CaseName     string      `json:"caseName"`
+	Amount       int         `json:"amount"`
+	Fee          int         `json:"fee"`            //應扣費用
+	Cost         int         `json:"cost"`           //已扣費用
+	Balance      int         `json:"balance"`        //未收金額
+	RA           int         `json:"receivedAmount"` //已收金額
+	ReturnAmount int         `json:"returnAmount"`   //折讓金額
+	Sales        []*MAPSaler `json:"sales"`
 	//DeductList []*Deduct   `json:"deductList"`
 }
 
@@ -171,15 +172,17 @@ func (am *ARModel) GetSalerData(branch, dbname string) []*Saler {
 	return am.salerList
 }
 
-func (am *ARModel) GetARData(key, status, dbname string) []*AR {
-
+func (am *ARModel) GetARData(key, status, branch, dbname string, date time.Time) []*AR {
+	begin_str := strconv.Itoa(int(date.Unix()))
 	index := "%" + key + "%"
 	sql := "SELECT ar.arid, ar.date, ar.cno, ar.casename, ar.type, ar.name, ar.amount, " +
 		"	COALESCE((SELECT SUM(d.fee) FROM public.deduct d WHERE ar.arid = d.arid),0) AS SUM_Fee," +
 		"	COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA," +
+		"   COALESCE((SELECT SUM(re.amount) FROM public.returns re WHERE ar.arid = re.arid),0) AS SUM_Return," +
 		"   COALESCE((SELECT SUM(r.fee) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RFee " +
 		"FROM public.ar ar	" +
-		"where ar.arid like '" + index + "' OR ar.cno like '" + index + "' OR ar.casename like '" + index + "' OR ar.type like '" + index + "' OR ar.name like '" + index + "' " +
+		"where (ar.arid like '" + index + "' OR ar.cno like '" + index + "' OR ar.casename like '" + index + "' OR ar.type like '" + index + "' OR ar.name like '" + index + "')" +
+		" and extract(epoch from ar.date) >= '" + begin_str + "' " +
 		"group by ar.arid order by ar.date desc , ar.cno;"
 	/*
 	*balance equal ar.amount - COALESCE((SELECT SUM(r.amount) FROM public.receipt r WHERE ar.arid = r.arid),0) AS SUM_RA
@@ -196,7 +199,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		return nil
 	}
 	var arDataList []*AR
-
+	var Final_arDataList []*AR
 	for rows.Next() {
 		var r AR
 
@@ -205,20 +208,31 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 		// if err := rows.Scan(&r.ARid, &s); err != nil {
 		// 	fmt.Println("err Scan " + err.Error())
 		// }
-		if err := rows.Scan(&r.ARid, &r.Date, &r.CNo, &r.CaseName, &ctm.Action, &ctm.Name, &r.Amount, &r.Fee, &r.RA, &r.Cost); err != nil {
+		if err := rows.Scan(&r.ARid, &r.Date, &r.CNo, &r.CaseName, &ctm.Action, &ctm.Name, &r.Amount, &r.Fee, &r.RA, &r.ReturnAmount, &r.Cost); err != nil {
 			fmt.Println("err Scan " + err.Error())
 		}
 		r.Customer = ctm
-		r.Balance = r.Amount - r.RA
-
+		r.Balance = r.Amount - r.RA //未收 = 應收 - 已收
+		r.Sales = []*MAPSaler{}
 		//r.DeductList = []*Deduct{}
 
-		if status == "0" || r.Balance > 0 {
+		if status == "0" { //全部
+			arDataList = append(arDataList, &r)
+		} else if status == "1" && r.Balance == 0 { //已完款
+			fmt.Println("status=1,", r)
+			arDataList = append(arDataList, &r)
+		} else if status == "2" && r.Balance > 0 { //未完款
+			fmt.Println("status=2,", r)
 			arDataList = append(arDataList, &r)
 		}
+
 	}
 
-	const Mapsql = `SELECT arid, sid, proportion, sname, branch, percent	FROM public.armap; `
+	Mapsql := "SELECT arid, sid, proportion, sname, branch, percent " +
+		"		FROM public.armap " +
+		" where arid in ( " +
+		" SELECT arid from public.armap where branch like '%" + branch + "%' " +
+		") ;"
 	rows, err = db.SQLCommand(Mapsql)
 	if err != nil {
 		fmt.Println(err)
@@ -240,7 +254,19 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 				break
 			}
 		}
+	}
 
+	if branch == "" {
+		return arDataList
+	} else {
+		for _, ar := range arDataList {
+			for _, saler := range ar.Sales {
+				if saler.Branch == branch {
+					Final_arDataList = append(Final_arDataList, ar)
+					break
+				}
+			}
+		}
 	}
 
 	// by_m := "1980-01-01T00:00:00.000Z"
@@ -264,7 +290,7 @@ func (am *ARModel) GetARData(key, status, dbname string) []*AR {
 	// fmt.Println(string(out))
 	//am.arList = arDataList
 
-	return arDataList
+	return Final_arDataList
 
 }
 
@@ -521,13 +547,15 @@ func (am *ARModel) DeleteARandDeductMAP(ID string, sqldb *sql.DB) (err error) {
 
 func (am *ARModel) DeleteAccountReceivable(ID, dbname string) (err error) {
 	fmt.Println("DeleteAccountReceivable")
-	const sql = `
-				delete from public.ar where arid = '%s';
+	const sql = `				
 				delete from public.receipt where arid = '%s';
 				delete from public.commission where arid = '%s';
 				DELETE FROM public.deductmap WHERE did IN (SELECT did FROM public.deduct WHERE arid = '%s') ;
 				delete from public.deduct where arid = '%s';					 			
 				delete from public.armap where arid = '%s';			
+				delete from public.returns where arid = '%s';			
+				delete from public.returnsbmap where arid = '%s';			
+				delete from public.ar where arid = '%s';
 				`
 
 	interdb := am.imr.GetSQLDBwithDbname(dbname)
@@ -536,7 +564,7 @@ func (am *ARModel) DeleteAccountReceivable(ID, dbname string) (err error) {
 		return err
 	}
 	fmt.Println("sqldb Exec")
-	res, err := sqldb.Exec(fmt.Sprintf(sql, ID, ID, ID, ID, ID, ID))
+	res, err := sqldb.Exec(fmt.Sprintf(sql, ID, ID, ID, ID, ID, ID, ID, ID))
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
 		fmt.Println(err)
@@ -919,7 +947,12 @@ func (am *ARModel) checkEditable(ID string, sqldb *sql.DB) []mapRidBsid {
 }
 
 func (am *ARModel) ReCount() {
-	arList := am.GetARData("", "0", "toad")
+
+	date := "1980-12-31T00:00:00.000Z"
+
+	t, _ := time.Parse(time.RFC3339, date)
+
+	arList := am.GetARData("", "0", "", "toad", t)
 	for _, element := range arList {
 		am.UpdateAccountReceivable(element.Amount, element.ARid, "toad", element.Sales)
 	}

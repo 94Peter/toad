@@ -170,13 +170,27 @@ func (api *ARAPI) getAccountReceivableEndpoint(w http.ResponseWriter, req *http.
 	am := model.GetARModel(di)
 	model.GetDecuctModel(di)
 
-	queryVar := util.GetQueryValue(req, []string{"key", "status", "export"}, true)
+	queryVar := util.GetQueryValue(req, []string{"key", "branch", "date", "status", "export"}, true)
 	key := (*queryVar)["key"].(string)
+	branch := (*queryVar)["branch"].(string)
 	status := (*queryVar)["status"].(string)
+	date := (*queryVar)["date"].(string)
 	if status == "" {
 		status = "0"
 	}
-	ardata := am.GetARData(key, status, dbname)
+	if branch == "all" || branch == "ALL" {
+		branch = ""
+	}
+	if date == "" {
+		date = "1980-12-31T00:00:00.000Z"
+	}
+	t, err := time.Parse(time.RFC3339, date)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("date is not valid, %s", err.Error())))
+	}
+
+	ardata := am.GetARData(key, status, branch, dbname, t)
 	//data, err := json.Marshal(result)
 	data, err := json.Marshal(ardata)
 	if err != nil {

@@ -134,6 +134,54 @@ func (sdb *SqlDB) CreateDB() error {
 	return nil
 }
 
+func (sdb *SqlDB) CreateReturnsTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.Returns "+
+			"( "+
+			"return_id character varying(50) not NULL ,"+
+			"ARid character varying(50) not NULL ,"+
+			"date timestamp(0) without time zone DEFAULT NULL, "+
+			"status character varying(50) DEFAULT '0',"+
+			"description character varying(50) ,"+
+			"Amount  integer DEFAULT 0, "+
+			"PRIMARY KEY (return_id) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.Deduct "+
+			"OWNER to %s; ", sdb.User))
+
+	if err != nil {
+		fmt.Println("CreateReturnsTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateReturnsTable Done")
+	return nil
+}
+
+func (sdb *SqlDB) CreateReturnsBMapTable() error {
+
+	_, err := sdb.SQLCommand(fmt.Sprintf(
+		"CREATE TABLE public.ReturnsBMap "+
+			"( "+
+			"branch character varying(50) ,"+
+			"return_id character varying(50) ,"+
+			"ARid character varying(50) not NULL ,"+
+			"SR integer DEFAULT 0, "+
+			"PRIMARY KEY (branch,return_id) "+
+			") "+
+			"WITH ( OIDS = FALSE);"+ //))
+			"ALTER TABLE public.ReturnsBMap "+
+			"OWNER to %s; ", sdb.User))
+
+	if err != nil {
+		fmt.Println("CreateReturnsBMapTable:" + err.Error())
+		return err
+	}
+	fmt.Println("CreateReturnsBMapTable Done")
+	return nil
+}
+
 func (sdb *SqlDB) CreateInfoHistoryTable() error {
 
 	_, err := sdb.SQLCommand(fmt.Sprintf(
@@ -580,6 +628,8 @@ func (sdb *SqlDB) CreateInvoiceTable() error {
 			"Title character varying(50) DEFAULT NULL,"+
 			"Date  character varying(50) DEFAULT NULL, "+
 			"Amount  integer not NULL, "+
+			"Status  character varying(10) DEFAULT '0', "+
+			"invoice_status integer varying(10) DEFAULT '0', "+
 			"left_qrcode  character varying(200) DEFAULT NULL, "+
 			"right_qrcode character varying(200) DEFAULT NULL, "+
 			"PRIMARY KEY (Rid,Sid) "+
@@ -625,7 +675,7 @@ func (sdb *SqlDB) CreateARMAPTable() error {
 			"( "+
 			"ARid character varying(50) not NULL,"+
 			"Sid character varying(50) not NULL,"+
-			"Proportion double precision DEFAULT 0,"+
+			"Proportion double precision DEFAULT 0,"+ //
 			"SName  character varying(50) not NULL,"+
 			"Branch  character varying(50) DEFAULT '',"+
 			"Percent double precision DEFAULT 0,"+
@@ -759,7 +809,8 @@ func (sdb *SqlDB) CreateConfigSalerTable() error {
 			"Sname character varying(50) ,"+
 			"Code integer DEFAULT 200,"+ //員工代號
 			"Branch character varying(50) ,"+
-			"ZeroDate timestamp(0) without time zone not NULL, "+
+			"ZeroDate timestamp(0) without time zone not NULL, "+ //起始日
+			"LeaveDate timestamp(0) without time zone not NULL, "+ //離職日
 			//"ValidDate  timestamp(0) without time zone not NULL, "+
 			"Title character varying(50) ,"+
 			"Percent double precision DEFAULT 0, "+
@@ -831,6 +882,7 @@ func (sdb *SqlDB) CreateCommissionTable() error {
 			"Rid character varying(50) ,"+
 			"ARid character varying(50) ,"+
 			"BSid character varying(50) ,"+
+			"return_id character varying(50) ,"+
 			//"date timestamp(0) without time zone not NULL, "+
 			"item character varying(50) not NULL, "+
 			"SName character varying(50) , "+
@@ -961,6 +1013,9 @@ func (sdb *SqlDB) InitTable() error {
 		"eventlog":          false,
 		"accountsettlement": false, //關帳日
 		"infohistory":       false,
+		"returns":           false, //折讓
+		"returnsbmap":       false, //折讓->分店業績
+
 	}
 
 	for rows.Next() {
@@ -1050,6 +1105,14 @@ func (sdb *SqlDB) InitTable() error {
 			break
 		case "infohistory":
 			mT["infohistory"] = true
+			break
+		case "returns":
+			mT["returns"] = true
+			break
+		case "returnsbmap":
+			mT["returnsbmap"] = true
+			break
+
 		default:
 			fmt.Printf("unknown table %s.\n", tName)
 		}
@@ -1141,6 +1204,10 @@ func (sdb *SqlDB) InitTable() error {
 				break
 			case "infohistory":
 				err = sdb.CreateInfoHistoryTable()
+			case "returns":
+				err = sdb.CreateReturnsTable()
+			case "returnsbmap":
+				err = sdb.CreateReturnsBMapTable()
 			default:
 				fmt.Printf("unknown table %s.\n", tableName)
 				break

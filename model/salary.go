@@ -832,30 +832,19 @@ func (salaryM *SalaryModel) CreateSalerSalary_V2(bs *BranchSalary, cid []*Cid, s
 				select  tmp.*, CS.percent, COALESCE(CS.salary,0) salary, COALESCE(CS.payrollbracket, 0) payrollbracket, COALESCE(CS.association,0) association, COALESCE(CS.InsuredAmount,0) InsuredAmount from (				
 					select * from (
 						select BS.bsid, CS.branch, CS.sid, CS.sname from public.branchsalary BS
-<<<<<<< HEAD
-						LEFT join 
-						   (select distinct on (sid) * from configsalary where extract(epoch from TO_DATE(zerodate,'YYYY-MM-DD')) <= $4 order by sid, TO_DATE(zerodate,'YYYY-MM-DD') DESC) CS 
-						on  CS.branch = BS.branch
-=======
 						LEFT join (
 							select distinct on (sid) * from configsalary where extract(epoch from TO_DATE(zerodate,'YYYY-MM-DD')) <= $4 order by sid, TO_DATE(zerodate,'YYYY-MM-DD') DESC
 						) CS on  CS.branch = BS.branch
->>>>>>> 6bb88d61ff470594a3d2bd7f10fbae88f6a4e687
 						where bsid >= $3
 						) t1 union (
 						select BS.bsid, BS.branch, ARMAP.sid, ARMAP.sname from public.branchsalary BS
 						INNER join public.ARMAP ARMAP on  ARMAP.branch = BS.branch 	
 						where bsid >= $3
 					)
-<<<<<<< HEAD
-				) tmp LEFT JOIN (select distinct on (sid) * from configsalary where extract(epoch from TO_DATE(zerodate,'YYYY-MM-DD')) <= $4 order by sid, TO_DATE(zerodate,'YYYY-MM-DD') DESC) CS 
-				on CS.sid = tmp.SID and CS.branch = tmp.Branch
-=======
 				) tmp LEFT JOIN (
 					select distinct on (sid) * from configsalary where extract(epoch from TO_DATE(zerodate,'YYYY-MM-DD')) <= $4 order by sid, TO_DATE(zerodate,'YYYY-MM-DD') DESC
 				) CS on CS.sid = tmp.SID and CS.branch = tmp.Branch
 				INNER join public.configsaler css on (css.sid = cs.sid or css.sid = tmp.sid)  and (extract(epoch from css.leaveDate) >= $4  or leaveDate is null)
->>>>>>> 6bb88d61ff470594a3d2bd7f10fbae88f6a4e687
 			) BS
 			left join (
 				SELECT c.sid csid, sum(c.bonus) Pbonus , c.branch

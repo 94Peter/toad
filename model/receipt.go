@@ -327,7 +327,7 @@ func (rm *RTModel) Json() ([]byte, error) {
 	return json.Marshal(rm.rtList)
 }
 
-func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err error) {
+func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB, idTime *time.Time) (err error) {
 	if sqldb == nil {
 		interdb := rm.imr.GetSQLDBwithDbname(dbname)
 		sqldb, _ = interdb.ConnectSQLDB()
@@ -337,7 +337,7 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 	_, err = salaryM.CheckValidCloseDate(rt.Date, dbname, sqldb)
 	if err != nil {
 		fmt.Println("CreateReceipt:", err)
-		return
+		return err
 	}
 	fmt.Println("CreateReceipt : arid is ", rt.ARid)
 	/*
@@ -345,8 +345,15 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 	*arid exist
 	*(加總歷史收款明細 + 此筆單子) <= 應收款項的收款  to_timestamp($2,'YYYY-MM-DD hh24:mi:ss')
 	**/
+	// const sql = `INSERT INTO public.receipt (Rid, Date, Amount, ARid, Fee, item , description)
+	// 			SELECT * FROM (SELECT $1::varchar(50), $2 , $3::INTEGER , $4::varchar(50) , $5::INTEGER, $6::varchar(50) , $7::varchar(50)  ) AS tmp
+	// 			WHERE
+	// 				EXISTS ( SELECT arid from public.ar ar WHERE arid = $4 )
+	// 			and ( select $3 + COALESCE(SUM(amount),0) FROM public.receipt  where arid = $4 ) <=  (SELECT amount from public.ar ar WHERE arid = $4)
+	// 			and ( select $5 + COALESCE(SUM(fee),0) FROM public.receipt  where arid = $4 ) <=  (SELECT COALESCE(SUM(fee),0) from public.deduct WHERE arid = $4	)
+	// 			;`
 	const sql = `INSERT INTO public.receipt (Rid, Date, Amount, ARid, Fee, item , description)
-				SELECT * FROM (SELECT $1::varchar(50), to_timestamp($2,'YYYY-MM-DD hh24:mi:ss') , $3::INTEGER , $4::varchar(50) , $5::INTEGER, $6::varchar(50) , $7::varchar(50)  ) AS tmp 
+				SELECT $1::varchar(50), $2 , $3::INTEGER , $4::varchar(50) , $5::INTEGER, $6::varchar(50) , $7::varchar(50)  AS tmp 
 				WHERE  
 					EXISTS ( SELECT arid from public.ar ar WHERE arid = $4 ) 
 				and ( select $3 + COALESCE(SUM(amount),0) FROM public.receipt  where arid = $4 ) <=  (SELECT amount from public.ar ar WHERE arid = $4)
@@ -360,12 +367,17 @@ func (rm *RTModel) CreateReceipt(rt *Receipt, dbname string, sqldb *sql.DB) (err
 	// }
 	//fmt.Println(string(out))
 	//fmt.Println(string(sql))
+	var t int64
+	if idTime == nil {
+		t = time.Now().Unix()
+	} else {
+		t = idTime.Unix()
+	}
 
-	t := time.Now().Unix()
-	res, err := sqldb.Exec(sql, t, rt.Date, rt.Amount, rt.ARid, rt.Fee, rt.Item, rt.Description)
+	res, err := sqldb.Exec(sql, t, rt.Date.UTC(), rt.Amount, rt.ARid, rt.Fee, rt.Item, rt.Description)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("CreateReceipt:", err)
 		return err
 	}
 

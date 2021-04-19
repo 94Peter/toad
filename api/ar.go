@@ -413,7 +413,7 @@ func (api *ARAPI) createReceiptEndpoint(w http.ResponseWriter, req *http.Request
 	rm := model.GetRTModel(di)
 	_ = model.GetCModel(di)      //init Commission Model for create commission
 	_ = model.GetDecuctModel(di) //init Deduct Model for update DeductRid
-	_err := rm.CreateReceipt(irt.GetReceipt(), dbname, nil)
+	_err := rm.CreateReceipt(irt.GetReceipt(), dbname, nil, nil)
 	if _err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(_err.Error()))

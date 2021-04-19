@@ -71,6 +71,7 @@ func main() {
 		mapi.IndexAPI(true),
 		mapi.IndexAPIV2(true),
 		mapi.LogAPI(true),
+		mapi.FileuploadAPI(true),
 	)
 
 	//init EventLogModel, to record event

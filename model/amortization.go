@@ -182,6 +182,7 @@ func (amorM *AmortizationModel) CreateAmortization(amor *Amortization, dbname st
 
 	fakeId := time.Now().Unix()
 	amor.AmorId = fmt.Sprintf("%d", fakeId)
+	fmt.Println("amor.Date:", amor.Date)
 	res, err := sqldb.Exec(sql, fakeId, amor.Branch, amor.Date, amor.Itemname, amor.Gaincost, amor.AmortizationYearLimit, amor.MonthlyAmortizationAmount, amor.FirstAmortizationAmount)
 	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
 	if err != nil {

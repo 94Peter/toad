@@ -464,7 +464,7 @@ func (am *ARModel) UpdateAccountReceivable(amount int, ID, dbname string, salerL
 					// 	return err
 					// }
 				}
-				err = rm.CreateReceipt(receipt, dbname, sqldb)
+				err = rm.CreateReceipt(receipt, dbname, sqldb, nil)
 				if err != nil {
 					fmt.Println("CreateReceipt on update ar error:", receipt.Rid)
 					return errors.New("[ERROR]: CreateReceipt on update ar, " + err.Error())
@@ -710,6 +710,54 @@ func (am *ARModel) CreateAccountReceivable(receivable *AR, json, dbname string) 
 	}
 	defer sqldb.Close()
 	return nil
+}
+func (am *ARModel) GetSqlDB(dbname string) *sql.DB {
+	interdb := am.imr.GetSQLDBwithDbname(dbname)
+	sqldb, _ := interdb.ConnectSQLDB()
+	return sqldb
+}
+func (am *ARModel) CheckARExist(mtype, name, branch string, sqldb *sql.DB) (data string) {
+
+	if mtype == "買方" {
+		mtype = "buy"
+	}
+	if mtype == "賣方" {
+		mtype = "sell"
+	}
+	//不知道為什麼用$字號 放入數字會報錯。
+	const sql = `SELECT arid FROM public.ar
+				 where type = $1 and name = $2;
+				`
+
+	// interdb := am.imr.GetSQLDBwithDbname(dbname)
+	// sqldb, err := interdb.ConnectSQLDB()
+	// if err != nil {
+	// 	return err
+	// }
+
+	rows, err := sqldb.Query(sql, mtype, name)
+	//res, err := sqldb.Exec(sql, unix_time, receivable.Date, receivable.CNo, receivable.Sales)
+	if err != nil {
+		fmt.Println("checkARExist:", err)
+	}
+	var ar AR
+	var index = 0
+	for rows.Next() {
+		if err := rows.Scan(&ar.ARid); err != nil {
+			fmt.Println("err Scan " + err.Error())
+		}
+		index++
+	}
+	fmt.Println("ar.ARid:", ar.ARid, " index:", index)
+	if index >= 2 {
+		//fmt.Println("超過兩個應收款...請自行判斷")
+		return ""
+	}
+	if ar.ARid == "" {
+		return ""
+	}
+	//defer sqldb.Close()
+	return ar.ARid
 }
 
 func (am *ARModel) CreateHouseGoDuplicate(ID, data, dbname string) (err error) {

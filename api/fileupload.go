@@ -73,8 +73,12 @@ func (api *FileuploadAPI) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 		sqlDB := am.GetSqlDB(dbname)
 		for _, row := range records {
+			fmt.Println(len(row))
+			if len(row) <= 7 {
+				f = false
+				break
+			}
 			if f {
-
 				name := SubString(row[6], 4, 3)
 				branch := SubString(row[6], 0, 2)
 				mtype := SubString(row[6], 2, 2)
@@ -91,6 +95,7 @@ func (api *FileuploadAPI) uploadFile(w http.ResponseWriter, r *http.Request) {
 					data["amount"] = row[5]
 					data["item"] = row[6]
 					data["desc"] = row[7]
+					data["reason"] = "找不到相關應收款 或 存在重複應收款"
 					datas = append(datas, data)
 				} else {
 					row[5] = strings.Replace(row[5], ",", "", -1)
@@ -137,7 +142,8 @@ func (api *FileuploadAPI) uploadFile(w http.ResponseWriter, r *http.Request) {
 						data["sender"] = row[4]
 						data["amount"] = row[5]
 						data["item"] = row[6]
-						data["desc"] = row[7] + "[匯入錯誤]" + err.Error()
+						data["desc"] = row[7]
+						data["reason"] = "[匯入錯誤]" + err.Error()
 						datas = append(datas, data)
 					}
 					//rt *Receipt, dbname string, sqldb *sql.DB, idTime *time.Time)

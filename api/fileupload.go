@@ -41,7 +41,7 @@ func (api *FileuploadAPI) uploadFile(w http.ResponseWriter, r *http.Request) {
 	rt := model.GetRTModel(di)
 
 	datas := make([]map[string]interface{}, 0, 0)
-
+	f := false
 	for k, _ := range mForm.File {
 		// k is the key of file part
 		file, fileHeader, err := r.FormFile(k)
@@ -70,7 +70,7 @@ func (api *FileuploadAPI) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 		records := readCsvFile(localFileName)
 		fmt.Println(records)
-		f := false
+
 		sqlDB := am.GetSqlDB(dbname)
 		for _, row := range records {
 			if f {
@@ -150,7 +150,12 @@ func (api *FileuploadAPI) uploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(datas)
+	if f {
+		json.NewEncoder(w).Encode(datas)
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("file format error"))
+	}
 }
 
 func SubString(str string, begin, length int) string {
